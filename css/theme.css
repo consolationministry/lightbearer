@@ -1,45 +1,58 @@
 :root {
-  color-scheme: light;
-  --ink: #172b4d;
-  --muted: #52647f;
-  --canvas: #f2f7ff;
-  --surface: #ffffff;
-  --surface-soft: #e8f1ff;
-  --line: #cbdaf0;
-  --accent-light: #1d4ed8;
-  --accent-dark: #93c5fd;
-  --accent: var(--accent-light);
-  --accent-deep: color-mix(in srgb, var(--accent) 78%, #000);
-  --accent-soft: color-mix(in srgb, var(--accent) 11%, var(--surface));
-  --purple: #1e40af;
-  --purple-soft: #e8f1ff;
-  --danger: #b42318;
-  --shadow: 0 12px 32px rgba(30, 64, 175, .11);
+  --ink: #f7efe5;
+  --muted: #b8a99a;
+  --canvas: #100d0a;
+  --surface: #1b1510;
+  --surface-soft: #261d15;
+  --line: #493423;
+  --accent-light: #f28c28;
+  --accent-dark: #ffb04a;
+  --accent: var(--accent-dark);
+  --accent-deep: #ffd092;
+  --accent-soft: #352216;
+  --purple: #f6a03a;
+  --purple-soft: #352216;
+  --danger: #ff8878;
+  --shadow: 0 14px 36px rgba(0, 0, 0, .32);
   --hymn-size: 21px;
   --font-ui: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-reading: Georgia, "Times New Roman", serif;
 }
 
-html[data-theme="dark"] {
-  color-scheme: dark;
-  --ink: #eaf2ff;
-  --muted: #b7c7e3;
-  --canvas: #101b31;
-  --surface: #182741;
-  --surface-soft: #223656;
-  --line: #344a6c;
-  --accent: var(--accent-dark);
-  --accent-deep: color-mix(in srgb, var(--accent) 88%, #fff);
-  --accent-soft: color-mix(in srgb, var(--accent) 17%, var(--surface));
-  --purple: #a9c9ff;
-  --purple-soft: #203858;
-  --danger: #ff91a8;
-  --shadow: 0 10px 32px rgba(0, 0, 0, .24);
+html[data-theme="light"] {
+  color-scheme: light;
+  --ink: #f7efe5;
+  --muted: #b8a99a;
+  --canvas: #100d0a;
+  --surface: #1b1510;
+  --surface-soft: #261d15;
+  --line: #493423;
+  --accent: #ffb04a;
+  --accent-deep: #ffd092;
+  --accent-soft: #352216;
+  --danger: #ff8878;
+  --shadow: 0 14px 36px rgba(0, 0, 0, .32);
 }
 
-html[data-accent="red"] { --accent-light: #c62828; --accent-dark: #ff8a80; }
-html[data-accent="blue"] { --accent-light: #1d4ed8; --accent-dark: #93c5fd; }
-html[data-accent="purple"] { --accent-light: #6941a5; --accent-dark: #c6a7f5; }
-html[data-accent="green"] { --accent-light: #427625; --accent-dark: #aad885; }
-html[data-accent="sky"] { --accent-light: #1673a0; --accent-dark: #85d5f2; }
-html[data-accent="black"] { --accent-light: #27232b; --accent-dark: #ded9e3; }
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #f7efe5;
+  --muted: #b8a99a;
+  --canvas: #100d0a;
+  --surface: #1b1510;
+  --surface-soft: #261d15;
+  --line: #493423;
+  --accent: #ffb04a;
+  --accent-deep: #ffd092;
+  --accent-soft: #352216;
+  --danger: #ff8878;
+  --shadow: 0 14px 36px rgba(0, 0, 0, .32);
+}
+
+html[data-accent="amber"] { --accent-light: #f28c28; --accent-dark: #ffb04a; }
+html[data-accent="red"] { --accent-light: #f28c28; --accent-dark: #ffb04a; }
+html[data-accent="blue"] { --accent-light: #f28c28; --accent-dark: #ffb04a; }
+html[data-accent="purple"] { --accent-light: #f28c28; --accent-dark: #ffb04a; }
+html[data-accent="green"] { --accent-light: #f28c28; --accent-dark: #ffb04a; }
+html[data-accent="sky"] { --accent-light: #f28c28; --accent-dark: #ffb04a; }
+html[data-accent="black"] { --accent-light: #f28c28; --accent-dark: #ffb04a; }

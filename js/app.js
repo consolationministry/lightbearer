@@ -65,6 +65,10 @@ const updateStatus = document.getElementById("update-status");
 const updateInstallButton = document.getElementById("update-install");
 const state = { hymns: [], publicContent: null, programmeInteractions: {}, programmeInteractionsAvailable: null, programmeVotesAvailable: null, programmeVotePending: {}, programmeDescriptionsExpanded: {}, programmeSelectedId: null, programmeCategoryFilter: "", serviceSelectedId: null, serviceAimId: null, liveAudioData: emptyLiveAudioData(), savedLiveAudioPrograms: getSavedLiveAudioPrograms(), savingLiveAudioIds: new Set(), liveAudioPlaybackUrl: "", liveAudioOfflinePlayback: false, liveAudioOpenToken: 0, liveAudioLoading: false, liveAudioError: "", liveAudioJoinError: null, liveAudioQuery: "", liveAudioCategory: "", selectedLiveAudioProgramId: null, liveAudioStartedAt: null, liveAudioTimer: null, liveAudioPollTimer: null, liveAudioSegmentPollTimer: null, liveAudioSegmentRequest: false, liveAudioSegmentRequestToken: 0, liveAudioRequestToken: 0, liveAudioConnectToken: 0, liveAudioListener: null, liveAudioConnecting: false, liveAudioConnectionStatus: "", liveAudioStatusCode: "", liveAudioCountRecorded: false, liveAudioEnding: false, liveAudioEndingTimer: null, liveAudioBurstSub: null, liveAudioBurstProgramId: "", liveAudioListenEventId: "", view: "home", readerReturnView: "home", selectedNumber: null, query: "", category: "", searchOpen: false, settings: getSettings(), toastTimer: null };
 
+try { state.query = localStorage.getItem("lightbearer-search") || ""; state.searchOpen = Boolean(state.query); } catch (error) {}
+
+try { state.query = localStorage.getItem("lightbearer-search") || ""; state.searchOpen = Boolean(state.query); } catch (error) {}
+
 const iconPaths = {
   home: '<path d="m3 10 9-7 9 7"/><path d="M5 9v11h14V9M9 20v-6h6v6"/>',
   book: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 0 4 22z"/><path d="M4 5.5v14A2.5 2.5 0 0 1 6.5 17H20M8 7h8M8 10h7"/>',
@@ -122,7 +126,7 @@ function renderNav() {
     ["services", "Services", "calendar"],
     ["listen", "Stream", "mic"],
     ["recent", "Recent", "history"],
-    ["settings", "Settings", "settings"]
+    ["settings", "Settings", "settings"], ["favorites", "Favorites", "heart"], ["community", "Community", "sparkle"], ["set", "Service Sets", "plus"]
   ];
   nav.innerHTML = items.map(function (item) {
     return '<button class="nav-item" type="button" data-action="navigate" data-view="' + item[0] + '" aria-current="' + (activeView === item[0] ? "page" : "false") + '" data-testid="nav-' + item[0] + '">' + icon(item[2]) + '<span>' + item[1] + '</span></button>';
@@ -193,14 +197,13 @@ function languageLabel(language) {
 }
 
 function languageToggle() {
-  const choices = ["english", "yoruba"];
-  return '<div class="language-toggle" role="group" aria-label="Hymn language">' + choices.map(function (language) {
-    return '<button type="button" data-action="language" data-language="' + language + '" aria-pressed="' + (state.settings.language === language) + '" data-testid="button-language-' + language + '">' + languageLabel(language) + '</button>';
+  return '<div class="language-toggle" role="tablist" aria-label="Hymn language">' + [{ value: "all", label: "All" }, { value: "english", label: "English" }, { value: "yoruba", label: "Yorùbá" }].map(function (item) {
+    return '<button type="button" role="tab" data-action="language" data-language="' + item.value + '" aria-selected="' + (state.settings.language === item.value) + '" aria-pressed="' + (state.settings.language === item.value) + '" data-testid="button-language-' + item.value + '">' + item.label + '</button>';
   }).join("") + '</div>';
 }
 
 function inActiveLanguage(hymn) {
-  return (hymn.language || "english") === state.settings.language;
+  return state.settings.language === "all" || (hymn.language || "english") === state.settings.language;
 }
 
 function renderHome() {
@@ -216,6 +219,7 @@ function renderHome() {
   }
   return '<section class="page home-page"><div class="home-language">' + languageToggle() + '</div>' + renderHomeSearch() + collection + '</section>';
 }
+
 function renderHymnLibrary() {
   const results = searchHymns(state.hymns.filter(inActiveLanguage), state.query, "").slice().sort(compareByPrintedNumber);
   const caption = state.query ? "Search results" : "All hymns";
@@ -569,6 +573,12 @@ function homeHymn(hymn) {
   return '<article class="home-hymn" data-testid="home-hymn-' + hymn.hymn_number + '"><header class="home-hymn-heading"><button class="home-hymn-open" type="button" data-action="open-hymn" data-number="' + hymn.hymn_number + '" aria-label="Open hymn ' + number + ': ' + escapeHtml(title) + '"><span class="hymn-number">' + number + '</span><span class="home-hymn-title">' + escapeHtml(title) + '</span></button></header></article>';
 }
 
+function hymnAdjacent(number, direction) {
+  const list = state.hymns.filter(inActiveLanguage).slice().sort(compareByPrintedNumber);
+  const index = list.findIndex(function (item) { return Number(item.hymn_number) === Number(number); });
+  return list[index + direction] || null;
+}
+
 function renderReader() {
   const hymn = state.hymns.find(function (item) { return item.hymn_number === Number(state.selectedNumber); });
   if (!hymn) return '<section class="page">' + pageHeading("Hymn not found", "This number is not in the current collection.") + '<button class="button-secondary" type="button" data-action="back" data-testid="button-reader-back">' + icon("arrow") + ' Back to hymns</button></section>';
@@ -579,6 +589,7 @@ function renderReader() {
   const title = hasEnglish
     ? '<span lang="en">' + escapeHtml(hymn.title_en) + '</span>'
     : '<span lang="yo">' + escapeHtml(hymn.title_yoruba) + '</span>';
+  const titleText = hasEnglish ? hymn.title_en : hymn.title_yoruba;
   const firstLine = hasEnglish
     ? '<span lang="en">' + escapeHtml(hymn.first_line_en) + '</span>'
     : '<span lang="yo">' + escapeHtml(hymn.first_line_yoruba) + '</span>';
@@ -587,31 +598,61 @@ function renderReader() {
   const descriptionMarkup = descriptionText
     ? '<section class="hymn-description" lang="' + descriptionLang + '"><span class="verse-label">Description</span><p class="verse-text" lang="' + descriptionLang + '">' + escapeHtml(descriptionText) + '</p></section>'
     : "";
+  const previousHymn = state.hymns.filter(function (item) { return Number(item.hymn_number) < Number(hymn.hymn_number); }).sort(compareByPrintedNumber).pop();
+  const nextHymn = state.hymns.filter(function (item) { return Number(item.hymn_number) > Number(hymn.hymn_number); }).sort(compareByPrintedNumber)[0];
   const sections = descriptionMarkup + (hasEnglish
     ? poemSection("English", hymn.verses_en, hymn.chorus_en, "en", showEnglishGospelMeterHeading, "", hymn)
     : poemSection("Yorùbá", hymn.verses_yoruba, hymn.chorus_yoruba, "yo", false, hymn.hymnal_note, hymn));
   const translationNote = "";
-  return '<section class="page reader-page"><div class="reader-topbar"><button class="reader-back" type="button" data-action="back" data-testid="button-reader-back">' + icon("arrow") + ' Back</button><div class="reader-actions">' + favoriteButton(hymn) + '<button class="icon-button" type="button" data-action="share" data-number="' + hymn.hymn_number + '" aria-label="Share hymn ' + number + '" data-testid="button-share-hymn">' + icon("share") + '</button></div></div><header class="reader-heading"><div class="reader-edition"><span class="hymn-number">' + number + '</span><span>' + escapeHtml(displayHymnalName(hymn)) + '</span></div><h1>' + title + '</h1><p class="reader-first-line">' + firstLine + '</p></header><div class="reader-meta">' + '<div class="reading-size" role="group" aria-label="Change hymn text size"><button type="button" data-action="font-decrease" aria-label="Decrease hymn text size" data-testid="button-font-decrease">A−</button><output id="reader-font-size">' + state.settings.fontSize + ' px</output><button type="button" data-action="font-increase" aria-label="Increase hymn text size" data-testid="button-font-increase">A+</button></div></div><div class="hymn-reading">' + translationNote + sections + '</div><footer class="reader-footer"><button class="text-link" type="button" data-action="share" data-number="' + hymn.hymn_number + '">' + icon("share") + ' Share hymn</button></footer></section>';
+  const lyricText = [number + " " + titleText, descriptionText || "", hymn.first_line_en || hymn.first_line_yoruba || "", (hasEnglish ? hymn.verses_en : hymn.verses_yoruba || []).join("\n\n"), hasEnglish ? hymn.chorus_en || "" : hymn.chorus_yoruba || ""].filter(Boolean).join("\n\n");
+  return '<section class="page reader-page"><div class="reader-topbar"><button class="reader-back" type="button" data-action="back" data-testid="button-reader-back">' + icon("arrow") + ' Back</button><div class="reader-actions">' + favoriteButton(hymn) + '<button class="icon-button" type="button" data-action="copy-lyrics" data-text="' + escapeHtml(lyricText) + '" aria-label="Copy lyrics">Copy</button><button class="icon-button" type="button" data-action="share" data-number="' + hymn.hymn_number + '" aria-label="Share hymn ' + number + '" data-testid="button-share-hymn">' + icon("share") + '</button></div></div><header class="reader-heading"><div class="reader-edition"><span class="hymn-number">' + number + '</span><span>' + escapeHtml(displayHymnalName(hymn)) + '</span></div><h1>' + title + '</h1><p class="reader-first-line">' + firstLine + '</p></header><div class="reader-meta"><div class="reading-size" role="group" aria-label="Change hymn text size"><button type="button" data-action="font-decrease" aria-label="Decrease hymn text size" data-testid="button-font-decrease">A−</button><output id="reader-font-size">' + state.settings.fontSize + ' px</output><button type="button" data-action="font-increase" aria-label="Increase hymn text size" data-testid="button-font-increase">A+</button></div></div><div class="hymn-reading">' + translationNote + sections + '</div><footer class="reader-footer"><button class="button-secondary" type="button" data-action="save-text" data-filename="hymn-' + number + '.txt" data-text="' + escapeHtml(lyricText) + '">Save as text</button><button class="button-secondary" type="button" data-action="save-pdf" data-text="' + escapeHtml(lyricText) + '">Save as PDF</button><button class="button-secondary" type="button" data-action="embed-hymn" data-number="' + hymn.hymn_number + '">Embed hymn</button></footer><nav class="reader-pagination" aria-label="Hymn navigation">' + (previousHymn ? '<button class="button-secondary" type="button" data-action="open-hymn" data-number="' + previousHymn.hymn_number + '">Previous</button>' : '<span></span>') + (nextHymn ? '<button class="button-primary" type="button" data-action="open-hymn" data-number="' + nextHymn.hymn_number + '">Next</button>' : '<span></span>') + '</nav></section>';
 }
 
 function themeChoice(theme, label, iconName) {
   return '<button class="preference-choice" type="button" data-action="theme" data-theme="' + theme + '" aria-pressed="' + (state.settings.theme === theme) + '" data-testid="button-theme-' + theme + '">' + icon(iconName) + label + '</button>';
 }
 
+function hymnText(hymn, language) {
+  const useYoruba = language === "yoruba" && Array.isArray(hymn.verses_yoruba) && hymn.verses_yoruba.length;
+  const title = useYoruba ? hymn.title_yoruba : hymn.title_en || hymn.title_yoruba;
+  const verses = useYoruba ? hymn.verses_yoruba : hymn.verses_en || [];
+  const chorus = useYoruba ? hymn.chorus_yoruba : hymn.chorus_en;
+  return ["Hymn " + displayHymnNumber(hymn) + " · " + title, useYoruba ? hymn.description_yoruba : hymn.description_en, verses.join("\n\n"), chorus ? (useYoruba ? "Egbe:" : "Chorus:") + "\n" + chorus : ""].filter(Boolean).join("\n\n");
+}
+
+async function copyText(text) {
+  try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); showToast("Copied to clipboard."); return true; } } catch (error) {}
+  const field = document.createElement("textarea"); field.value = text; document.body.appendChild(field); field.select(); const ok = document.execCommand("copy"); field.remove(); showToast(ok ? "Copied to clipboard." : "Could not copy text."); return ok;
+}
+
+function downloadText(text, filename, type) {
+  const blob = new Blob([text], { type: type || "text/plain;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
+}
+
 function renderSettings() {
   const size = state.settings.fontSize;
-  const accentLabels = { red: "Red", purple: "Purple", black: "Black", green: "Green", sky: "Sky", blue: "Blue" };
+  const accentLabels = { amber: "Amber" };
   const accentChoices = ACCENT_THEMES.map(function (accent) {
     return '<button class="preference-choice accent-choice" type="button" data-action="accent" data-accent="' + accent + '" aria-pressed="' + (state.settings.accent === accent) + '" data-testid="button-accent-' + accent + '"><span class="color-dot" aria-hidden="true"></span><span>' + accentLabels[accent] + '</span></button>';
   }).join("");
   return '<section class="page">' + pageHeading("Settings", "Make the hymn book comfortable for you.") +
     '<section class="settings-group"><h2>Appearance</h2><p class="settings-description">Choose how the app looks on this device.</p><div class="preference-choices">' + themeChoice("light", "Light", "sun") + themeChoice("dark", "Dark", "moon") + themeChoice("system", "System", "settings") + '</div></section>' +
-    '<section class="settings-group"><h2>Accent colour</h2><p class="settings-description">Choose from six colours. Your choice works with light and dark mode.</p><div class="accent-grid">' + accentChoices + '</div></section>' +
+    '<section class="settings-group"><h2>Accent colour</h2><p class="settings-description">Amber is the Lightbearer accent colour.</p><div class="accent-grid">' + accentChoices + '</div></section>' +
     '<section class="settings-group"><h2>Reading</h2><p class="settings-description">Set your preferred text size. English and Yorùbá hymns appear together in one list.</p><div class="setting-row"><span><strong>Text size</strong><small id="settings-font-value">' + size + ' px</small></span><input class="setting-range" id="settings-font-size" type="range" min="17" max="32" step="1" value="' + size + '" aria-label="Text size across the app" data-testid="input-font-size"></div><p class="verse-text setting-preview" style="--hymn-size:' + size + 'px">The hymn text will use this size.</p></section>' +
     '<div class="settings-actions"><button class="button-primary settings-save" type="button" data-action="save-settings" data-testid="button-save-settings">' + icon("check") + ' Save settings</button></div>' +
     '<section class="settings-group"><h2>About</h2><div class="setting-row"><span><strong>C&S Bible Church</strong><small>Digital hymnal · Version ' + APP_VERSION + '</small></span></div><p class="about-copy">The hymnal lists English and Yorùbá hymns in separate collections, numbered as printed in the book. Printed numbers are preserved, and matching numbers are not treated as translations. See data/SOURCES.md for catalog notes.</p><div class="setting-note" style="margin-top:14px"><strong>Publishing and attribution</strong><br>Hymns marked Published in the admin workspace appear in the public catalog. Confirm the source attribution and publishing permission before publishing additional material.</div><div class="setting-note" style="margin-top:14px"><strong>Privacy</strong><br>There are no member accounts. Favorites and preferences are saved only in this browser on this device; they are not sent to a server.</div></section></section>';
 }
 
+let deferredInstallPrompt=null;
+window.addEventListener("beforeinstallprompt",function(event){event.preventDefault();deferredInstallPrompt=event;let button=document.getElementById("install-app");if(!button){button=document.createElement("button");button.id="install-app";button.className="install-app-prompt";button.textContent="Install Lightbearer";document.body.appendChild(button);button.addEventListener("click",async function(){if(deferredInstallPrompt){deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;button.remove();}});}});
+if ("serviceWorker" in navigator) window.addEventListener("load", function(){ navigator.serviceWorker.register("./service-worker.js").catch(function(){}); });
 let splashChimePlayed = false;
 function playSplashChime() {
   if (splashChimePlayed) return;
@@ -689,6 +730,14 @@ function clearSavedAudioPlayback() {
   state.liveAudioOfflinePlayback = false;
 }
 
+function renderInfoPage(view) {
+  const pages={books:["Books","Church books and reading resources."],blog:["Blog","Updates and reflections from C&S Bible Church."],history:["Our history","The story and heritage of C&S Bible Church."],about:["About Lightbearer","A free church hymnal for C&S Bible Church members."],community:["Community","A community feed for church encouragement and updates."],set:["Service hymn sets","Build a service set from available hymns."]};
+  const entry=pages[view]||pages.about;
+  const rows=state.hymns.slice(0,8).map(function(h){return '<label class="set-hymn"><input type="checkbox" value="'+escapeHtml(h.hymn_number)+'"> '+escapeHtml(displayHymnNumber(h)+' · '+currentHymnTitle(h))+'</label>';}).join('');
+  const body=view==='set'?'<input id="service-set-name" placeholder="Service set name" maxlength="80"><div>'+rows+'</div><button class="button-primary" data-action="save-service-set">Save set</button>':'<p>'+escapeHtml(entry[1])+'</p>'+(view==='about'?'<p>Hymn source credits appear with texts used by permission. Lightbearer is free for members.</p>':'');
+  return '<section class="page info-page">'+pageHeading(entry[0],entry[1])+body+'</section>';
+}
+
 function render() {
   document.body.classList.toggle("audio-library-mode", state.view === "listen" && !state.selectedLiveAudioProgramId);
   document.body.classList.toggle("audio-listener-mode", state.view === "listen" && Boolean(state.selectedLiveAudioProgramId));
@@ -705,6 +754,7 @@ function render() {
       : null;
   const liveAudioViewData = getLiveAudioViewData();
   if (state.view === "home") main.innerHTML = renderHome();
+  else if (["books","blog","history","about","community","set"].includes(state.view)) main.innerHTML=renderInfoPage(state.view);
   else if (state.view === "listen") main.innerHTML = state.selectedLiveAudioProgramId
     ? renderLiveAudioListener(
       Object.assign({}, liveAudioViewData, { error: state.liveAudioError }),
@@ -754,6 +804,8 @@ function render() {
     mountAudioPlayer(audio, audio.closest(".audio-listener-player"));
   });
   renderNav();
+  let footer=document.getElementById("site-footer");
+  if(!footer){footer=document.createElement("footer");footer.id="site-footer";footer.className="site-footer";footer.innerHTML='<strong>C&S Bible Church</strong><span>Lightbearer · Cherubim and Seraphim</span><nav aria-label="About Lightbearer"><button data-action="navigate" data-view="about">About</button><button data-action="navigate" data-view="history">History</button><button data-action="navigate" data-view="blog">Blog</button><button data-action="navigate" data-view="books">Books</button></nav>';shell.appendChild(footer);}
   document.title = state.view === "reader" ? "Hymn " + String(state.selectedNumber).padStart(2, "0") + " · C&S Bible Church Hymnal" : state.view === "listen" ? "Listen · C&S Bible Church Hymnal" : "C&S Bible Church Hymnal";
 }
 
@@ -794,7 +846,7 @@ function openHymn(number) {
 }
 
 function navigate(view) {
-  if (!["home", "listen", "programs", "services", "favorites", "recent", "settings"].includes(view)) return;
+  if (!["home", "listen", "programs", "services", "favorites", "recent", "settings", "books", "blog", "history", "about", "community", "set"].includes(view)) return;
   if (state.view === "listen" && (view !== "listen" || state.selectedLiveAudioProgramId)) {
     state.liveAudioOpenToken += 1;
     main.querySelectorAll("[data-audio-player]").forEach(stopAudioPlayer);
@@ -1310,6 +1362,7 @@ async function openLiveAudioProgram(programId) {
 
 function updateSearch(value, selectionStart, selectionEnd) {
   state.query = value;
+  try { localStorage.setItem("lightbearer-search", value); } catch (error) {}
   if (state.view !== "home") state.view = "home";
   state.searchOpen = true;
   render();
@@ -1328,7 +1381,8 @@ function adjustFont(delta) {
 async function performShare(number) {
   const hymn = state.hymns.find(function (item) { return item.hymn_number === Number(number); });
   if (!hymn) return;
-  const result = await shareHymn(hymn, "english");
+  const language = state.settings.language === "yoruba" ? "yoruba" : "english";
+  const result = await shareHymn(hymn, language);
   if (result === "shared" || result === "cancelled") return;
   if (result === "copied") showToast("Hymn text copied. You can paste it into a message.");
   else {
@@ -1441,7 +1495,8 @@ document.addEventListener("click", function (event) {
   else if (action === "install-update") installAvailableUpdate();
   else if (action === "save-settings") saveCurrentSettings();
   else if (action === "navigate") navigate(target.dataset.view);
-  else if (action === "language") setSettings({ language: target.dataset.language === "yoruba" ? "yoruba" : "english" });
+  else if (action === "save-service-set") { try { const sets=JSON.parse(localStorage.getItem("lightbearer-service-sets")||"[]"); sets.push({name:document.getElementById("service-set-name").value.trim()||"Service set",hymns:Array.from(main.querySelectorAll(".set-hymn input:checked")).map(function(x){return x.value;})}); localStorage.setItem("lightbearer-service-sets",JSON.stringify(sets));showToast("Service set saved on this device."); } catch(e){showToast("Could not save service set.");} }
+  else if (action === "language") setSettings({ language: target.dataset.language });
   else if (action === "header-search") {
       if (state.view === "home") {
       state.searchOpen = state.query ? true : !state.searchOpen;
@@ -1454,6 +1509,7 @@ document.addEventListener("click", function (event) {
     if (input) input.focus();
   } else if (action === "close-search" || action === "clear-home-search") {
     state.query = "";
+    try { localStorage.removeItem("lightbearer-search"); } catch (error) {}
     state.searchOpen = false;
     render();
   } else if (action === "open-hymn") openHymn(target.dataset.number);
@@ -1539,6 +1595,15 @@ document.addEventListener("click", function (event) {
   else if (action === "theme") setSettings({ theme: target.dataset.theme }, state.view !== "settings");
   else if (action === "accent") setSettings({ accent: target.dataset.accent }, state.view !== "settings");
   else if (action === "share") performShare(target.dataset.number);
+  else if (action === "copy-lyrics") void copyText(target.dataset.text || "");
+  else if (action === "share-channel") {
+    const hymn = state.hymns.find(function (item) { return item.hymn_number === Number(target.dataset.number); });
+    if (hymn) { const text = hymnText(hymn, state.settings.language); const url = window.location.href; const base = target.dataset.channel === "whatsapp" ? "https://wa.me/?text=" : target.dataset.channel === "telegram" ? "https://t.me/share/url?url=" + encodeURIComponent(url) + "&text=" : "https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(url) + "&quote="; window.open(base + (target.dataset.channel === "telegram" ? encodeURIComponent(text) : encodeURIComponent(text + "\n" + url)), "_blank", "noopener"); }
+  }
+  else if (action === "save-text") downloadText(target.dataset.text || "", target.dataset.filename || "hymn.txt");
+  else if (action === "save-pdf") { window.print(); }
+  else if (action === "embed-hymn") { const code = '<iframe src="' + window.location.origin + window.location.pathname + '?hymn=' + encodeURIComponent(target.dataset.number) + '" title="Lightbearer hymn" loading="lazy"></iframe>'; void copyText(code); window.prompt("Copy this hymn embed code:", code); }
+  else if (action === "toggle-theme") setSettings({ theme: state.settings.theme === "dark" ? "light" : "dark" });
 });
 
 document.addEventListener("keydown", function (event) {
@@ -1591,6 +1656,10 @@ document.addEventListener("submit", function (event) {
     window.scrollTo(0, 0);
   }
 });
+
+if ("serviceWorker" in navigator) window.addEventListener("load", function(){navigator.serviceWorker.register("./service-worker.js").catch(function(){});});
+
+if ("serviceWorker" in navigator) window.addEventListener("load", function(){navigator.serviceWorker.register("./service-worker.js").catch(function(){});});
 
 if (window.matchMedia) {
   const media = window.matchMedia("(prefers-color-scheme: dark)");

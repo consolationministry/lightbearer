@@ -5,8 +5,8 @@
   "start_url": "./hymnal.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f8f6fa",
-  "theme_color": "#f8f6fa",
+  "background_color": "#100d0a",
+  "theme_color": "#100d0a",
   "icons": [
     {
       "src": "./assets/lightbearer-icon-512.png",
