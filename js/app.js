@@ -417,9 +417,19 @@ function renderPublicPrograms(allPrograms, available) {
     const message = available ? "No programmes have been posted yet." : "Programme announcements are unavailable right now. Please try again later.";
     return '<div class="public-content-empty">' + escapeHtml(message) + '</div>';
   }
-  return '<div class="public-program-list">' + programs.map(function (program) {
-    return renderProgrammeCard(program, false);
-  }).join("") + '</div>';
+  const days = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
+  const rows = programs.map(function (program) {
+    const day = program.startDate ? days[new Date(program.startDate + "T00:00:00").getDay()] : "•";
+    const startTime = program.startDate ? new Date(program.startDate + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" }) : "";
+    const description = program.description || "";
+    return '<article class="service-schedule-row" data-testid="schedule-' + escapeHtml(program.id) + '">' +
+      '<span class="service-schedule-day">' + escapeHtml(day) + '</span>' +
+      '<div class="service-schedule-copy"><h3 class="service-schedule-title">' + escapeHtml(program.title || "Programme") + '</h3>' +
+      (description ? '<p class="service-schedule-desc">' + escapeHtml(description) + '</p>' : "") + '</div>' +
+      '<span class="service-schedule-when">' + escapeHtml(startTime) + '</span>' +
+      '<button class="service-schedule-open" type="button" data-action="open-programme" data-program-id="' + escapeHtml(program.id) + '" aria-label="Open ' + escapeHtml(program.title || "programme") + '">›</button></article>';
+  }).join("");
+  return '<div class="service-schedule-list">' + rows + '</div>';
 }
 
 function renderPublicProgramsPage() {

@@ -159,7 +159,7 @@ jobs:
       - name: Prepare Android version and signing config
         run: node scripts/prepare-android.mjs
 
-      - name: Build signed release APK
+      - name: Build signed member APK
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -171,7 +171,30 @@ jobs:
           test -n "$ANDROID_KEY_PASSWORD" || { echo "Missing ANDROID_KEY_PASSWORD secret." >&2; exit 1; }
           cd android
           ./gradlew assembleRelease
-          mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/cns-lightbearer-android.apk
+          mv app/build/outputs/apk/release/app-release.apk /tmp/cns-lightbearer-android.apk
+
+      - name: Build signed admin APK
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          mv android android-member
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from "node:fs";
+          const config = JSON.parse(readFileSync("capacitor.config.json", "utf8"));
+          config.appId = "org.consolationministry.lightbearer.admin";
+          config.appName = "Lightbearer Admin";
+          config.server = Object.assign({}, config.server, { appStartPath: "/admin/index.html" });
+          writeFileSync("capacitor.config.json", JSON.stringify(config, null, 2) + "\n");
+          NODE
+          npx cap add android
+          npx cap sync android
+          node scripts/prepare-android.mjs
+          cd android
+          ./gradlew assembleRelease
+          mv app/build/outputs/apk/release/app-release.apk /tmp/cns-lightbearer-admin.apk
 
       - name: Commit version, create tag, and publish release
         env:
@@ -179,11 +202,12 @@ jobs:
           RELEASE_TAG: ${{ steps.release_version.outputs.tag }}
         run: |
           set -euo pipefail
-          apk="android/app/build/outputs/apk/release/cns-lightbearer-android.apk"
+          member_apk="/tmp/cns-lightbearer-android.apk"
+          admin_apk="/tmp/cns-lightbearer-admin.apk"
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" "$apk" --clobber
+            gh release upload "$RELEASE_TAG" "$member_apk" "$admin_apk" --clobber
           else
-            gh release create "$RELEASE_TAG" "$apk" \
+            gh release create "$RELEASE_TAG" "$member_apk" "$admin_apk" \
               --title "C&S Bible Church Hymnal $RELEASE_TAG" \
-              --notes "Signed Android update for version ${RELEASE_TAG#v}."
+              --notes "Signed Android updates for version ${RELEASE_TAG#v}: member hymnal app and admin app."
           fi

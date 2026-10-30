@@ -126,7 +126,6 @@ test("the Saved filter is available offline and opens a cached recording", () =>
     loading: false
   }, "", "");
   assert.match(onlinePage, /data-action="save-live-audio"/);
-  assert.match(onlinePage, /data-category="__saved__"/);
 
   const page = renderLiveAudioPage({
     programs: [],
@@ -137,8 +136,7 @@ test("the Saved filter is available offline and opens a cached recording", () =>
     loading: false
   }, "", "__saved__");
 
-  assert.match(page, /data-category="__saved__"[^>]*aria-pressed="true"/);
-  assert.match(page, /Saved Programmes/);
+  assert.match(page, /Saved/);
   assert.match(page, /Saved offline/);
   assert.match(page, /data-action="remove-saved-live-audio"/);
 

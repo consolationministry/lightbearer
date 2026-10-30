@@ -2,7 +2,8 @@ import { App } from "@capacitor/app";
 import { FileTransfer } from "@capacitor/file-transfer";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { FileOpener } from "@capawesome-team/capacitor-file-opener";
-import { ANDROID_RELEASES_API, APP_VERSION, getAndroidApkRelease } from "./version.js";
+import { ANDROID_RELEASES_API, ANDROID_APK_ASSET as MEMBER_APK_ASSET, APP_VERSION, getAndroidApkRelease } from "./version.js";
+const ADMIN_APK_ASSET = "cns-lightbearer-admin.apk";
 
 let availableUpdate = null;
 let onUpdateAvailable = null;
@@ -17,7 +18,8 @@ async function checkAndroidRelease() {
     if (!response.ok) return;
     const release = await response.json();
     const appInfo = await App.getInfo();
-    const update = getAndroidApkRelease(release, appInfo.version || APP_VERSION);
+    const apkAsset = window.location.pathname.indexOf("/admin") >= 0 ? ADMIN_APK_ASSET : MEMBER_APK_ASSET;
+    const update = getAndroidApkRelease(release, appInfo.version || APP_VERSION, apkAsset);
     if (!update) return;
     availableUpdate = update;
     if (onUpdateAvailable) {

@@ -163,14 +163,7 @@ export function renderLiveAudioPage(data, query, category) {
   const categoryOptions = Array.from(new Set(programs.map(function (program) { return program.category; })))
     .filter(function (item) { return item.toLocaleLowerCase() !== "live"; })
     .sort(function (a, b) { return a.localeCompare(b); });
-  const filters = [{ value: "", label: "All" }, { value: "__live__", label: "Live" }].concat(
-    [{ value: "__saved__", label: "Saved" }],
-    categoryOptions.map(function (item) { return { value: item, label: item }; })
-  );
-  const filterMarkup = filters.map(function (item) {
-    return '<button class="audio-library-filter' + (String(category || "") === item.value ? " is-selected" : "") + '" type="button" data-action="filter-live-audio" data-category="' + escapeHtml(item.value) + '" aria-pressed="' + (String(category || "") === item.value) + '">' +
-      (item.value === "__live__" ? '<i class="audio-library-filter-dot" aria-hidden="true"></i>' : "") + escapeHtml(item.label) + '</button>';
-  }).join("");
+  const filterMarkup = "";
   const feature = isSavedFilter ? null : livePrograms[0] || programs[0] || null;
   const waveformHeights = [22, 40, 28, 61, 38, 76, 31, 53, 88, 45, 68, 36, 96, 55, 73, 41, 83, 33, 62, 26, 49, 19, 37, 17];
   const waveform = waveformHeights.map(function (height) { return '<span style="height:' + height + '%"></span>'; }).join("");
@@ -196,13 +189,14 @@ export function renderLiveAudioPage(data, query, category) {
       '<div class="audio-library-feature-copy"><span class="audio-library-feature-pill">CHURCH AUDIO</span><h1>Listen together, wherever you are.</h1>' +
       '<p class="audio-library-feature-subtitle">Published services and programmes from C&S Bible Church will appear here.</p>' +
       '<div class="audio-library-feature-controls"><div class="audio-library-waveform" aria-hidden="true">' + waveform + '</div></div></div></section>';
-  const listContent = formalPrograms.length
-    ? '<div class="audio-library-list" aria-live="polite">' + formalPrograms.map(function (program) {
+  const rowPrograms = isSavedFilter ? formalPrograms : formalPrograms.filter(function (program) { return !(program.onAir && program.liveSessionId); });
+  const listContent = rowPrograms.length
+    ? '<div class="audio-library-list" aria-live="polite">' + rowPrograms.map(function (program) {
       return audioLibraryProgramRow(program, data, savedProgramIds.has(program.id), isSavedFilter);
     }).join("") + '</div>'
     : '<div class="audio-library-empty" aria-live="polite"><span class="audio-library-empty-icon">' + radioIcon() + '</span><h3>' +
       (data.loading && !isSavedFilter ? "Loading programmes" : programs.length ? "No programmes match" : isSavedFilter ? "No saved programmes yet" : "No programmes published yet") + '</h3><p>' +
-      (data.loading && !isSavedFilter ? "Checking for current broadcasts and published programmes…" : isSavedFilter ? "Save a recording to keep it on this device for offline listening." : programs.length ? "Try another title or category." : "Published church programmes will appear here.") + '</p></div>';
+      (data.loading && !isSavedFilter ? "Checking for current broadcasts and published programmes…" : isSavedFilter ? "Save a recording to keep it on this device for offline listening." : rowPrograms.length || livePrograms.length ? "Try another title or category." : "Published church programmes will appear here.") + '</p></div>';
   const libraryLoadingOverlay = data.loading
     ? '<div class="audio-stream-loading-overlay" role="status" aria-live="polite"><div class="audio-stream-loading-panel"><span class="audio-stream-loading-ring" aria-hidden="true"></span><p>loading audio programmes</p></div></div>'
     : "";
@@ -214,9 +208,11 @@ export function renderLiveAudioPage(data, query, category) {
     '<button class="audio-library-avatar" type="button" data-action="navigate" data-view="settings" aria-label="Open profile and settings">C</button></div></div></header>' +
     '<div class="audio-library-content">' + (data.error && !isSavedFilter ? '<p class="audio-service-error" role="alert">' + escapeHtml(data.error) + '</p>' : "") +
     featureMarkup +
-    '<section class="audio-library-section" aria-labelledby="audio-library-heading"><div class="audio-library-section-heading"><div><p class="audio-library-overline">CHURCH AUDIO</p><h2 id="audio-library-heading">' + (isSavedFilter ? "Saved Programmes" : "Upcoming &amp; Recent Programmes") + '</h2></div><span class="audio-library-program-count">' + formalPrograms.length + '</span></div>' +
-    '<div class="audio-library-search-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.2 4.2"/></svg><label class="sr-only" for="live-audio-search">Search programmes</label><input class="audio-library-search" id="live-audio-search" type="search" value="' + escapeHtml(query) + '" placeholder="Search programmes…" data-live-audio-search></div>' +
-    '<div class="audio-library-filters" role="group" aria-label="Filter programmes">' + filterMarkup + '</div>' + listContent +
+    (livePrograms.length && !isSavedFilter ? '<section class="audio-library-section" aria-label="Live now"><div class="audio-library-section-heading"><div><p class="audio-library-overline">ON AIR</p><h2>Live</h2></div><span class="audio-library-program-count">' + livePrograms.length + '</span></div>' +
+      '<div class="audio-library-list">' + livePrograms.map(function (program) { return audioLibraryProgramRow(program, data, savedProgramIds.has(program.id), false); }).join("") + '</div></section>' : "") +
+    '<section class="audio-library-section" aria-labelledby="audio-library-heading"><div class="audio-library-section-heading"><div><p class="audio-library-overline">CHURCH AUDIO</p><h2 id="audio-library-heading">' + (isSavedFilter ? "Saved" : "Programmes") + '</h2></div><span class="audio-library-program-count">' + formalPrograms.length + '</span></div>' +
+    '<div class="audio-library-search-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.2 4.2"/></svg><label class="sr-only" for="live-audio-search">Search programmes</label><input class="audio-library-search" id="live-audio-search" type="search" value="' + escapeHtml(query) + '" placeholder="Search audio, ministers…" data-live-audio-search></div>' +
+    listContent +
     '</section></div>' +
     '<nav class="audio-library-bottom-nav" aria-label="Church audio navigation">' +
     '<button class="audio-library-nav-button" type="button" data-action="navigate" data-view="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>' +
@@ -332,7 +328,11 @@ export function renderLiveAudioListener(data, programId, options) {
   const pills = offlinePlayback
     ? ""
     : '<div class="audio-listener-pills" role="group" aria-label="Programme actions">' +
-      '<button class="audio-pill audio-share-button" type="button" data-action="share-live-audio" data-program-id="' + escapeHtml(program.id) + '">Share</button>' +
+      (program.recordingUrl && program.recordingPath && !isSavedOffline
+        ? '<button class="audio-pill" type="button" data-action="save-live-audio" data-program-id="' + escapeHtml(program.id) + '"' + (data.savingProgramIds && data.savingProgramIds.has(program.id) ? " disabled" : "") + '>Save / download</button>'
+        : isSavedOffline
+        ? '<span class="audio-pill audio-pill-static">Saved for offline</span>'
+        : "") +
       '<button class="audio-pill audio-like-button" type="button" data-action="audio-reaction" data-reaction="like" data-program-id="' + escapeHtml(program.id) + '" aria-pressed="' + liveAudioReactionSelected(data, program.id, "like") + '"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2 9h4v12H2zM8 21V9.5l4.2-6.9c.4-.7 1.4-.6 1.7.2.3.6.2 1.3-.1 1.9L13 9h6.4c1.2 0 2.1 1.1 1.9 2.3l-1.3 7.6c-.2 1.3-1.3 2.2-2.6 2.2H8z"/></svg><span>Like</span><span class="audio-reaction-count">' + counts.like + '</span></button>' +
       '</div>';
   const commentList = comments.length

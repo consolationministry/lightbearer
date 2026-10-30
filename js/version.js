@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.3.0";
+export const APP_VERSION = "1.4.0";
 export const ANDROID_RELEASES_API = "https://api.github.com/repos/consolationministry/lightbearer/releases/latest";
 export const ANDROID_APK_ASSET = "cns-lightbearer-android.apk";
 const ANDROID_RELEASE_DOWNLOAD_PREFIX = "https://github.com/consolationministry/lightbearer/releases/download/";
@@ -17,7 +17,8 @@ export function isNewerVersion(candidate, current) {
   return false;
 }
 
-export function getAndroidApkRelease(release, installedVersion) {
+export function getAndroidApkRelease(release, installedVersion, assetName) {
+  assetName = assetName || ANDROID_APK_ASSET;
   if (!release || release.draft || release.prerelease ||
       !isNewerVersion(release.tag_name, APP_VERSION) ||
       !isNewerVersion(release.tag_name, installedVersion || APP_VERSION)) {
@@ -25,7 +26,7 @@ export function getAndroidApkRelease(release, installedVersion) {
   }
 
   const apk = (release.assets || []).find(function (asset) {
-    if (asset.name !== ANDROID_APK_ASSET) return false;
+    if (asset.name !== assetName) return false;
     try {
       const url = new URL(asset.browser_download_url);
       return url.protocol === "https:" &&
