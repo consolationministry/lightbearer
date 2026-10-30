@@ -155,6 +155,7 @@ function displayHymnNumber(hymn) {
 }
 
 function currentHymnTitle(hymn) {
+  if (state.settings.language === "yoruba" && hymn.title_yoruba) return hymn.title_yoruba;
   return hymn.title_en || hymn.title_yoruba;
 }
 
@@ -590,7 +591,7 @@ function renderReader() {
   const hymn = state.hymns.find(function (item) { return item.hymn_number === Number(state.selectedNumber); });
   if (!hymn) return '<section class="page">' + pageHeading("Hymn not found", "This number is not in the current collection.") + '<button class="button-secondary" type="button" data-action="back" data-testid="button-reader-back">' + icon("arrow") + ' Back to hymns</button></section>';
   const number = displayHymnNumber(hymn);
-  const hasEnglish = (hymn.language || "english") !== "yoruba" && hasEnglishText(hymn);
+  const hasEnglish = state.settings.language !== "yoruba" && (hymn.language || "english") !== "yoruba" && hasEnglishText(hymn);
   const sourceHymnal = String(hymn.source_hymnal || "").toLowerCase();
   const showEnglishGospelMeterHeading = sourceHymnal.includes("ghb") || sourceHymnal.includes("gospel hymn book");
   const title = hasEnglish
