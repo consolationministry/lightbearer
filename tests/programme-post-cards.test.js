@@ -22,7 +22,7 @@ test("programme category is a clickable filter with hover and active states", ()
 });
 
 test("programme cards use the app logo as the avatar and a fixed-height cover image", () => {
-  assert.match(appSource, /class="public-program-post-avatar" src="\.\/assets\/consolation-launcher\.png"/);
+  assert.match(appSource, /class="public-program-post-avatar" src="\.\/assets\/church-logo-placeholder\.svg"/);
   assert.match(styleSource, /\.public-program-post-media \{ display: block; width: 100%; height: 260px;/);
   assert.match(styleSource, /\.public-program-post-flyer \{[^}]*object-fit: cover;/);
 });

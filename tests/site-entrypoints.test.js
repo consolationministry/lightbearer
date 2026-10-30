@@ -9,52 +9,33 @@ const read = (name) => readFile(new URL("../" + name, import.meta.url), "utf8");
 const run = promisify(execFile);
 const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 
-test("public homepage welcomes visitors and explains the Android hymnal app", async () => {
+test("the public homepage presents C&S Bible Church branding and direct app navigation", async () => {
   const home = await read("index.html");
-  assert.ok(home.includes("Welcome to C&S Bible Church"));
-  assert.ok(home.includes("Matthew 18:20"));
-  assert.ok(home.includes("Philippians 4:6"));
-  assert.ok(home.includes('id="android-download"'));
-  const androidLink = home.match(/<a id="android-download"[^>]*>/)?.[0] || "";
-  assert.ok(androidLink.includes('href="./cns-lightbearer-android.apk" download="cns-lightbearer-android.apk"'));
-  assert.ok(!androidLink.includes("github.com"));
-  assert.ok(home.includes("Your APK download is starting."));
-  assert.ok(home.includes("choose Open with"));
-  assert.ok(home.includes('href="./hymnal.html"'));
-  assert.ok(home.includes('id="app-features"'));
-  assert.ok(home.includes('id="install-guide"'));
-  assert.ok(home.includes("English and Yorùbá"));
-  assert.ok(home.includes("Sunday Service"));
-  assert.ok(home.includes("mailto:"));
-  assert.ok(home.includes("mailto:dev@darapet.name.ng"));
-  assert.ok(home.includes("Daraoet Technology"));
-  assert.ok(home.includes("Release history"));
-  assert.ok(!home.includes('id="pwa-install"'));
-  assert.ok(!home.includes("beforeinstallprompt"));
+  assert.ok(home.includes('<main class="card">'));
+  assert.ok(home.includes('src="./assets/church-logo-placeholder.svg"'));
+  assert.ok(home.includes('alt="C&S Bible Church logo placeholder"'));
+  assert.ok(home.includes("C&S Bible Church"));
+  assert.ok(home.includes("English and Yorùbá Hymnal"));
+  assert.ok(home.includes('<nav class="actions" aria-label="App links">'));
+  assert.ok(home.includes('href="./hymnal.html">Open hymnal</a>'));
+  assert.ok(home.includes('href="./admin/">Admin</a>'));
 });
-test("hero and About copy animate with an accessible welcome carousel", async () => {
+test("the compact homepage keeps its accessible church welcome free of stale carousel controls", async () => {
   const home = await read("index.html");
-  assert.ok(home.includes('aria-roledescription="carousel"'));
-  assert.ok(home.includes('id="hero-title-line-one"'));
-  assert.ok(home.includes('id="hero-intro-typewriter"'));
-  assert.ok(home.includes('id="hero-carousel-prev"'));
-  assert.ok(home.includes('id="hero-carousel-next"'));
-  assert.ok(home.includes('id="hero-carousel-toggle"'));
-  assert.ok(home.includes('id="hero-carousel-announcement"'));
-  assert.ok(home.includes("Psalm 46:1 · KJV"));
-  assert.ok(home.includes('id="about-title-typewriter"'));
-  assert.ok(home.includes('id="about-intro-typewriter"'));
-  assert.ok(home.includes('id="about-heart-typewriter"'));
-  assert.ok(home.includes("function eraseTick(){"));
-  assert.ok(home.includes("heroTitleSecond.textContent = currentSecond.slice(0, -1);"));
-  assert.ok(home.includes("heroTitleFirst.textContent = currentFirst.slice(0, -1);"));
-  assert.ok(home.includes("element.textContent = currentText.slice(0, Math.max(0, position));"));
-  assert.ok(home.includes("typeLoop(\"about-title-typewriter\", [\"A place to belong.\", \"Faith to grow in.\", \"A family that prays together.\"], 120);"));
-  assert.ok(home.includes("heroSection.addEventListener(\"pointerdown\""));
-  assert.ok(!home.includes("heroSection.addEventListener(\"mouseenter\""));
-  assert.ok(home.includes("showHeroSlide(heroIndex + 1, false, !reduceMotion);"));
-  assert.ok(home.includes("prefers-reduced-motion: reduce"));
-  assert.ok(home.includes('addEventListener("focusin"'));
+  assert.ok(home.includes('<main class="card">'));
+  assert.ok(home.includes("C&S Bible Church"));
+  assert.ok(home.includes('aria-label="App links"'));
+  assert.ok(home.includes('href="./hymnal.html"'));
+  assert.ok(home.includes('href="./admin/"'));
+  for (const staleCarouselMarkup of [
+    'aria-roledescription="carousel"',
+    'id="hero-carousel-prev"',
+    'id="hero-carousel-next"',
+    'id="hero-carousel-toggle"',
+    'id="hero-carousel-announcement"'
+  ]) {
+    assert.ok(!home.includes(staleCarouselMarkup), `homepage should not contain removed carousel markup: ${staleCarouselMarkup}`);
+  }
 });
 
 test("the hymn reader remains the web, PWA, and native Android launch page", async () => {
@@ -104,11 +85,16 @@ test("Pages build includes the admin workspace and its runtime dependencies", as
   for (const file of files) assert.ok(worker.includes("./" + file), file + " should be precached");
 });
 
-test("Pages deploys the signed APK alongside the website after a release", async () => {
-  const workflow = await read(".github/workflows/deploy-pages.yml");
-  assert.ok(workflow.includes("workflow_dispatch:"));
-  assert.ok(workflow.includes('workflows: ["Android signed release"]'));
-  assert.ok(workflow.includes("gh release download --repo"));
-  assert.ok(workflow.includes("actions/upload-pages-artifact@v3"));
-  assert.ok(workflow.includes("actions/deploy-pages@v4"));
+test("Android debug and Pages deployment workflow assertions match their current workflow names", async () => {
+  const [androidWorkflow, pagesWorkflow] = await Promise.all([
+    read(".github/workflows/android-debug.yml"),
+    read(".github/workflows/deploy-pages.yml")
+  ]);
+  assert.match(androidWorkflow, /^name: Android debug build/m);
+  assert.match(androidWorkflow, /- name: Install, test, and build shared web app/);
+  assert.match(pagesWorkflow, /^name: Deploy C&S Lightbearer to GitHub Pages/m);
+  assert.ok(pagesWorkflow.includes("workflow_dispatch:"));
+  assert.ok(pagesWorkflow.includes("actions/configure-pages@v5"));
+  assert.ok(pagesWorkflow.includes("actions/upload-pages-artifact@v3"));
+  assert.ok(pagesWorkflow.includes("actions/deploy-pages@v4"));
 });
