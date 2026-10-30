@@ -40,6 +40,7 @@ export async function bumpReleaseFiles(bump, projectRoot = root) {
   const lockPath = path.join(projectRoot, "package-lock.json");
   const versionPath = path.join(projectRoot, "js/version.js");
   const workerPath = path.join(projectRoot, "service-worker.js");
+  const manifestPath = path.join(projectRoot, "manifest.webmanifest");
 
   const packageJson = JSON.parse(await readFile(packagePath, "utf8"));
   const lockJson = JSON.parse(await readFile(lockPath, "utf8"));
@@ -47,6 +48,7 @@ export async function bumpReleaseFiles(bump, projectRoot = root) {
   const nextVersion = nextReleaseVersion(currentVersion, bump);
   const appVersionSource = await readFile(versionPath, "utf8");
   const workerSource = await readFile(workerPath, "utf8");
+  const manifestSource = await readFile(manifestPath, "utf8");
 
   if (lockJson.version !== currentVersion || lockJson.packages?.[""]?.version !== currentVersion) {
     throw new Error("package-lock.json is out of sync with package.json. Fix the lockfile before releasing.");
@@ -55,6 +57,11 @@ export async function bumpReleaseFiles(bump, projectRoot = root) {
   const appVersion = appVersionSource.match(/^export const APP_VERSION = "([^"]+)";$/m);
   if (!appVersion || appVersion[1] !== currentVersion) {
     throw new Error("js/version.js is out of sync with package.json. Fix the version before releasing.");
+  }
+
+  const manifestJson = JSON.parse(manifestSource);
+  if (manifestJson.version !== currentVersion) {
+    throw new Error("manifest.webmanifest is out of sync with package.json. Fix the version before releasing.");
   }
 
   const cacheName = workerSource.match(/^const CACHE_NAME = "cns-lightbearer-(\d+\.\d+\.\d+)([^"]*)";$/m);
@@ -75,6 +82,8 @@ export async function bumpReleaseFiles(bump, projectRoot = root) {
     workerPath,
     workerSource.replace(cacheName[0], `const CACHE_NAME = "cns-lightbearer-${nextVersion}${cacheName[2]}";`)
   );
+  manifestJson.version = nextVersion;
+  await writeFile(manifestPath, `${JSON.stringify(manifestJson, null, 2)}\n`);
 
   return nextVersion;
 }
