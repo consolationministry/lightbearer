@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.1.1";
+export const APP_VERSION = "1.1.2";
 export const ANDROID_RELEASES_API = "https://api.github.com/repos/consolationministry/lightbearer/releases/latest";
 export const ANDROID_APK_ASSET = "cns-lightbearer-android.apk";
 const ANDROID_RELEASE_DOWNLOAD_PREFIX = "https://github.com/consolationministry/lightbearer/releases/download/";

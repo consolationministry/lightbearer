@@ -7,7 +7,6 @@ import { getMemberContent, servicePlanDayLabel } from "./public-content.js";
 import { castProgrammeVote, getProgrammeInteractions } from "./programme-interactions.js";
 import { excerptProgrammeDescription, PROGRAMME_DESCRIPTION_COLLAPSE_LIMIT, repairMojibake } from "./programme-feed-utils.js";
 import { ACCENT_THEMES, getSettings, saveSettings } from "./settings.js";
-import { shareHymn } from "./sharing.js";
 import { applyAvailableUpdate, initializeUpdates } from "./updates.js";
 import { APP_VERSION } from "./version.js";
 import { remainingSplashMs } from "./splash-timing.js";
@@ -150,7 +149,7 @@ function hasEnglishText(hymn) {
 function displayHymnNumber(hymn) {
   const label = String(hymn.source_number_label || hymn.source_hymn_number || hymn.hymn_number);
   const match = label.match(/^(\d+)(.*)$/);
-  return match ? match[1].padStart(2, "0") + match[2] : label;
+  return match ? match[1].padStart(3, "0") + match[2] : label;
 }
 
 function currentHymnTitle(hymn) {
@@ -609,7 +608,7 @@ function renderReader() {
     : poemSection("Yorùbá", hymn.verses_yoruba, hymn.chorus_yoruba, "yo", false, hymn.hymnal_note, hymn));
   const translationNote = "";
   const lyricText = [number + " " + titleText, descriptionText || "", hymn.first_line_en || hymn.first_line_yoruba || "", (hasEnglish ? hymn.verses_en : hymn.verses_yoruba || []).join("\n\n"), hasEnglish ? hymn.chorus_en || "" : hymn.chorus_yoruba || ""].filter(Boolean).join("\n\n");
-  return '<section class="page reader-page"><div class="reader-topbar"><button class="reader-back" type="button" data-action="back" data-testid="button-reader-back">' + icon("arrow") + ' Back</button><div class="reader-actions">' + favoriteButton(hymn) + '<button class="icon-button" type="button" data-action="copy-lyrics" data-text="' + escapeHtml(lyricText) + '" aria-label="Copy lyrics">Copy</button><button class="icon-button" type="button" data-action="share" data-number="' + hymn.hymn_number + '" aria-label="Share hymn ' + number + '" data-testid="button-share-hymn">' + icon("share") + '</button></div></div><header class="reader-heading"><div class="reader-edition"><span class="hymn-number">' + number + '</span><span>' + escapeHtml(displayHymnalName(hymn)) + '</span></div><h1>' + title + '</h1><p class="reader-first-line">' + firstLine + '</p></header><div class="reader-meta"><div class="reading-size" role="group" aria-label="Change hymn text size"><button type="button" data-action="font-decrease" aria-label="Decrease hymn text size" data-testid="button-font-decrease">A−</button><output id="reader-font-size">' + state.settings.fontSize + ' px</output><button type="button" data-action="font-increase" aria-label="Increase hymn text size" data-testid="button-font-increase">A+</button></div></div><div class="hymn-reading">' + translationNote + sections + '</div><footer class="reader-footer"><button class="button-secondary" type="button" data-action="save-text" data-filename="hymn-' + number + '.txt" data-text="' + escapeHtml(lyricText) + '">Save as text</button><button class="button-secondary" type="button" data-action="save-pdf" data-text="' + escapeHtml(lyricText) + '">Save as PDF</button><button class="button-secondary" type="button" data-action="embed-hymn" data-number="' + hymn.hymn_number + '">Embed hymn</button></footer><nav class="reader-pagination" aria-label="Hymn navigation">' + (previousHymn ? '<button class="button-secondary" type="button" data-action="open-hymn" data-number="' + previousHymn.hymn_number + '">Previous</button>' : '<span></span>') + (nextHymn ? '<button class="button-primary" type="button" data-action="open-hymn" data-number="' + nextHymn.hymn_number + '">Next</button>' : '<span></span>') + '</nav></section>';
+  return '<section class="page reader-page"><div class="reader-topbar"><button class="reader-back" type="button" data-action="back" data-testid="button-reader-back">' + icon("arrow") + ' Back</button><div class="reader-actions">' + favoriteButton(hymn) + '<button class="icon-button" type="button" data-action="copy-lyrics" data-text="' + escapeHtml(lyricText) + '" aria-label="Copy lyrics">Copy</button></div></div><header class="reader-heading"><div class="reader-edition"><span class="hymn-number">' + number + '</span><span>' + escapeHtml(displayHymnalName(hymn)) + '</span></div><h1>' + title + '</h1><p class="reader-first-line">' + firstLine + '</p></header><div class="reader-meta"><div class="reading-size" role="group" aria-label="Change hymn text size"><button type="button" data-action="font-decrease" aria-label="Decrease hymn text size" data-testid="button-font-decrease">A−</button><output id="reader-font-size">' + state.settings.fontSize + ' px</output><button type="button" data-action="font-increase" aria-label="Increase hymn text size" data-testid="button-font-increase">A+</button></div></div><div class="hymn-reading">' + translationNote + sections + '</div><footer class="reader-footer"><button class="button-secondary" type="button" data-action="save-text" data-filename="hymn-' + number + '.txt" data-text="' + escapeHtml(lyricText) + '">Save as text</button><button class="button-secondary" type="button" data-action="save-pdf" data-text="' + escapeHtml(lyricText) + '">Save as PDF</button><button class="button-secondary" type="button" data-action="embed-hymn" data-number="' + hymn.hymn_number + '">Embed hymn</button></footer><nav class="reader-pagination" aria-label="Hymn navigation">' + (previousHymn ? '<button class="button-secondary" type="button" data-action="open-hymn" data-number="' + previousHymn.hymn_number + '">Previous</button>' : '<span></span>') + (nextHymn ? '<button class="button-primary" type="button" data-action="open-hymn" data-number="' + nextHymn.hymn_number + '">Next</button>' : '<span></span>') + '</nav></section>';
 }
 
 function themeChoice(theme, label, iconName) {
@@ -1382,17 +1381,6 @@ function adjustFont(delta) {
   if (nextSize !== state.settings.fontSize) setSettings({ fontSize: nextSize });
 }
 
-async function performShare(number) {
-  const hymn = state.hymns.find(function (item) { return item.hymn_number === Number(number); });
-  if (!hymn) return;
-  const language = state.settings.language === "yoruba" ? "yoruba" : "english";
-  const result = await shareHymn(hymn, language);
-  if (result === "shared" || result === "cancelled") return;
-  if (result === "copied") showToast("Hymn text copied. You can paste it into a message.");
-  else {
-    window.prompt("Copy this hymn text to share:", result);
-  }
-}
 
 function showUpdateNotice(update) {
   updateDialog.dataset.updateKind = update.kind;
@@ -1598,7 +1586,6 @@ document.addEventListener("click", function (event) {
   else if (action === "font-decrease") adjustFont(-1);
   else if (action === "theme") setSettings({ theme: target.dataset.theme }, state.view !== "settings");
   else if (action === "accent") setSettings({ accent: target.dataset.accent }, state.view !== "settings");
-  else if (action === "share") performShare(target.dataset.number);
   else if (action === "copy-lyrics") void copyText(target.dataset.text || "");
   else if (action === "share-channel") {
     const hymn = state.hymns.find(function (item) { return item.hymn_number === Number(target.dataset.number); });
