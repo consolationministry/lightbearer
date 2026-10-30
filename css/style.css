@@ -656,3 +656,9 @@ html[data-theme="dark"] .reader-heading {
 @media (prefers-reduced-motion: reduce) {
   .home-hymn, .home-hymn:hover { transition: none; }
 }
+
+/* About page */
+.about-body h2{font-family:"Noto Serif",Georgia,serif;color:#0f172a;margin:1.4rem 0 .4rem;font-size:1.15rem}
+.about-body h2:first-child{margin-top:.2rem}
+.about-body p{color:#334155;margin:.35rem 0 .8rem;line-height:1.65}
+.about-body a{color:#1d4ed8;font-weight:600;text-decoration:underline}

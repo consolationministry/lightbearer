@@ -121,6 +121,7 @@ function renderNav() {
   const activeView = state.view === "reader" ? state.readerReturnView : state.view;
   const items = [
     ["home", "Home", "home"],
+    ["forms", "Forms", "layers"],
     ["programs", "Programs", "sparkle"],
     ["services", "Services", "calendar"],
     ["recent", "Recent", "history"],
@@ -129,6 +130,7 @@ function renderNav() {
     ["set", "Service Sets", "plus"]
   ];
   nav.innerHTML = items.map(function (item) {
+    if (item[0] === "forms") return '<a class="nav-item" href="./forms.html" data-testid="nav-forms">' + icon(item[2]) + '<span>Forms</span></a>';
     return '<button class="nav-item" type="button" data-action="navigate" data-view="' + item[0] + '" aria-current="' + (activeView === item[0] ? "page" : "false") + '" data-testid="nav-' + item[0] + '">' + icon(item[2]) + '<span>' + item[1] + '</span></button>';
   }).join("");
 }
@@ -737,8 +739,18 @@ function renderInfoPage(view) {
   const pages={books:["Books","Church books and reading resources."],blog:["Blog","Updates and reflections from C&S Bible Church."],history:["Our history","The story and heritage of C&S Bible Church."],about:["About Lightbearer","A free church hymnal for C&S Bible Church members."],community:["Community","A community feed for church encouragement and updates."],set:["Service hymn sets","Build a service set from available hymns."]};
   const entry=pages[view]||pages.about;
   const rows=state.hymns.slice(0,8).map(function(h){return '<label class="set-hymn"><input type="checkbox" value="'+escapeHtml(h.hymn_number)+'"> '+escapeHtml(displayHymnNumber(h)+' · '+currentHymnTitle(h))+'</label>';}).join('');
-  const body=view==='set'?'<input id="service-set-name" placeholder="Service set name" maxlength="80"><div>'+rows+'</div><button class="button-primary" data-action="save-service-set">Save set</button>':'<p>'+escapeHtml(entry[1])+'</p>'+(view==='about'?'<p>Hymn texts courtesy of Seraph Media C&S Hymnary &ndash; <a href="https://www.seraphmedia.com.ng" target="_blank" rel="noopener" style="color:inherit">seraphmedia.com.ng</a>. Lightbearer is free for worship and devotion.</p>':'');
+  const body=view==='set'?'<input id="service-set-name" placeholder="Service set name" maxlength="80"><div>'+rows+'</div><button class="button-primary" data-action="save-service-set">Save set</button>':(view==='about'?aboutBody():'<p>'+escapeHtml(entry[1])+'</p>');
   return '<section class="page info-page">'+pageHeading(entry[0],entry[1])+body+'</section>';
+}
+
+function aboutBody() {
+  return '<div class="about-body">'
+    + '<h2>The church</h2><p>C&S Bible Church is a Cherubim and Seraphim church. Lightbearer carries its worship life in English and Yorùbá, so members can reach the hymns of the church on any device, at any service or at home.</p>'
+    + '<h2>The app</h2><p>Lightbearer is a free digital hymnal built for C&S Bible Church. It offers the full hymnary in English and Yorùbá, search by number, title or first line, favorites, recently viewed, service hymn sets, and live audio from church programmes. There are no accounts, no ads and no paid features, and your favorites stay on your own device.</p>'
+    + '<h2>Forms</h2><p>Church forms and event registrations are available on the Forms page in the menu. Submitted forms receive a registration ID you can keep for reference.</p>'
+    + '<h2>Credits and rights</h2><p>Hymn texts courtesy of Seraph Media C&amp;S Hymnary &ndash; <a href="https://www.seraphmedia.com.ng" target="_blank" rel="noopener">seraphmedia.com.ng</a>. The app remains free for worship and devotion, and the texts are kept exactly as supplied.</p>'
+    + '<h2>Contact</h2><p>For questions about the app or the hymns, reach the church through its official social media channels.</p>'
+    + '</div>';
 }
 
 function render() {
