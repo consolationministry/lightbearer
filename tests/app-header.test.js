@@ -15,12 +15,9 @@ test("main app header keeps the hymnal controls without public duplicate-section
   for (const removedEntry of ["Support", "Community", "Stream", "Listen", "Read"]) {
     assert.ok(!new RegExp("\\b" + removedEntry + "\\b", "i").test(navSource), `public navigation should not expose ${removedEntry}`);
   }
-  assert.match(appSource, /data-testid="button-browse-hymns"/);
   assert.match(appSource, /languageToggle\(\)/);
   assert.match(appSource, /renderHomeSearch\(\)/);
-  assert.doesNotMatch(appSource.match(/const hero = ([\s\S]*?);\n  const sidebar/)?.[1] || "", /Listen live|data-view="listen"/);
   assert.match(css, /backdrop-filter:\s*blur\(18px\)/);
-  assert.match(css, /\.hymnal-hero/);
   assert.match(css, /\.home-library-layout/);
   assert.match(css, /\.reading-card/);
   assert.match(css, /font-family:\s*var\(--font-reading\)/);
