@@ -195,8 +195,7 @@ export async function createLiveAudioMicEngine(options) {
   let rawStream;
   try {
     const audioConstraints = {
-      echoCancellation: true,
-      noiseSuppression: true,
+      // Keep browser/device audio processing at its defaults to avoid extra cleanup buffering.
       autoGainControl: false,
       channelCount: 1
     };
@@ -584,7 +583,7 @@ export async function startLiveAudioPublisher(options) {
             peerDisconnectTimers.set(message.from, globalThis.setTimeout(() => {
               peerDisconnectTimers.delete(message.from);
               schedulePeerRecovery(message.from, peer, 0);
-            }, 5000));
+            }, 3000));
           }
         } else if (peer.connectionState === "failed") {
           schedulePeerRecovery(message.from, peer, 0);

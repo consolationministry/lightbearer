@@ -9,6 +9,7 @@ const manifestPath = path.join(androidApp, "src/main/AndroidManifest.xml");
 const gradlePath = path.join(androidApp, "build.gradle");
 const manifest = await readFile(manifestPath, "utf8");
 const gradle = await readFile(gradlePath, "utf8");
+const isAdminBuild = process.env.LIGHTBEARER_ADMIN_BUILD === "true";
 
 function versionCode(version) {
   const match = version.match(/^(\d+)\.(\d+)\.(\d+)/);
@@ -31,11 +32,19 @@ if (!patchedGradle.includes(`versionCode ${code}`) || !patchedGradle.includes(`v
   throw new Error("Could not set Android versionName/versionCode in the generated Gradle file.");
 }
 
-const permission = '<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />';
-const patchedManifest = manifest;
-const finalManifest = patchedManifest.includes(permission)
-  ? patchedManifest
-  : patchedManifest.replace(/(<manifest\b[^>]*>)/, `$1\n    ${permission}`);
+const manifestPermissions = [
+  '<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />',
+  ...(isAdminBuild ? [
+    '<uses-permission android:name="android.permission.RECORD_AUDIO" />',
+    '<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />'
+  ] : [])
+];
+let finalManifest = manifest;
+for (const permission of manifestPermissions) {
+  if (!finalManifest.includes(permission)) {
+    finalManifest = finalManifest.replace(/(<manifest\b[^>]*>)/, `$1\n    ${permission}`);
+  }
+}
 
 await writeFile(gradlePath, patchedGradle);
 await writeFile(manifestPath, finalManifest);
@@ -129,5 +138,5 @@ if (process.env.ANDROID_KEYSTORE_PATH) {
   }
 }
 
-console.log(`Prepared Android version ${versionName} (${code}).`);
+console.log(`Prepared Android version ${versionName} (${code})${isAdminBuild ? " for admin microphone broadcasting" : ""}.`);
 console.log("Applied C&S Bible Church launcher icons.");
