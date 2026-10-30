@@ -734,7 +734,7 @@ function renderInfoPage(view) {
   const pages={books:["Books","Church books and reading resources."],blog:["Blog","Updates and reflections from C&S Bible Church."],history:["Our history","The story and heritage of C&S Bible Church."],about:["About Lightbearer","A free church hymnal for C&S Bible Church members."],community:["Community","A community feed for church encouragement and updates."],set:["Service hymn sets","Build a service set from available hymns."]};
   const entry=pages[view]||pages.about;
   const rows=state.hymns.slice(0,8).map(function(h){return '<label class="set-hymn"><input type="checkbox" value="'+escapeHtml(h.hymn_number)+'"> '+escapeHtml(displayHymnNumber(h)+' · '+currentHymnTitle(h))+'</label>';}).join('');
-  const body=view==='set'?'<input id="service-set-name" placeholder="Service set name" maxlength="80"><div>'+rows+'</div><button class="button-primary" data-action="save-service-set">Save set</button>':'<p>'+escapeHtml(entry[1])+'</p>'+(view==='about'?'<p>Hymn source credits appear with texts used by permission. Lightbearer is free for members.</p>':'');
+  const body=view==='set'?'<input id="service-set-name" placeholder="Service set name" maxlength="80"><div>'+rows+'</div><button class="button-primary" data-action="save-service-set">Save set</button>':'<p>'+escapeHtml(entry[1])+'</p>'+(view==='about'?'<p>Hymn texts courtesy of Seraph Media C&S Hymnary &ndash; <a href="https://www.seraphmedia.com.ng" target="_blank" rel="noopener" style="color:inherit">seraphmedia.com.ng</a>. Lightbearer is free for worship and devotion.</p>':'');
   return '<section class="page info-page">'+pageHeading(entry[0],entry[1])+body+'</section>';
 }
 
