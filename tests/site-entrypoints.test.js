@@ -53,7 +53,7 @@ test("the hymn reader remains the web, PWA, and native Android launch page", asy
     read("capacitor.config.json")
   ]);
   const manifest = JSON.parse(manifestText);
-  const PACKAGE_VERSION = JSON.parse(await read("package.json"));
+  const PACKAGE_VERSION = JSON.parse(await readFile("package.json", "utf8")).version;
   const capacitor = JSON.parse(capacitorText);
   assert.ok(reader.includes("./js/app.js"));
   assert.equal(manifest.start_url, "./hymnal.html");
