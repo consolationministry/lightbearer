@@ -13,6 +13,7 @@ const state = { view: "login", activeView: "dashboard", menuOpen: false, authSta
 const navigation = [
   { id: "dashboard", label: "Dashboard", icon: "grid" },
   { id: "hymns", label: "Hymns", icon: "book" },
+  { id: "forms", label: "Forms", icon: "layers" },
   { id: "drafts", label: "Drafts", icon: "clock" },
   { id: "categories", label: "Categories", icon: "layers" },
   { id: "services", label: "Service Planner", icon: "calendar" },
@@ -774,7 +775,8 @@ async function disconnectCloudinarySettings() {
 function renderCurrentView() {
   root.querySelectorAll(".nav-item[data-view]").forEach(function (button) { button.setAttribute("aria-current", button.dataset.view === state.activeView ? "page" : "false"); });
   if (state.activeView !== "live-audio") stopAdminAudioMicTest();
-  if (state.activeView === "dashboard") renderDashboard();
+  if (state.activeView === "forms") { import("./forms-dashboard.js").then(module => module.renderFormsDashboard()); }
+  else if (state.activeView === "dashboard") renderDashboard();
   else if (state.activeView === "hymns" || state.activeView === "drafts") renderHymnWorkspace();
   else if (state.activeView === "categories") renderCategoryWorkspace();
   else if (state.activeView === "services") renderServiceWorkspace();

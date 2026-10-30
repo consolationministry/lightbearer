@@ -1,0 +1,7 @@
+import {SUPABASE_PUBLISHABLE_KEY,SUPABASE_URL} from "../admin/config.js?v=31";
+async function req(path,options={}){const r=await fetch(SUPABASE_URL.replace(/\/+$/,"")+"/"+path.replace(/^\/+/,""),{method:options.method||"GET",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,authorization:"Bearer "+SUPABASE_PUBLISHABLE_KEY,"content-type":"application/json",...(options.headers||{})},body:options.body===undefined?undefined:JSON.stringify(options.body)});const text=await r.text();let data;try{data=text?JSON.parse(text):null}catch{data=text}if(!r.ok)throw new Error(data?.message||"Request failed");return data}
+export async function getPublicForms(){return req("rest/v1/forms?select=id,title,name,description,expires_at,form_type,section_style,form_fields(*)&status=eq.published&deleted_at=is.null&order=created_at.desc")}
+export async function getPublicForm(id){const r=await req("rest/v1/forms?select=id,title,name,description,expires_at,form_type,registration_config,section_style,form_fields(*)&id=eq."+encodeURIComponent(id)+"&status=eq.published&deleted_at=is.null");return r?.[0]||null}
+export async function saveResponse(payload){return req("rest/v1/rpc/submit_form_response",{method:"POST",body:payload})}
+export async function checkDraft(email,id){const r=await req("rest/v1/rpc/get_tester_draft",{method:"POST",body:{p_form_id:id,p_email:email.toLowerCase()}});return r?.form? r:false}
+export async function getMyResponses(email){return req("rest/v1/rpc/get_my_form_responses",{method:"POST",body:{p_email:email.toLowerCase()}})}
