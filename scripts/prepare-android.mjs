@@ -130,4 +130,4 @@ if (process.env.ANDROID_KEYSTORE_PATH) {
 }
 
 console.log(`Prepared Android version ${versionName} (${code}).`);
-console.log("Applied CNS Bible Church launcher icons.");
+console.log("Applied C&S Bible Church launcher icons.");

@@ -426,7 +426,7 @@ function renderProgramDetails(data) {
     '<button class="button button-primary" type="submit" data-audio-next="true">Next: Configure Stream <span aria-hidden="true">›</span></button></div></div></form>' +
     '<aside class="audio-broadcast-aside"><section class="audio-broadcast-preview-card" aria-label="Broadcast preview"><h2>Broadcast Preview</h2>' +
     '<div class="audio-broadcast-cover">' + image.replace("data-preview-image", "data-preview-image-copy") +
-    '<div data-preview-placeholder-copy ' + (item.imageUrl ? "hidden" : "") + '><img src="../assets/demo-church-mark.svg" alt=""><span>CNS Bible Church</span></div>' +
+    '<div data-preview-placeholder-copy ' + (item.imageUrl ? "hidden" : "") + '><img src="../assets/demo-church-mark.svg" alt=""><span>C&S Bible Church</span></div>' +
     '<span class="audio-preview-badge">DRAFT</span><div class="audio-broadcast-cover-title" data-preview-title>' + escapeHtml(item.title || "Your broadcast title") + "</div></div>" +
     '<h3 data-preview-summary-title>' + escapeHtml(item.title || "Your broadcast title") + '</h3><p class="audio-preview-summary-speaker" data-preview-speaker>' +
     escapeHtml(item.speaker || "Minister to be announced") + '</p><div class="audio-preview-tags"><span data-preview-category>' + escapeHtml(item.category || "Other") +
@@ -589,7 +589,7 @@ function renderBroadcastSettings(data) {
   const readyToBroadcast = micReady && canGoLive;
   const previewImage = program.imageUrl
     ? '<img class="audio-stream-artwork" src="' + escapeHtml(program.imageUrl) + '" alt="" loading="lazy">'
-    : '<div class="audio-stream-artwork-placeholder"><img src="../assets/demo-church-mark.svg" alt=""><span>CNS Bible Church</span></div>';
+    : '<div class="audio-stream-artwork-placeholder"><img src="../assets/demo-church-mark.svg" alt=""><span>C&S Bible Church</span></div>';
   const liveStatus = isLive
     ? (activeBroadcastId === program.id ? "Broadcast is live. Keep this browser tab open." : "Marked live, but this session is not connected.")
     : activeMicEngine ? "Microphone is working. Audio stays local until you go live." : "Test your microphone before going live.";
@@ -634,7 +634,7 @@ function renderBroadcastSettings(data) {
     '<section class="audio-live-preview-card"><header class="audio-side-heading"><h2>Live Preview</h2><span class="audio-preview-mode"><i></i>' +
     (isLive ? "On Air" : "Preview Mode") + '</span></header><div class="audio-stream-artwork-wrap">' + previewImage +
     '<span class="audio-stream-badge' + (isLive ? " is-live" : "") + '">' + (isLive ? "LIVE" : "PREVIEW") + '</span>' +
-    '<div class="audio-stream-artwork-copy"><strong>' + escapeHtml(program.title) + '</strong><span>CNS Bible Church</span></div></div></section>' +
+    '<div class="audio-stream-artwork-copy"><strong>' + escapeHtml(program.title) + '</strong><span>C&S Bible Church</span></div></div></section>' +
     '<section class="audio-stream-details-card"><header class="audio-side-heading"><h2>Stream Details</h2></header><dl class="audio-stream-details">' +
     '<div><dt>' + icon("radio") + 'Title</dt><dd>' + escapeHtml(program.title) + '</dd></div>' +
     '<div><dt>' + icon("mic") + 'Minister</dt><dd>' + escapeHtml(program.speaker || "Not set") + '</dd></div>' +
@@ -658,7 +658,7 @@ function renderBroadcastSettings(data) {
 function renderSettings(data) {
   return '<section class="page-heading"><div><h1>Broadcast settings</h1><p>Manage programme categories for the web audio service.</p></div>' +
     '<button class="button button-secondary audio-admin-back" type="button" data-action="audio-admin-back">' + icon("back") + "Back to broadcasts</button></section>" +
-    '<section class="panel audio-admin-settings"><div class="audio-brand-preview"><img src="../assets/church-logo-placeholder.svg" alt="" width="58" height="58"><div><strong>CNS Bible Church</strong><span>Occupy Till I Come · Existing app branding</span></div></div>' +
+    '<section class="panel audio-admin-settings"><div class="audio-brand-preview"><img src="../assets/church-logo-placeholder.svg" alt="" width="58" height="58"><div><strong>C&S Bible Church</strong><span>Occupy Till I Come · Existing app branding</span></div></div>' +
     '<form id="audio-categories-form"><div class="admin-field"><label for="audio-categories">Programme categories</label><textarea class="form-textarea" id="audio-categories" name="categories" rows="5">' +
     escapeHtml(data.categories.join(", ")) + '</textarea><p class="field-hint">Separate categories with commas. Existing broadcasts keep their current category label.</p></div><button class="button button-primary" type="submit">Save categories</button></form></section>';
 }
@@ -690,7 +690,7 @@ export function renderLiveAudioStudio(program) {
     '<div class="audio-studio-layout"><div class="audio-studio-main">' +
     '<div class="audio-studio-hero-row"><section class="audio-studio-stage" aria-label="Live audio programme"><div class="audio-studio-artwork-wrap">' + artwork + '<div class="audio-studio-artwork-shade"></div>' +
     '<div class="audio-studio-stage-content"><span class="audio-studio-live-pill"><i></i> LIVE</span>' +
-    '<p class="audio-studio-church">CONSOLATION EVANGELICAL AND REVIVAL CHURCH</p><h2>' + escapeHtml(program.title) + '</h2>' +
+    '<p class="audio-studio-church">C&S Bible Church</p><h2>' + escapeHtml(program.title) + '</h2>' +
     '<p class="audio-studio-program-meta">' + escapeHtml(program.speaker || "Minister not set") + " · " + escapeHtml(program.category) + '</p>' +
      '<div class="audio-studio-wave-wrap"><canvas class="audio-waveform audio-studio-waveform" data-audio-waveform width="920" height="124" aria-label="Live music-style audio waveform" role="img"></canvas></div>' +
      '<div class="audio-studio-mic-meter-row"><span class="audio-studio-mic-meter-label">MIC LEVEL</span><div class="audio-mic-meter audio-studio-meter" role="meter" aria-label="Microphone input level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span data-audio-mic-level></span></div></div>' +
@@ -743,7 +743,7 @@ function renderLiveAudioContent() {
     tabButton("programs", "All broadcasts") + tabButton("drafts", "Drafts") +
     tabButton("published", "Published") + tabButton("settings", "Settings") + "</div>";
   const title = activeTab === "drafts" ? "Drafts" : activeTab === "published" ? "Published broadcasts" : "Broadcast management";
-  return '<section><div class="page-heading"><div><h1>Live Audio</h1><p>Web-only microphone broadcasts for CNS Bible Church.</p></div>' +
+  return '<section><div class="page-heading"><div><h1>Live Audio</h1><p>Web-only microphone broadcasts for C&S Bible Church.</p></div>' +
     '<button class="button button-secondary audio-admin-back" type="button" data-action="navigate" data-view="dashboard">' + icon("back") + "Back to admin dashboard</button></div>" +
     renderStats(cachedData) + tabs + '<div class="audio-admin-toolbar"><div><h2>' + title + '</h2><p>Programme details, microphone setup, and WebRTC broadcast control.</p></div>' +
     '<div class="audio-admin-toolbar-actions">' +

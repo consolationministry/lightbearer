@@ -1,6 +1,6 @@
 {
-  "name": "CNS Bible Church Hymnal",
-  "short_name": "CNS Hymnal",
+  "name": "C&S Bible Church Hymnal",
+  "short_name": "C&S Hymnal",
   "description": "Read and search the church hymnal, even without an internet connection.",
   "start_url": "./hymnal.html",
   "scope": "./",

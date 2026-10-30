@@ -181,7 +181,7 @@ export function renderLiveAudioPage(data, query, category) {
       audioLibraryArtwork(feature, "audio-library-feature-art") +
       '<div class="audio-library-feature-copy"><div class="audio-library-feature-status">' +
       (feature.onAir && feature.liveSessionId ? '<span class="audio-library-live-pill"><i></i> LIVE</span>' : feature.recordingUrl ? '<span class="audio-library-feature-pill">RECORDED BROADCAST</span>' : '<span class="audio-library-feature-pill">FEATURED PROGRAMME</span>') +
-      '<span class="audio-library-church-label">CNS Bible Church</span></div>' +
+      '<span class="audio-library-church-label">C&S Bible Church</span></div>' +
       '<h1>' + escapeHtml(feature.title) + '</h1>' +
       '<p class="audio-library-feature-subtitle">' + escapeHtml(feature.speaker || "Worship · Word · Fellowship") + '</p>' +
       '<div class="audio-library-feature-meta">' + (feature.date ? '<span>' + escapeHtml(formattedDate(feature.date)) + '</span>' : "") +
@@ -194,7 +194,7 @@ export function renderLiveAudioPage(data, query, category) {
     : '<section class="audio-library-feature audio-library-feature-empty" aria-label="Church audio library">' +
       audioLibraryArtwork(null, "audio-library-feature-art") +
       '<div class="audio-library-feature-copy"><span class="audio-library-feature-pill">CHURCH AUDIO</span><h1>Listen together, wherever you are.</h1>' +
-      '<p class="audio-library-feature-subtitle">Published services and programmes from CNS Bible Church will appear here.</p>' +
+      '<p class="audio-library-feature-subtitle">Published services and programmes from C&S Bible Church will appear here.</p>' +
       '<div class="audio-library-feature-controls"><div class="audio-library-waveform" aria-hidden="true">' + waveform + '</div></div></div></section>';
   const listContent = formalPrograms.length
     ? '<div class="audio-library-list" aria-live="polite">' + formalPrograms.map(function (program) {
@@ -208,7 +208,7 @@ export function renderLiveAudioPage(data, query, category) {
     : "";
   return '<section class="page live-audio-page audio-library-page">' + libraryLoadingOverlay +
     '<header class="audio-library-header"><div class="audio-library-header-inner">' +
-    '<button class="audio-library-brand" type="button" data-action="navigate" data-view="home" aria-label="Go to Home"><img src="./assets/church-logo-placeholder.svg" alt="" width="48" height="48"><span><strong>CNS Bible Church</strong><small>Audio Stream</small></span></button>' +
+    '<button class="audio-library-brand" type="button" data-action="navigate" data-view="home" aria-label="Go to Home"><img src="./assets/church-logo-placeholder.svg" alt="" width="48" height="48"><span><strong>C&S Bible Church</strong><small>Audio Stream</small></span></button>' +
     '<div class="audio-library-header-actions"><a class="audio-library-header-icon" href="#live-audio-search" aria-label="Jump to programme search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.2 4.2"/></svg></a>' +
     '<button class="audio-library-header-icon" type="button" data-action="navigate" data-view="programs" aria-label="Upcoming programmes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></button>' +
     '<button class="audio-library-avatar" type="button" data-action="navigate" data-view="settings" aria-label="Open profile and settings">C</button></div></div></header>' +
@@ -231,7 +231,7 @@ export function renderLiveAudioListener(data, programId, options) {
   const opts = options || {};
   const program = data.programs.find(function (item) { return item.id === programId && item.status === "published"; });
   const header = '<header class="audio-listener-header"><button class="audio-listener-back" type="button" data-action="back-to-live-audio" aria-label="Back to programme library"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>' +
-    '<div class="audio-listener-brand"><img src="./assets/church-logo-placeholder.svg" alt="" width="42" height="42"><span><strong>CNS Bible Church</strong><small>Audio Stream</small></span></div>' +
+    '<div class="audio-listener-brand"><img src="./assets/church-logo-placeholder.svg" alt="" width="42" height="42"><span><strong>C&S Bible Church</strong><small>Audio Stream</small></span></div>' +
     '<button class="audio-listener-header-profile" type="button" data-action="navigate" data-view="settings" aria-label="Open profile and settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></button></header>';
   if (!program) {
     return '<section class="page audio-listener-page">' + header + '<div class="audio-listener-content">' +
@@ -366,7 +366,7 @@ export function renderLiveAudioListener(data, programId, options) {
     '<div class="audio-listener-art-overlay">' +
     (isLive ? '<span class="audio-listener-live-badge"><i></i> LIVE</span><span class="audio-listener-viewers"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-4.2 0-7 2.1-7 4.5V21h14v-2.5c0-2.4-2.8-4.5-7-4.5Z"/></svg>' + listenerCount + '</span>' : '<span class="audio-listener-featured-badge">PUBLISHED PROGRAMME</span>') +
     '</div><div class="audio-listener-body">' +
-    '<p class="audio-listener-speaker">' + escapeHtml(program.speaker || "CNS Bible Church") + '</p>' +
+    '<p class="audio-listener-speaker">' + escapeHtml(program.speaker || "C&S Bible Church") + '</p>' +
     '<div class="audio-listener-title-row"><h1>' + escapeHtml(program.title) + '</h1>' + badge + '</div>' +
     (meta.length || program.category ? '<div class="audio-listener-details">' + (program.category ? '<span class="audio-listener-category">' + escapeHtml(program.category) + '</span>' : "") +
       meta.map(function (item) { return '<span>' + item + '</span>'; }).join("") + '</div>' : "") +

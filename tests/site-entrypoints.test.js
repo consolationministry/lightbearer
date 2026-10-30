@@ -11,7 +11,7 @@ const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 
 test("public homepage welcomes visitors and explains the Android hymnal app", async () => {
   const home = await read("index.html");
-  assert.ok(home.includes("Welcome to CNS Bible Church"));
+  assert.ok(home.includes("Welcome to C&S Bible Church"));
   assert.ok(home.includes("Matthew 18:20"));
   assert.ok(home.includes("Philippians 4:6"));
   assert.ok(home.includes('id="android-download"'));

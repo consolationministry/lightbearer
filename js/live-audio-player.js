@@ -3,8 +3,8 @@ const audioPlayerControllers = new WeakMap();
 function updateMediaSession(audio, controller) {
   if (typeof navigator === "undefined" || !navigator.mediaSession) return;
   const session = navigator.mediaSession;
-  const title = audio.dataset.mediaTitle || audio.getAttribute("aria-label") || "CNS Bible Church Hymnal audio";
-  const artist = audio.dataset.mediaArtist || "CNS Bible Church";
+  const title = audio.dataset.mediaTitle || audio.getAttribute("aria-label") || "C&S Bible Church Hymnal audio";
+  const artist = audio.dataset.mediaArtist || "C&S Bible Church";
   const isLive = audio.dataset.audioPlayer === "live";
   if (typeof MediaMetadata === "function") {
     try { session.metadata = new MediaMetadata({ title, artist, album: "Church audio", artwork: [{ src: new URL("../assets/church-logo-placeholder.svg", import.meta.url).href, sizes: "192x192", type: "image/png" }] }); }

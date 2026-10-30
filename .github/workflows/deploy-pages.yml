@@ -1,4 +1,4 @@
-name: Deploy CNS Lightbearer to GitHub Pages
+name: Deploy C&S Lightbearer to GitHub Pages
 on:
   push:
     branches: [main]

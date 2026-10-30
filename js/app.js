@@ -111,7 +111,7 @@ function applyPreferences() {
 function renderHeader() {
   const activeView = state.view === "reader" ? state.readerReturnView : state.view;
   const searchExpanded = state.view === "home" ? state.searchOpen || Boolean(state.query) : false;
-  header.innerHTML = '<button class="brand-lockup" type="button" data-action="navigate" data-view="home" aria-label="Go to Home" data-testid="button-brand-home"><img src="./assets/church-logo-placeholder.svg" alt="" width="60" height="60"><span><span class="brand-name">CNS Bible Church</span><span class="brand-subtitle">' + CHURCH_MOTTO + '</span></span></button><div class="header-actions"><button class="header-icon-button" type="button" data-action="header-search" aria-label="Search hymns" aria-expanded="' + searchExpanded + '" data-testid="button-header-search">' + icon("search") + '</button></div>';
+  header.innerHTML = '<button class="brand-lockup" type="button" data-action="navigate" data-view="home" aria-label="Go to Home" data-testid="button-brand-home"><img src="./assets/church-logo-placeholder.svg" alt="" width="60" height="60"><span><span class="brand-name">C&S Bible Church</span><span class="brand-subtitle">' + CHURCH_MOTTO + '</span></span></button><div class="header-actions"><button class="header-icon-button" type="button" data-action="header-search" aria-label="Search hymns" aria-expanded="' + searchExpanded + '" data-testid="button-header-search">' + icon("search") + '</button></div>';
 }
 
 function renderNav() {
@@ -609,7 +609,7 @@ function renderSettings() {
     '<section class="settings-group"><h2>Accent colour</h2><p class="settings-description">Choose from six colours. Your choice works with light and dark mode.</p><div class="accent-grid">' + accentChoices + '</div></section>' +
     '<section class="settings-group"><h2>Reading</h2><p class="settings-description">Set your preferred text size. English and Yorùbá hymns appear together in one list.</p><div class="setting-row"><span><strong>Text size</strong><small id="settings-font-value">' + size + ' px</small></span><input class="setting-range" id="settings-font-size" type="range" min="17" max="32" step="1" value="' + size + '" aria-label="Text size across the app" data-testid="input-font-size"></div><p class="verse-text setting-preview" style="--hymn-size:' + size + 'px">The hymn text will use this size.</p></section>' +
     '<div class="settings-actions"><button class="button-primary settings-save" type="button" data-action="save-settings" data-testid="button-save-settings">' + icon("check") + ' Save settings</button></div>' +
-    '<section class="settings-group"><h2>About</h2><div class="setting-row"><span><strong>CNS Bible Church</strong><small>Digital hymnal · Version ' + APP_VERSION + '</small></span></div><p class="about-copy">The hymnal lists English and Yorùbá hymns in separate collections, numbered as printed in the book. Printed numbers are preserved, and matching numbers are not treated as translations. See data/SOURCES.md for catalog notes.</p><div class="setting-note" style="margin-top:14px"><strong>Publishing and attribution</strong><br>Hymns marked Published in the admin workspace appear in the public catalog. Confirm the source attribution and publishing permission before publishing additional material.</div><div class="setting-note" style="margin-top:14px"><strong>Privacy</strong><br>There are no member accounts. Favorites and preferences are saved only in this browser on this device; they are not sent to a server.</div></section></section>';
+    '<section class="settings-group"><h2>About</h2><div class="setting-row"><span><strong>C&S Bible Church</strong><small>Digital hymnal · Version ' + APP_VERSION + '</small></span></div><p class="about-copy">The hymnal lists English and Yorùbá hymns in separate collections, numbered as printed in the book. Printed numbers are preserved, and matching numbers are not treated as translations. See data/SOURCES.md for catalog notes.</p><div class="setting-note" style="margin-top:14px"><strong>Publishing and attribution</strong><br>Hymns marked Published in the admin workspace appear in the public catalog. Confirm the source attribution and publishing permission before publishing additional material.</div><div class="setting-note" style="margin-top:14px"><strong>Privacy</strong><br>There are no member accounts. Favorites and preferences are saved only in this browser on this device; they are not sent to a server.</div></section></section>';
 }
 
 let splashChimePlayed = false;
@@ -754,7 +754,7 @@ function render() {
     mountAudioPlayer(audio, audio.closest(".audio-listener-player"));
   });
   renderNav();
-  document.title = state.view === "reader" ? "Hymn " + String(state.selectedNumber).padStart(2, "0") + " · CNS Bible Church Hymnal" : state.view === "listen" ? "Listen · CNS Bible Church Hymnal" : "CNS Bible Church Hymnal";
+  document.title = state.view === "reader" ? "Hymn " + String(state.selectedNumber).padStart(2, "0") + " · C&S Bible Church Hymnal" : state.view === "listen" ? "Listen · C&S Bible Church Hymnal" : "C&S Bible Church Hymnal";
 }
 
 function setSettings(changes, persist = true) {
@@ -1394,7 +1394,7 @@ async function shareLiveAudioProgram(programId) {
   // Build a link to THIS programme only, e.g. https://site/hymnals/?program=abc
   const shareData = {
     title: program.title,
-    text: "Listen to " + program.title + " from CNS Bible Church.",
+    text: "Listen to " + program.title + " from C&S Bible Church.",
     url: buildProgrammeShareLink(program.id)
   };
   try {

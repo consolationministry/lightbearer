@@ -7,7 +7,7 @@ test("main app header renders the church branding and search, without the hambur
   const css = await readFile(new URL("../css/style.css", import.meta.url), "utf8");
   assert.match(appSource, /function renderHeader\(\)/);
   assert.match(appSource, /class="brand-lockup"/);
-  assert.match(appSource, /Consolation Evangelical/);
+  assert.match(appSource, /C&S Bible Church/);
   assert.match(appSource, /data-testid="button-header-search"/);
   assert.doesNotMatch(appSource, /toggle-menu|button-header-menu|header-nav|menuOpen/);
   assert.doesNotMatch(css, /\.header-nav-/);

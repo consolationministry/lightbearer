@@ -1,4 +1,4 @@
-# CNS Bible Church Hymnal
+# C&S Bible Church Hymnal
 
 A standalone, independently versioned English and Yorùbá hymnal app with public reader and admin. English and Yorùbá remain separate, and Chorus/Egbe displays in highlighted chorus blocks.
 

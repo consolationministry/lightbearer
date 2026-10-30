@@ -1,4 +1,4 @@
--- Admin-only backend foundation for CNS Bible Church Hymnals.
+-- Admin-only backend foundation for C&S Bible Church Hymnals.
 -- Apply this migration in the Supabase SQL Editor. Do not add a service-role
 -- key to the website, this repository, or a browser config file.
 
