@@ -59,7 +59,7 @@ function audioLibraryArtwork(program, className) {
   if (program && program.imageUrl) {
     return '<div class="' + className + '"><img src="' + escapeHtml(program.imageUrl) + '" alt="" loading="lazy"></div>';
   }
-  return '<div class="' + className + ' audio-library-art-placeholder"><span class="audio-library-art-glow"></span><img src="./assets/church-logo-placeholder.svg" alt="" loading="lazy"></div>';
+  return '<div class="' + className + ' audio-library-art-placeholder"><span class="audio-library-art-glow"></span><img src="./assets/church-logo-placeholder.png" alt="" loading="lazy"></div>';
 }
 
 function audioLibrarySaveControl(program, data, isSaved, isSavedFilter) {
@@ -208,7 +208,7 @@ export function renderLiveAudioPage(data, query, category) {
     : "";
   return '<section class="page live-audio-page audio-library-page">' + libraryLoadingOverlay +
     '<header class="audio-library-header"><div class="audio-library-header-inner">' +
-    '<button class="audio-library-brand" type="button" data-action="navigate" data-view="home" aria-label="Go to Home"><img src="./assets/church-logo-placeholder.svg" alt="" width="48" height="48"><span><strong>C&S Bible Church</strong><small>Audio Stream</small></span></button>' +
+    '<button class="audio-library-brand" type="button" data-action="navigate" data-view="home" aria-label="Go to Home"><img src="./assets/church-logo-placeholder.png" alt="" width="48" height="48"><span><strong>C&S Bible Church</strong><small>Audio Stream</small></span></button>' +
     '<div class="audio-library-header-actions"><a class="audio-library-header-icon" href="#live-audio-search" aria-label="Jump to programme search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.2 4.2"/></svg></a>' +
     '<button class="audio-library-header-icon" type="button" data-action="navigate" data-view="programs" aria-label="Upcoming programmes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></button>' +
     '<button class="audio-library-avatar" type="button" data-action="navigate" data-view="settings" aria-label="Open profile and settings">C</button></div></div></header>' +
@@ -231,7 +231,7 @@ export function renderLiveAudioListener(data, programId, options) {
   const opts = options || {};
   const program = data.programs.find(function (item) { return item.id === programId && item.status === "published"; });
   const header = '<header class="audio-listener-header"><button class="audio-listener-back" type="button" data-action="back-to-live-audio" aria-label="Back to programme library"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>' +
-    '<div class="audio-listener-brand"><img src="./assets/church-logo-placeholder.svg" alt="" width="42" height="42"><span><strong>C&S Bible Church</strong><small>Audio Stream</small></span></div>' +
+    '<div class="audio-listener-brand"><img src="./assets/church-logo-placeholder.png" alt="" width="42" height="42"><span><strong>C&S Bible Church</strong><small>Audio Stream</small></span></div>' +
     '<button class="audio-listener-header-profile" type="button" data-action="navigate" data-view="settings" aria-label="Open profile and settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></button></header>';
   if (!program) {
     return '<section class="page audio-listener-page">' + header + '<div class="audio-listener-content">' +

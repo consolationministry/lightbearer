@@ -1,4 +1,4 @@
-const CACHE_NAME = "cns-lightbearer-1.2.5";
+const CACHE_NAME = "cns-lightbearer-1.3.0";
 const PRECACHE_URLS = [
   "./",
   "./index.html",
@@ -7,8 +7,8 @@ const PRECACHE_URLS = [
   "./css/theme.css",
   "./css/style.css",
   "./css/live-audio.css",
-  "./assets/church-logo-placeholder.svg",
-  "./assets/church-logo-placeholder.svg",
+  "./assets/church-logo-placeholder.png",
+  "./assets/church-logo-placeholder.png",
   "./assets/splash-chime.wav",
   "./data/uploaded-hymns.js",
   "./data/uploaded-yoruba-hymns.js",

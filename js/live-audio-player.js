@@ -7,7 +7,7 @@ function updateMediaSession(audio, controller) {
   const artist = audio.dataset.mediaArtist || "C&S Bible Church";
   const isLive = audio.dataset.audioPlayer === "live";
   if (typeof MediaMetadata === "function") {
-    try { session.metadata = new MediaMetadata({ title, artist, album: "Church audio", artwork: [{ src: new URL("../assets/church-logo-placeholder.svg", import.meta.url).href, sizes: "192x192", type: "image/png" }] }); }
+    try { session.metadata = new MediaMetadata({ title, artist, album: "Church audio", artwork: [{ src: new URL("../assets/church-logo-placeholder.png", import.meta.url).href, sizes: "192x192", type: "image/png" }] }); }
     catch { try { session.metadata = new MediaMetadata({ title, artist }); } catch {} }
   }
   const actions = ["play", "pause", "stop", "seekbackward", "seekforward", "seekto"];

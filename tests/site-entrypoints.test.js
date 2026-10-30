@@ -88,7 +88,7 @@ test("Pages build includes the admin workspace and its runtime dependencies", as
     "js/live-audio-webrtc.js",
     "data/uploaded-hymns.js",
     "data/uploaded-yoruba-hymns.js",
-    "assets/demo-church-mark.svg"
+    "assets/demo-church-mark.png"
   ];
   await Promise.all(files.map(file => access(new URL("../dist/" + file, import.meta.url))));
 

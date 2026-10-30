@@ -114,7 +114,7 @@ function applyPreferences() {
 function renderHeader() {
   const activeView = state.view === "reader" ? state.readerReturnView : state.view;
   const searchExpanded = state.view === "home" ? state.searchOpen || Boolean(state.query) : false;
-  header.innerHTML = '<button class="brand-lockup" type="button" data-action="navigate" data-view="home" aria-label="Go to Home" data-testid="button-brand-home"><img src="./assets/church-logo-placeholder.svg" alt="" width="60" height="60"><span><span class="brand-name">C&S Bible Church</span><span class="brand-subtitle">' + CHURCH_MOTTO + '</span></span></button><div class="header-actions"><button class="header-icon-button" type="button" data-action="header-search" aria-label="Search hymns" aria-expanded="' + searchExpanded + '" data-testid="button-header-search">' + icon("search") + '</button></div>';
+  header.innerHTML = '<button class="brand-lockup" type="button" data-action="navigate" data-view="home" aria-label="Go to Home" data-testid="button-brand-home"><img src="./assets/church-logo-placeholder.png" alt="" width="60" height="60"><span><span class="brand-name">C&S Bible Church</span><span class="brand-subtitle">' + CHURCH_MOTTO + '</span></span></button><div class="header-actions"><button class="header-icon-button" type="button" data-action="header-search" aria-label="Search hymns" aria-expanded="' + searchExpanded + '" data-testid="button-header-search">' + icon("search") + '</button></div>';
 }
 
 function renderNav() {
@@ -394,7 +394,7 @@ function renderProgrammeCard(program, detail) {
   const categoryMarkup = category
     ? '<button class="public-program-post-category" type="button" data-action="filter-programme-category" data-category="' + escapeHtml(category) + '">' + escapeHtml(category) + '</button>'
     : "";
-  const header = '<header class="public-program-post-header"><img class="public-program-post-avatar" src="./assets/church-logo-placeholder.svg" alt="" width="42" height="42"><div class="public-program-post-identity">' + titleMarkup + eventDate + '</div>' + categoryMarkup + '</header>';
+  const header = '<header class="public-program-post-header"><img class="public-program-post-avatar" src="./assets/church-logo-placeholder.png" alt="" width="42" height="42"><div class="public-program-post-identity">' + titleMarkup + eventDate + '</div>' + categoryMarkup + '</header>';
   const descriptionSection = descriptionMarkup
     ? '<div class="public-program-post-body">' + descriptionMarkup + '</div>'
     : "";
@@ -530,7 +530,7 @@ function renderServiceCard(plan) {
     }).join("") + '</ol>'
     : '<p class="public-content-unavailable">No aims have been added for this service yet.</p>';
   return '<article class="public-program-post public-service-card">' +
-    '<header class="public-program-post-header"><img class="public-program-post-avatar" src="./assets/church-logo-placeholder.svg" alt="" width="42" height="42">' +
+    '<header class="public-program-post-header"><img class="public-program-post-avatar" src="./assets/church-logo-placeholder.png" alt="" width="42" height="42">' +
     '<div class="public-program-post-identity"><h2 class="public-program-post-title">' + title + '</h2>' +
     '<time class="public-program-post-event-date" datetime="' + escapeHtml(dateValue) + '">' + escapeHtml(servicePlanDateText(plan)) + '</time></div></header>' +
     '<div class="public-service-aims"><p class="public-service-aims-label">Aims</p>' + aimMarkup + '</div>' +
@@ -551,7 +551,7 @@ function renderServiceAimDetail(plan, hymn) {
   return '<section class="page public-service-aim-page">' +
     '<button class="reader-back public-program-back" type="button" data-action="close-service-aim">← Back to service plans</button>' +
     '<article class="public-program-post public-program-post-detail public-service-aim-detail">' +
-    '<header class="public-program-post-header"><img class="public-program-post-avatar" src="./assets/church-logo-placeholder.svg" alt="" width="42" height="42">' +
+    '<header class="public-program-post-header"><img class="public-program-post-avatar" src="./assets/church-logo-placeholder.png" alt="" width="42" height="42">' +
     '<div class="public-program-post-identity"><h1 class="public-program-post-title">' + title + '</h1>' +
     '<time class="public-program-post-event-date" datetime="' + escapeHtml(String(plan.date || "").slice(0, 10)) + '">' + escapeHtml(repairMojibake(String(plan.title || ""))) + ' · ' + escapeHtml(servicePlanDateText(plan)) + '</time></div></header>' +
     '<section class="public-program-details" aria-label="Aim details">' +

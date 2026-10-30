@@ -402,7 +402,7 @@ function renderProgramDetails(data) {
     '<div class="audio-broadcast-layout"><form class="audio-broadcast-form" id="live-audio-program-form">' +
     '<section class="audio-broadcast-card audio-broadcast-intro-card" aria-label="Broadcast thumbnail and description">' +
     '<div class="audio-thumbnail-column"><label class="audio-broadcast-label" for="audio-image">Broadcast thumbnail</label>' +
-    '<div class="audio-thumbnail-preview">' + image + '<div data-preview-placeholder ' + (item.imageUrl ? "hidden" : "") + '><img src="../assets/demo-church-mark.svg" alt=""><span>Programme artwork</span></div>' +
+    '<div class="audio-thumbnail-preview">' + image + '<div data-preview-placeholder ' + (item.imageUrl ? "hidden" : "") + '><img src="../assets/demo-church-mark.png" alt=""><span>Programme artwork</span></div>' +
     '<span class="audio-preview-badge">DRAFT</span></div>' +
     '<div class="audio-thumbnail-url"><label for="audio-image">Thumbnail image URL</label><input class="form-input" id="audio-image" name="imageUrl" type="url" inputmode="url" placeholder="https://…" value="' + escapeHtml(item.imageUrl) + '">' +
     '<label class="button button-secondary audio-file-picker">Upload image<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-audio-image-file hidden></label>' +
@@ -426,7 +426,7 @@ function renderProgramDetails(data) {
     '<button class="button button-primary" type="submit" data-audio-next="true">Next: Configure Stream <span aria-hidden="true">›</span></button></div></div></form>' +
     '<aside class="audio-broadcast-aside"><section class="audio-broadcast-preview-card" aria-label="Broadcast preview"><h2>Broadcast Preview</h2>' +
     '<div class="audio-broadcast-cover">' + image.replace("data-preview-image", "data-preview-image-copy") +
-    '<div data-preview-placeholder-copy ' + (item.imageUrl ? "hidden" : "") + '><img src="../assets/demo-church-mark.svg" alt=""><span>C&S Bible Church</span></div>' +
+    '<div data-preview-placeholder-copy ' + (item.imageUrl ? "hidden" : "") + '><img src="../assets/demo-church-mark.png" alt=""><span>C&S Bible Church</span></div>' +
     '<span class="audio-preview-badge">DRAFT</span><div class="audio-broadcast-cover-title" data-preview-title>' + escapeHtml(item.title || "Your broadcast title") + "</div></div>" +
     '<h3 data-preview-summary-title>' + escapeHtml(item.title || "Your broadcast title") + '</h3><p class="audio-preview-summary-speaker" data-preview-speaker>' +
     escapeHtml(item.speaker || "Minister to be announced") + '</p><div class="audio-preview-tags"><span data-preview-category>' + escapeHtml(item.category || "Other") +
@@ -589,7 +589,7 @@ function renderBroadcastSettings(data) {
   const readyToBroadcast = micReady && canGoLive;
   const previewImage = program.imageUrl
     ? '<img class="audio-stream-artwork" src="' + escapeHtml(program.imageUrl) + '" alt="" loading="lazy">'
-    : '<div class="audio-stream-artwork-placeholder"><img src="../assets/demo-church-mark.svg" alt=""><span>C&S Bible Church</span></div>';
+    : '<div class="audio-stream-artwork-placeholder"><img src="../assets/demo-church-mark.png" alt=""><span>C&S Bible Church</span></div>';
   const liveStatus = isLive
     ? (activeBroadcastId === program.id ? "Broadcast is live. Keep this browser tab open." : "Marked live, but this session is not connected.")
     : activeMicEngine ? "Microphone is working. Audio stays local until you go live." : "Test your microphone before going live.";
@@ -658,7 +658,7 @@ function renderBroadcastSettings(data) {
 function renderSettings(data) {
   return '<section class="page-heading"><div><h1>Broadcast settings</h1><p>Manage programme categories for the web audio service.</p></div>' +
     '<button class="button button-secondary audio-admin-back" type="button" data-action="audio-admin-back">' + icon("back") + "Back to broadcasts</button></section>" +
-    '<section class="panel audio-admin-settings"><div class="audio-brand-preview"><img src="../assets/church-logo-placeholder.svg" alt="" width="58" height="58"><div><strong>C&S Bible Church</strong><span>Occupy Till I Come · Existing app branding</span></div></div>' +
+    '<section class="panel audio-admin-settings"><div class="audio-brand-preview"><img src="../assets/church-logo-placeholder.png" alt="" width="58" height="58"><div><strong>C&S Bible Church</strong><span>Occupy Till I Come · Existing app branding</span></div></div>' +
     '<form id="audio-categories-form"><div class="admin-field"><label for="audio-categories">Programme categories</label><textarea class="form-textarea" id="audio-categories" name="categories" rows="5">' +
     escapeHtml(data.categories.join(", ")) + '</textarea><p class="field-hint">Separate categories with commas. Existing broadcasts keep their current category label.</p></div><button class="button button-primary" type="submit">Save categories</button></form></section>';
 }
@@ -667,7 +667,7 @@ export function renderLiveAudioStudio(program) {
   const imageUrl = safeImageUrl(program.imageUrl);
   const artwork = imageUrl
     ? '<img class="audio-studio-artwork" src="' + escapeHtml(imageUrl) + '" alt="" loading="lazy">'
-    : '<img class="audio-studio-artwork audio-studio-artwork-fallback" src="../assets/demo-church-mark.svg" alt="" loading="lazy">';
+    : '<img class="audio-studio-artwork audio-studio-artwork-fallback" src="../assets/demo-church-mark.png" alt="" loading="lazy">';
   const interactions = studioInteractions;
   const reactionTotal = interactions
     ? interactions.loveCount + interactions.clapCount + interactions.fireCount
