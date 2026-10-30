@@ -1,4 +1,4 @@
-const CACHE_NAME = "cns-lightbearer-1.0.1";
+const CACHE_NAME = "cns-lightbearer-1.0.2";
 const PRECACHE_URLS = __PRECACHE_URLS__;
 
 self.addEventListener("install", function (event) {
