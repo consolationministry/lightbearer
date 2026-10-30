@@ -9,10 +9,10 @@ const read = (name) => readFile(new URL("../" + name, import.meta.url), "utf8");
 const run = promisify(execFile);
 const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 
-test("the public homepage presents C&S Bible Church branding and direct app navigation", async () => {
+test("the public homepage presents Lightbearer and C&S Bible Church branding with direct app navigation", async () => {
   const home = await read("index.html");
   assert.ok(home.includes('<main class="card">'));
-  assert.ok(home.includes('src="./assets/church-logo-placeholder.svg"'));
+  assert.ok(home.includes('src="./assets/lightbearer-icon-512.png"'));
   assert.ok(home.includes('alt="C&S Bible Church logo placeholder"'));
   assert.ok(home.includes("C&S Bible Church"));
   assert.ok(home.includes("English and Yorùbá Hymnal"));
