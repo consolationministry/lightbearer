@@ -205,7 +205,9 @@ function languageToggle() {
 }
 
 function inActiveLanguage(hymn) {
-  return state.settings.language === "all" || (hymn.language || "english") === state.settings.language;
+  if (state.settings.language === "all") return true;
+  if (state.settings.language === "yoruba") return (hymn.verses_yoruba || []).length > 0;
+  return (hymn.verses_en || []).length > 0;
 }
 
 function renderHome() {

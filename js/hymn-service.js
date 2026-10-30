@@ -18,6 +18,7 @@ const PUBLIC_HYMN_COLUMNS = [
   "keywords",
   "author_en",
   "source_hymnal",
+  "source_number_label",
   "source_publication_year",
   "source_hymn_number",
   "source_first_line_en",
