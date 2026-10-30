@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { ANDROID_APK_ASSET, APP_VERSION, getAndroidApkRelease, isNewerVersion } from "../js/version.js";
+
+const PACKAGE_VERSION = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
 
 function nextPatchVersion(version) {
   const parts = version.split(".").map(Number);
@@ -9,7 +12,7 @@ function nextPatchVersion(version) {
 }
 
 test("Android update checks compare semantic version components", () => {
-  assert.equal(APP_VERSION, "1.1.4");
+  assert.equal(APP_VERSION, PACKAGE_VERSION);
   assert.equal(isNewerVersion("v1.1.1", "1.0.9"), true);
   assert.equal(isNewerVersion("v1.0.10", "1.0.9"), true);
   assert.equal(isNewerVersion("v1.0.0", "1.0.0"), false);
