@@ -1,0 +1,37 @@
+name: Deploy CNS Lightbearer to GitHub Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --registry=https://registry.npmjs.org --no-audit --no-fund
+      - run: node --test tests/hymn-reading.test.js tests/hymn-stanzas.test.js tests/admin-bulk-hymns.test.js tests/admin-hymn-display.test.js tests/uploaded-yoruba-catalog.test.js tests/hymnal-selection.test.js
+      - run: npm run build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,86 @@
+name: Android debug build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.event_name != 'release'
+    name: Build debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Prepare npm lockfile for GitHub
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from "node:fs";
+
+          const lockfilePath = "package-lock.json";
+          const privatePrefix = "http://package-firewall.replit.internal/npm/";
+          const publicPrefix = "https://registry.npmjs.org/";
+          const original = readFileSync(lockfilePath, "utf8");
+          const count = original.split(privatePrefix).length - 1;
+          const normalized = original.replaceAll(privatePrefix, publicPrefix);
+
+          if (normalized.includes("package-firewall.replit.internal")) {
+            throw new Error("The npm lockfile still contains a Replit-only registry URL.");
+          }
+          if (count === 0 && !original.includes(publicPrefix)) {
+            throw new Error("No recognized npm registry URLs were found in package-lock.json.");
+          }
+          if (count > 0) {
+            writeFileSync(lockfilePath, normalized);
+            console.log(`Normalized ${count} package URLs for GitHub Actions.`);
+          }
+          NODE
+
+      - name: Install, test, and build shared web app
+        run: |
+          npm ci --registry=https://registry.npmjs.org --no-audit --no-fund
+          npm test
+          npm run build
+
+      - name: Package shared app for Android
+        run: |
+          npx cap add android
+          npx cap sync android
+          node scripts/prepare-android.mjs
+          cd android
+          ./gradlew assembleDebug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: cns-lightbearer-android-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
