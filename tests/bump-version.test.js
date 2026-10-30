@@ -32,6 +32,8 @@ test("release bump synchronizes app, lockfile, and offline-cache versions", asyn
     }, null, 2) + "\n");
     await writeFile(path.join(root, "js/version.js"), 'export const APP_VERSION = "1.1.1";\n');
     await writeFile(path.join(root, "service-worker.js"), 'const CACHE_NAME = "cns-lightbearer-1.1.1-offline-audio";\n');
+    await mkdir(path.join(root, "manifest.webmanifest").replace(/manifest\.webmanifest$/, ""), { recursive: true });
+    await writeFile(path.join(root, "manifest.webmanifest"), JSON.stringify({ version: "1.1.1" }, null, 2) + "\n");
 
     assert.equal(await bumpReleaseFiles("patch", root), "1.1.2");
     assert.equal(JSON.parse(await readFile(path.join(root, "package.json"), "utf8")).version, "1.1.2");
