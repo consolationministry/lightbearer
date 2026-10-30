@@ -44,13 +44,13 @@ button { -webkit-tap-highlight-color: transparent; }
 .home-intro .eyebrow { margin: 0 0 5px; color: var(--accent); font-size: .77rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .home-intro h1 { margin: 0; font-family: var(--font-reading); font-size: clamp(1.75rem, 5vw, 2.25rem); line-height: 1.12; }
 .home-intro p { margin: 8px 0 0; color: var(--muted); }
-.hero-card { position: relative; isolation: isolate; overflow: hidden; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 18px; min-height: 186px; margin: 20px 0 24px; padding: 23px; border-radius: 24px; color: #fff; background: linear-gradient(118deg, #9a1f45 0%, #78305f 53%, #4c2e72 100%); box-shadow: var(--shadow); }
+.hero-card { position: relative; isolation: isolate; overflow: hidden; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 18px; min-height: 186px; margin: 20px 0 24px; padding: 23px; border-radius: 24px; color: #fff; background: linear-gradient(118deg, #1d4ed8 0%, #2563eb 53%, #1e40af 100%); box-shadow: var(--shadow); }
 .hero-card::after { content: ""; position: absolute; z-index: -1; right: -36px; bottom: -76px; width: 220px; height: 220px; border: 1px solid rgba(255,255,255,.22); border-radius: 50%; box-shadow: 0 0 0 22px rgba(255,255,255,.045), 0 0 0 48px rgba(255,255,255,.035); }
 .hero-copy { max-width: 480px; }
 .hero-kicker { margin: 0 0 8px; color: rgba(255,255,255,.78); font-size: .75rem; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
 .hero-card h2 { max-width: 450px; margin: 0; font-family: var(--font-reading); font-size: clamp(1.45rem, 5vw, 2rem); line-height: 1.17; }
 .hero-card p { max-width: 420px; margin: 10px 0 17px; color: rgba(255,255,255,.85); }
-.hero-card .button-primary { color: #642747; background: #fff; }
+.hero-card .button-primary { color: #1e40af; background: #fff; }
 .hero-mark { width: 92px; height: 92px; flex: 0 0 auto; opacity: .92; }
 .section-block { margin: 26px 0; }
 .section-title-row { display: flex; align-items: end; justify-content: space-between; gap: 14px; margin: 0 0 13px; }
@@ -320,7 +320,7 @@ button { -webkit-tap-highlight-color: transparent; }
 .home-language-row .section-language { margin: 0; }
 .home-language-row .language-toggle { padding: 3px; border-radius: 12px; }
 .home-language-row .language-toggle button { min-height: 38px; padding: 7px 12px; }
-.hero-card.home-stage { grid-template-columns: minmax(0, 1fr) auto; min-height: 215px; margin: 0 0 29px; padding: 27px 30px; border-radius: 24px; background: linear-gradient(116deg, #9d2349 0%, #793363 54%, #4f3376 100%); }
+.hero-card.home-stage { grid-template-columns: minmax(0, 1fr) auto; min-height: 215px; margin: 0 0 29px; padding: 27px 30px; border-radius: 24px; background: linear-gradient(116deg, #1d4ed8 0%, #2563eb 54%, #1e40af 100%); }
 .home-stage .hero-copy { max-width: 560px; }
 .home-stage .hero-kicker { margin-bottom: 10px; font-size: .7rem; letter-spacing: .15em; }
 .home-stage h2 { max-width: 490px; font-size: clamp(1.65rem, 5vw, 2.15rem); }
@@ -350,7 +350,7 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 
 /* Featured real hymn on the home page */
-.hero-card.home-stage { min-height: 252px; padding: 30px 32px; background: linear-gradient(125deg, #4a2631 0%, #693644 60%, #874a3f 100%); }
+.hero-card.home-stage { min-height: 252px; padding: 30px 32px; background: linear-gradient(125deg, #172b4d 0%, #1e40af 60%, #2563eb 100%); }
 .home-stage .hero-copy { max-width: 590px; }
 .home-stage h2 { max-width: 520px; margin-top: 4px; font-size: clamp(1.8rem, 5.5vw, 2.45rem); }
 .home-stage .home-featured-line { max-width: 500px; margin: 11px 0 16px; color: rgba(255,255,255,.94); font-family: var(--font-reading); font-size: clamp(1.08rem, 3vw, 1.28rem); font-style: italic; line-height: 1.45; }
@@ -387,7 +387,7 @@ button { -webkit-tap-highlight-color: transparent; }
     radial-gradient(circle at 88% 18%, rgba(255,255,255,.17) 0 1px, transparent 2px),
     radial-gradient(circle at 72% 66%, rgba(255,255,255,.15) 0 1px, transparent 2px),
     radial-gradient(ellipse at 87% 12%, rgba(231,161,199,.3), transparent 37%),
-    linear-gradient(137deg, #382044 0%, #622545 55%, #922e55 100%);
+    linear-gradient(137deg, #1e40af 0%, #2563eb 55%, #1d4ed8 100%);
   box-shadow: 0 15px 34px rgba(77, 30, 66, .24);
 }
 .reader-heading::after {
@@ -450,7 +450,7 @@ html[data-theme="dark"] .reader-heading {
     radial-gradient(circle at 88% 18%, rgba(255,255,255,.13) 0 1px, transparent 2px),
     radial-gradient(circle at 72% 66%, rgba(255,255,255,.12) 0 1px, transparent 2px),
     radial-gradient(ellipse at 87% 12%, rgba(205,135,177,.18), transparent 37%),
-    linear-gradient(137deg, #1c1129 0%, #301629 55%, #461b32 100%);
+    linear-gradient(137deg, #172b4d 0%, #1e40af 55%, #223656 100%);
   box-shadow: 0 15px 34px rgba(0, 0, 0, .2);
 }
 
@@ -537,11 +537,11 @@ html[data-theme="dark"] .reader-heading {
 
 
 /* Keep church identity readable across the app themes. */
-.brand-header { border-bottom-color: #e8e2e9; color: #30243a; background: #fff; backdrop-filter: none; }
+.brand-header { border-bottom-color: #e8f1ff; color: #30243a; background: #fff; backdrop-filter: none; }
 .brand-lockup img { width: 60px; height: 60px; }
 .brand-name { color: #30243a; font-size: 1.18rem; }
-.brand-subtitle { color: #62576a; font-size: .87rem; }
-.brand-header .header-icon-button { color: #382c42; }
+.brand-subtitle { color: #52647f; font-size: .87rem; }
+.brand-header .header-icon-button { color: #263c60; }
 @media (max-width: 430px) {
   .brand-lockup img { width: 52px; height: 52px; }
   .brand-name { font-size: 1.04rem; }
