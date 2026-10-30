@@ -1,6 +1,6 @@
 {
-  "name": "C&S Bible Church Hymnal",
-  "short_name": "C&S Hymnal",
+  "name": "Lightbearer",
+  "short_name": "Lightbearer",
   "description": "Read and search the church hymnal, even without an internet connection.",
   "start_url": "./hymnal.html",
   "scope": "./",
@@ -9,9 +9,9 @@
   "theme_color": "#f8f6fa",
   "icons": [
     {
-      "src": "./assets/church-logo-placeholder.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "./assets/lightbearer-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

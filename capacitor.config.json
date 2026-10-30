@@ -1,6 +1,6 @@
 {
   "appId": "org.consolationministry.lightbearer",
-  "appName": "C&S Bible Church Hymnal",
+  "appName": "Lightbearer",
   "webDir": "dist",
   "android": {
     "allowMixedContent": false

@@ -1,9 +1,9 @@
-const CONSOLATION_HYMN_SOURCE = /Uploaded Hymn Collection|Consolation Hymn/i;
-const ORIGINAL_CONSOLATION_HYMN_SOURCE = /^(?:Uploaded Hymn Collection|Original Consolation Hymn)$/i;
+const LEGACY_UPLOAD_SOURCE = /Uploaded Hymn Collection|Consolation Hymn/i;
+const LEGACY_ORIGINAL_SOURCE = /^(?:Uploaded Hymn Collection|Original Consolation Hymn)$/i;
 
 export function displayHymnalName(hymn) {
   const source = String(hymn && hymn.source_hymnal || "").trim();
-  if (ORIGINAL_CONSOLATION_HYMN_SOURCE.test(source)) return "Original Consolation Hymn";
-  if (CONSOLATION_HYMN_SOURCE.test(source)) return "Consolation Hymn";
+  if (LEGACY_ORIGINAL_SOURCE.test(source)) return "C&S Bible Church Hymnal";
+  if (LEGACY_UPLOAD_SOURCE.test(source)) return "C&S Bible Church Hymnal";
   return source || "Hymn Book";
 }
