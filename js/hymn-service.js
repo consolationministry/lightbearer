@@ -2,7 +2,7 @@ import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "../admin/config.js";
 import { readLocal, writeLocal } from "./local-store.js";
 import { isManagedHymnSource, UPLOADED_HYMN_SOURCE, UPLOADED_YORUBA_HYMN_SOURCE } from "./hymnal-selection.js";
 
-const PUBLISHED_HYMNS_CACHE_KEY = "cerc-published-hymns-unified-v13";
+const PUBLISHED_HYMNS_CACHE_KEY = "cerc-published-hymns-unified-v14";
 const PUBLIC_HYMN_COLUMNS = [
   "id",
   "hymn_number",
