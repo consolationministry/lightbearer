@@ -1,18 +1,24 @@
 {
   "name": "Lightbearer",
   "short_name": "Lightbearer",
-  "description": "Read and search the church hymnal, even without an internet connection.",
+  "version": "1.1.0",
   "start_url": "./hymnal.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#100d0a",
-  "theme_color": "#100d0a",
+  "background_color": "#f4f7ff",
+  "theme_color": "#f4f7ff",
   "icons": [
     {
       "src": "./assets/lightbearer-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/lightbearer-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

@@ -9,6 +9,7 @@ function nextPatchVersion(version) {
 }
 
 test("Android update checks compare semantic version components", () => {
+  assert.equal(APP_VERSION, "1.1.0");
   assert.equal(isNewerVersion("v1.1.0", "1.0.9"), true);
   assert.equal(isNewerVersion("v1.0.10", "1.0.9"), true);
   assert.equal(isNewerVersion("v1.0.0", "1.0.0"), false);

@@ -217,7 +217,10 @@ function renderHome() {
   } else {
     collection = '<div class="home-hymn-list" aria-live="polite">' + visibleHymns.map(homeHymn).join("") + '</div>';
   }
-  return '<section class="page home-page"><div class="home-language">' + languageToggle() + '</div>' + renderHomeSearch() + collection + '</section>';
+  const hero = '<section class="hymnal-hero"><div class="hero-copy"><p class="eyebrow">C&S Bible Church · English + Yorùbá</p><h1>Find a hymn. Find your words.</h1><p>Explore the church collection for worship, prayer, and reflection.</p><div class="hero-actions"><button class="button-primary" type="button" data-action="navigate" data-view="library" data-testid="button-browse-hymns">Browse hymn library ' + icon("arrowRight") + '</button><button class="button-secondary" type="button" data-action="navigate" data-view="listen">Listen live ' + icon("mic") + '</button></div></div></section>';
+  const sidebar = '<aside class="hymn-sidebar" aria-label="Find a hymn"><div class="sidebar-card"><p class="sidebar-label">Explore the collection</p><div class="home-language">' + languageToggle() + '</div>' + renderHomeSearch() + '</div></aside>';
+  const reading = '<section class="reading-card" aria-label="Hymn collection"><div class="reading-card-heading"><div><p class="eyebrow">The hymnal</p><h2>' + (state.query ? "Search results" : "All hymns") + '</h2></div><span class="collection-count">' + visibleHymns.length + (visibleHymns.length === 1 ? " hymn" : " hymns") + '</span></div>' + collection + '</section>';
+  return '<section class="page home-page">' + hero + '<div class="home-library-layout">' + sidebar + reading + '</div></section>';
 }
 
 function renderHymnLibrary() {

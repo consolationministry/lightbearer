@@ -10,5 +10,11 @@ test("main app header renders the church branding and search, without the hambur
   assert.match(appSource, /C&S Bible Church/);
   assert.match(appSource, /data-testid="button-header-search"/);
   assert.doesNotMatch(appSource, /toggle-menu|button-header-menu|header-nav|menuOpen/);
-  assert.doesNotMatch(css, /\.header-nav-/);
+  assert.match(css, /backdrop-filter:\s*blur\(18px\)/);
+  assert.match(css, /\.hymnal-hero/);
+  assert.match(css, /\.home-library-layout/);
+  assert.match(css, /\.reading-card/);
+  assert.match(css, /font-family:\s*var\(--font-reading\)/);
+  assert.match(css, /#f4f7ff/);
+  assert.match(css, /#dbeafe/);
 });

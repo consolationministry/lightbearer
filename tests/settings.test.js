@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { ACCENT_THEMES, getSettings } from "../js/settings.js";
 
-test("uses amber as the sole default accent and migrates legacy settings", () => {
+test("uses blue as the sole default accent and migrates legacy settings", () => {
   const records = new Map([
     ["cerc-hymnal-settings-v1", JSON.stringify({ accent: "ruby" })]
   ]);
@@ -13,7 +13,7 @@ test("uses amber as the sole default accent and migrates legacy settings", () =>
     }
   };
 
-  assert.deepEqual(ACCENT_THEMES, ["amber"]);
-  assert.equal(getSettings().accent, "amber");
-  assert.equal(getSettings().theme, "dark");
+  assert.deepEqual(ACCENT_THEMES, ["blue"]);
+  assert.equal(getSettings().accent, "blue");
+  assert.equal(getSettings().theme, "light");
 });
