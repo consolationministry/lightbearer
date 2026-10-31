@@ -119,15 +119,27 @@ function renderLibraryForm(root) {
   root.innerHTML = '<section class="panel library-admin-panel"><header class="panel-head"><div><h1>' + (book ? "Edit book" : "Add book") + '</h1><p>' + (book ? "Update details or re-upload the file." : "Fill the details, choose covers and the book file.") + '</p></div>' +
     '<button class="admin-button" type="button" data-library-action="cancel">Cancel</button></header>' +
     '<form id="library-book-form" class="library-admin-form">' +
-    '<label>Book title<input name="title" required value="' + escape(book && book.title || "") + '"></label>' +
-    '<label>Author name<input name="author" value="' + escape(book && book.author || "") + '"></label>' +
-    '<label>Front cover image<input name="front_cover" type="file" accept="image/*"></label>' +
-    '<label>Back cover image<input name="back_cover" type="file" accept="image/*"></label>' +
-    (book ? '<label>Re-upload book file (optional: replaces pages)<input name="bookfile" type="file" accept=".pdf,.txt"></label>' : '<label>Book file (PDF or TXT)<input name="bookfile" type="file" accept=".pdf,.txt" required></label>') +
+    '<div class="library-form-row"><label class="library-field"><span>Book title</span><input name="title" required placeholder="e.g. The Ministry Handbook" value="' + escape(book && book.title || "") + '"></label>' +
+    '<label class="library-field"><span>Author name</span><input name="author" placeholder="e.g. Pastor D. Peter" value="' + escape(book && book.author || "") + '"></label></div>' +
+    '<div class="library-form-row"><label class="library-file-field"><span>Front cover image</span><input name="front_cover" type="file" accept="image/*" data-file-label="front"><span class="library-file-box"><b>Choose image</b><em class="library-file-name">No file chosen</em></span><img class="library-cover-preview" hidden alt=""></label>' +
+    '<label class="library-file-field"><span>Back cover image</span><input name="back_cover" type="file" accept="image/*" data-file-label="back"><span class="library-file-box"><b>Choose image</b><em class="library-file-name">No file chosen</em></span><img class="library-cover-preview" hidden alt=""></label></div>' +
+    '<label class="library-file-field library-bookfile"><span>' + (book ? "Re-upload book file (optional: replaces pages)" : "Book file (PDF or TXT)") + '</span><input name="bookfile" type="file" accept=".pdf,.txt"' + (book ? "" : " required") + ' data-file-label="book"><span class="library-file-box"><b>Choose file</b><em class="library-file-name">No file chosen</em></span></label>' +
     (state.error ? '<p class="form-error">' + escape(state.error) + '</p>' : '') +
     '<div class="library-upload-progress" hidden><div class="library-upload-bar"><div class="library-upload-bar-fill" style="width:2%"></div></div><span class="library-upload-label">Preparing…</span></div>' +
-    '<button class="admin-button primary" type="submit" ' + (state.busy ? "disabled" : "") + '>' + (state.busy ? "Saving…" : (book ? "Save changes" : "Upload book")) + '</button></form></section>';
+    '<div class="library-form-actions"><button class="admin-button primary" type="submit" ' + (state.busy ? "disabled" : "") + '>' + (state.busy ? "Saving…" : (book ? "Save changes" : "Upload book")) + '</button></div></form></section>';
   const form = root.querySelector("#library-book-form");
+  form.querySelectorAll('input[type=file]').forEach(function (input) {
+    input.addEventListener("change", function () {
+      const box = form.querySelector('.library-file-box:has(input[name="' + input.name + '"])') || input.parentElement.querySelector(".library-file-box");
+      const nameEl = input.parentElement.querySelector(".library-file-name");
+      if (nameEl) nameEl.textContent = input.files && input.files[0] ? input.files[0].name : "No file chosen";
+      const preview = input.parentElement.querySelector(".library-cover-preview");
+      if (preview) {
+        if (input.files && input.files[0]) { preview.src = URL.createObjectURL(input.files[0]); preview.hidden = false; }
+        else preview.hidden = true;
+      }
+    });
+  });
   form.addEventListener("submit", function (event) { event.preventDefault(); saveBookForm(form); });
 }
 
