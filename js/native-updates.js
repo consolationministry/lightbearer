@@ -15,7 +15,13 @@ async function checkAndroidRelease() {
       headers: { Accept: "application/vnd.github+json" },
       cache: "no-store"
     });
-    if (!response.ok) return;
+    if (!response.ok) {
+      // rate-limited or transient GitHub failure: retry sooner instead of waiting the full 5 minutes
+      if (response.status === 403 || response.status === 429) {
+        window.setTimeout(checkAndroidRelease, 45 * 1000);
+      }
+      return;
+    }
     const release = await response.json();
     const appInfo = await App.getInfo();
     const apkAsset = (window.__LIGHTBEARER_ADMIN__ === true || window.location.pathname.indexOf("/admin") >= 0) ? ADMIN_APK_ASSET : MEMBER_APK_ASSET;
