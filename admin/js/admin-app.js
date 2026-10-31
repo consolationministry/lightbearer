@@ -350,28 +350,57 @@ async function renderServiceForm() {
   const existing = state.editingServiceId ? await getServicePlan(state.editingServiceId) : null;
   if (state.editingServiceId && !existing) { state.serviceMode = "list"; state.editingServiceId = null; showToast("That service plan is no longer available."); return renderServiceWorkspace(); }
   const hymns = await getHymns(); const selectedIds = existing ? existing.hymn_ids || [] : [];
+  const selectedHymns = selectedIds.map(function (id) { return hymns.find(function (hymn) { return String(hymn.id) === String(id); }); }).filter(Boolean);
   content.replaceChildren();
   const heading = make("div", "page-heading"); const headingContent = document.createElement("div");
   headingContent.append(make("h1", "", existing ? "Edit Service Plan" : "Create Service Plan"), make("p", "", existing ? "Update the service details and selected hymns." : "Choose a date and the hymns for this service."));
   heading.append(headingContent); content.append(heading);
-  const options = hymns.map(function (hymn) {
-    const checked = selectedIds.includes(hymn.id) ? " checked" : "";
+  const options = selectedHymns.map(function (hymn) {
     const headingText = adminHymnNumberLabel(hymn) + " · " + adminHymnTitle(hymn);
-    const firstLine = hymn.first_line_en || hymn.first_line_yoruba || "First line not added";
-    return '<label class="service-hymn-option" for="service-hymn-' + escapeHtml(hymn.id) + '"><input type="checkbox" id="service-hymn-' + escapeHtml(hymn.id) + '" name="service_hymn_ids" value="' + escapeHtml(hymn.id) + '"' + checked + '><span class="service-hymn-copy"><strong>' + escapeHtml(headingText) + '</strong><span>' + escapeHtml(firstLine) + '</span></span></label>';
+    return '<li class="service-hymn-selected" data-service-hymn="' + escapeHtml(hymn.id) + '"><span><strong>' + escapeHtml(headingText) + '</strong><span>' + escapeHtml(hymn.first_line_en || hymn.first_line_yoruba || "") + '</span></span><button type="button" class="row-action row-action-danger" data-action="remove-service-hymn" data-id="' + escapeHtml(hymn.id) + '" aria-label="Remove ' + escapeHtml(headingText) + '">Remove</button></li>';
   }).join("");
   const now = new Date(); const today = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const panel = make("section", "panel form-panel"); panel.setAttribute("aria-label", existing ? "Edit service plan form" : "Create service plan form");
-  panel.innerHTML = '<form id="service-form" novalidate><h2 class="form-section-title">Service details</h2><p class="form-section-help">Plans are saved only in this browser preview. They do not publish changes to the public hymnal.</p><div class="hymn-fields-grid"><div class="admin-field"><label for="service-title">Service name <span aria-hidden="true">*</span></label><input class="form-input" id="service-title" name="service_title" type="text" maxlength="100" value="' + escapeHtml(existing ? existing.title : "") + '" placeholder="Sunday service" required></div><div class="admin-field"><label for="service-date">Service date <span aria-hidden="true">*</span></label><input class="form-input" id="service-date" name="service_date" type="date" min="' + today + '" value="' + escapeHtml(existing ? existing.date : "") + '" required></div></div><section class="service-hymn-section" aria-labelledby="service-hymn-heading"><div class="service-hymn-heading"><div><h2 id="service-hymn-heading" tabindex="-1">Choose hymns</h2><p>Select at least one hymn for this service.</p></div><span class="service-hymn-count" id="service-hymn-count" aria-live="polite"></span></div><div class="service-hymn-picker">' + (options || '<p class="service-empty-hymns">No demo hymns are available yet. Add a hymn before creating a service plan.</p>') + '</div></section><div id="service-errors" class="form-errors" role="alert" aria-live="polite" hidden></div><div class="form-actions"><div class="form-actions-left"></div><div class="form-actions-right"><button class="button button-secondary" type="button" data-action="cancel-service">Cancel</button><button class="button button-primary" type="submit">Save Service Plan</button></div></div></form>';
-  panel.innerHTML = panel.innerHTML.replace("Plans are saved only in this browser preview. They do not publish changes to the public hymnal.", "Service plans from all dates and their published hymn selections are shown in the member app.")
-    .replace("No demo hymns are available yet.", "No hymns are available yet.");
-  content.append(panel); state.serviceFormStart = serviceFormSignature(); updateServiceHymnCount();
+  panel.innerHTML = '<form id="service-form" novalidate><h2 class="form-section-title">Service details</h2><div class="hymn-fields-grid"><div class="admin-field"><label for="service-title">Service name <span aria-hidden="true">*</span></label><input class="form-input" id="service-title" name="service_name" type="text" maxlength="100" value="' + escapeHtml(existing ? existing.title : "") + '" placeholder="Sunday service" required></div><div class="admin-field"><label for="service-day">Day <span aria-hidden="true">*</span></label><select class="form-input" id="service-day" name="service_day" required><option value="">Choose a day</option>' + ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map(function (day) { return '<option value="' + day + '"' + (existing && existing.day === day ? " selected" : "") + '>' + day + '</option>'; }).join("") + '</select></div><div class="admin-field"><label for="service-date">Service date <span aria-hidden="true">*</span></label><input class="form-input" id="service-date" name="service_date" type="date" value="' + escapeHtml(existing ? existing.date : today) + '" required></div><div class="admin-field"><label for="service-title-display">Title</label><input class="form-input" id="service-title-display" name="service_title" type="text" maxlength="120" value="' + escapeHtml(existing ? existing.service_title || "" : "") + '" placeholder="Service title"></div><div class="admin-field"><label for="service-theme">Theme</label><input class="form-input" id="service-theme" name="service_theme" type="text" maxlength="160" value="' + escapeHtml(existing ? existing.theme || "" : "") + '" placeholder="Service theme"></div></div><section class="service-hymn-section" aria-labelledby="service-hymn-heading"><div class="service-hymn-heading"><div><h2 id="service-hymn-heading" tabindex="-1">Add hymns</h2><p>Search by hymn number, word, or title. Add as many as you need.</p></div><span class="service-hymn-count" id="service-hymn-count" aria-live="polite"></span></div><div class="admin-field"><label for="service-hymn-search">Search hymns</label><input class="form-input" id="service-hymn-search" type="search" placeholder="Search number, word, or title" autocomplete="off"></div><div id="service-hymn-results" class="service-hymn-picker"></div><ol id="service-hymn-selected" class="service-hymn-selected-list">' + options + '</ol></section><div id="service-errors" class="form-errors" role="alert" aria-live="polite" hidden></div><div class="form-actions"><div class="form-actions-left"></div><div class="form-actions-right"><button class="button button-secondary" type="button" data-action="cancel-service">Cancel</button><button class="button button-primary" type="submit">Save Service Plan</button></div></div></form>';
+  content.append(panel); state.serviceFormHymns = hymns; state.serviceFormStart = serviceFormSignature(); renderServiceHymnSearch(""); updateServiceHymnCount();
   const first = document.getElementById("service-title"); if (!existing && first) first.focus({ preventScroll: true });
 }
+function renderServiceHymnSearch(query) {
+  const results = document.getElementById("service-hymn-results");
+  if (!results) return;
+  const selected = new Set(Array.from(document.querySelectorAll("#service-hymn-selected [data-service-hymn]")).map(function (node) { return String(node.dataset.serviceHymn); }));
+  const needle = String(query || "").trim().toLowerCase();
+  const matching = (state.serviceFormHymns || []).filter(function (hymn) {
+    if (selected.has(String(hymn.id))) return false;
+    if (!needle) return false;
+    return [hymn.hymn_number, hymn.source_hymn_number, hymn.title_en, hymn.title_yoruba, hymn.first_line_en, hymn.first_line_yoruba].join(" ").toLowerCase().includes(needle);
+  }).slice(0, 50);
+  results.innerHTML = matching.length ? matching.map(function (hymn) {
+    const label = adminHymnNumberLabel(hymn) + " · " + adminHymnTitle(hymn);
+    return '<button type="button" class="service-hymn-option" data-action="add-service-hymn" data-id="' + escapeHtml(hymn.id) + '"><strong>' + escapeHtml(label) + '</strong><span>' + escapeHtml(hymn.first_line_en || hymn.first_line_yoruba || "") + '</span></button>';
+  }).join("") : '<p class="service-empty-hymns">' + (needle ? "No hymns match that search." : "Type a hymn number, word, or title to search.") + '</p>';
+}
+function addServiceHymn(id) {
+  const hymn = (state.serviceFormHymns || []).find(function (item) { return String(item.id) === String(id); });
+  const list = document.getElementById("service-hymn-selected");
+  if (!hymn || !list || list.querySelector('[data-service-hymn="' + CSS.escape(String(id)) + '"]')) return;
+  const label = adminHymnNumberLabel(hymn) + " · " + adminHymnTitle(hymn);
+  const item = document.createElement("li"); item.className = "service-hymn-selected"; item.dataset.serviceHymn = String(hymn.id);
+  item.innerHTML = '<span><strong>' + escapeHtml(label) + '</strong><span>' + escapeHtml(hymn.first_line_en || hymn.first_line_yoruba || "") + '</span></span><button type="button" class="row-action row-action-danger" data-action="remove-service-hymn" data-id="' + escapeHtml(hymn.id) + '" aria-label="Remove ' + escapeHtml(label) + '">Remove</button>';
+  list.append(item); updateServiceHymnCount(); state.serviceFormDirty = true;
+  const search = document.getElementById("service-hymn-search"); renderServiceHymnSearch(search ? search.value : "");
+}
+function removeServiceHymn(id) {
+  const item = document.querySelector('#service-hymn-selected [data-service-hymn="' + CSS.escape(String(id)) + '"]');
+  if (item) item.remove();
+  updateServiceHymnCount(); state.serviceFormDirty = true;
+  const search = document.getElementById("service-hymn-search"); renderServiceHymnSearch(search ? search.value : "");
+}
+
 function updateServiceHymnCount() {
   const form = document.getElementById("service-form"); const count = document.getElementById("service-hymn-count");
   if (!form || !count) return;
-  const selected = form.querySelectorAll('input[name="service_hymn_ids"]:checked').length;
+  const selected = form.querySelectorAll("#service-hymn-selected [data-service-hymn]").length;
   count.textContent = selected + (selected === 1 ? " hymn selected" : " hymns selected");
 }
 function showServiceErrors(errors) {
@@ -380,13 +409,20 @@ function showServiceErrors(errors) {
 }
 async function saveServiceForm(submitter) {
   const form = document.getElementById("service-form"); if (!form) return;
-  const data = { title: form.elements.service_title.value.trim(), date: form.elements.service_date.value, hymn_ids: Array.from(form.querySelectorAll('input[name="service_hymn_ids"]:checked')).map(function (input) { return input.value; }) };
+  const data = {
+    title: form.elements.service_name.value.trim(),
+    day: form.elements.service_day.value,
+    date: form.elements.service_date.value,
+    service_title: form.elements.service_title.value.trim(),
+    theme: form.elements.service_theme.value.trim(),
+    hymn_ids: Array.from(form.querySelectorAll("#service-hymn-selected [data-service-hymn]")).map(function (node) { return node.dataset.serviceHymn; })
+  };
   const errors = [];
   if (!data.title) errors.push("Enter a service name.");
-  if (data.title.length > 100) errors.push("Service names must be 100 characters or fewer.");
+  if (!data.day) errors.push("Choose the service day.");
   if (!data.date) errors.push("Choose a service date.");
-  if (!data.hymn_ids.length) errors.push("Select at least one hymn.");
-  if (errors.length) { showServiceErrors(errors); if (!data.title) form.elements.service_title.focus(); else if (!data.date) form.elements.service_date.focus(); else document.getElementById("service-hymn-heading").focus(); return; }
+  if (!data.hymn_ids.length) errors.push("Add at least one hymn.");
+  if (errors.length) { showServiceErrors(errors); if (!data.title) form.elements.service_name.focus(); else if (!data.day) form.elements.service_day.focus(); else if (!data.date) form.elements.service_date.focus(); else document.getElementById("service-hymn-heading").focus(); return; }
   const button = submitter || form.querySelector('button[type="submit"]');
   if (button) { button.disabled = true; button.setAttribute("aria-busy", "true"); }
   const editing = state.editingServiceId !== null; const id = state.editingServiceId;
@@ -394,8 +430,7 @@ async function saveServiceForm(submitter) {
     const mode = editing ? await updateService(id, data) : await createService(data);
     state.serviceMode = "list"; state.editingServiceId = null; state.serviceFormStart = null;
     await renderServiceWorkspace();
-    const message = editing ? "Service plan updated." : "Service plan created.";
-    showToast(mode === "browser" ? message + " Saved in this browser's demo data." : message + " Saved for this open session only; browser storage is unavailable.");
+    showToast((editing ? "Service plan updated." : "Service plan created.") + (mode === "supabase" ? " Published to the service planner." : " Saved locally only because Supabase is not configured."));
   } catch (error) {
     showServiceErrors([error && error.message ? error.message : "The service plan could not be saved."]);
   } finally {
@@ -1062,8 +1097,12 @@ function isCategoryFormDirty() {
 }
 function serviceFormSignature() {
   const form = document.getElementById("service-form"); if (!form) return null;
-  const selected = Array.from(form.querySelectorAll('input[name="service_hymn_ids"]:checked')).map(function (input) { return input.value; }).sort();
-  return JSON.stringify({ title: form.elements.service_title.value.trim(), date: form.elements.service_date.value, hymn_ids: selected });
+  return JSON.stringify({
+    title: form.elements.service_name.value.trim(), day: form.elements.service_day.value,
+    date: form.elements.service_date.value, service_title: form.elements.service_title.value.trim(),
+    theme: form.elements.service_theme.value.trim(),
+    hymn_ids: Array.from(form.querySelectorAll("#service-hymn-selected [data-service-hymn]")).map(function (node) { return node.dataset.serviceHymn; })
+  });
 }
 function isServiceFormDirty() {
   const signature = serviceFormSignature();
@@ -1348,6 +1387,13 @@ root.addEventListener("click", async function (event) {
     await cancelServiceForm();
   } else if (action === "delete-service") {
     await removeServiceFromPreview(button.dataset.id);
+  } else if (action === "search-service-hymns") {
+    const input = document.getElementById("service-hymn-search");
+    renderServiceHymnSearch(input ? input.value : "");
+  } else if (action === "add-service-hymn") {
+    addServiceHymn(button.dataset.id);
+  } else if (action === "remove-service-hymn") {
+    removeServiceHymn(button.dataset.id);
   } else if (action === "new-program") {
     state.activeView = "programs"; state.programMode = "form"; state.editingProgramId = null; state.programFlyerUrl = ""; closeMenu(); renderCurrentView();
   } else if (action === "edit-program") {
@@ -1420,6 +1466,8 @@ root.addEventListener("submit", async function (event) {
 });
 root.addEventListener("input", function (event) {
   if (event.target.matches('[data-filter="search"]')) { state.search = event.target.value; state.selectedHymnIds.clear(); refreshHymnRows(); }
+  if (event.target.id === "service-hymn-search") renderServiceHymnSearch(event.target.value);
+  if (event.target.closest("#service-form")) state.serviceFormDirty = isServiceFormDirty();
   if (event.target.closest("#hymn-form")) state.formDirty = isFormDirty();
   if (event.target.matches("[data-rich-editor]")) rememberEditorSelection(event.target.dataset.richEditor);
 });

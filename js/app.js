@@ -1,4 +1,4 @@
-import { getAllHymns } from "./hymn-service.js";
+import { getAllHymns } from "./hymn-service.js?v=31";
 import { searchHymns, rankHymnResults } from "./search.js";
 import { getFavorites, isFavorite, toggleFavorite } from "./favorites.js";
 import { addRecent, getRecentNumbers } from "./recent.js";
@@ -459,6 +459,20 @@ function openServiceAim(planId, hymnId) {
   window.scrollTo(0, 0);
 }
 
+function openServicePlan(planId) {
+  state.serviceSelectedId = String(planId);
+  state.serviceAimId = null;
+  render();
+  window.scrollTo(0, 0);
+}
+
+function closeServicePlan() {
+  state.serviceSelectedId = null;
+  state.serviceAimId = null;
+  render();
+  window.scrollTo(0, 0);
+}
+
 function closeServiceAim() {
   state.serviceSelectedId = null;
   state.serviceAimId = null;
@@ -525,25 +539,19 @@ function servicePlanHymns(plan) {
 
 function servicePlanDateText(plan) {
   const dateValue = String(plan.date || "").slice(0, 10);
-  return servicePlanDayLabel(dateValue) || publicDate(dateValue) || "Service date";
+  return plan.day || servicePlanDayLabel(dateValue) || publicDate(dateValue) || "";
 }
 
 function renderServiceCard(plan) {
   const dateValue = String(plan.date || "").slice(0, 10);
   const planId = escapeHtml(plan.id);
-  const title = escapeHtml(repairMojibake(String(plan.title || "Untitled service")));
-  const aims = servicePlanHymns(plan);
-  const aimMarkup = aims.length
-    ? '<ol class="public-service-hymns" aria-label="Aims for ' + title + '">' + aims.map(function (hymn) {
-      return '<li><button type="button" class="public-service-hymn" data-action="open-service-aim" data-plan-id="' + planId + '" data-hymn-id="' + escapeHtml(hymn.id) + '"><span>' + escapeHtml(displayHymnNumber(hymn)) + '</span>' + escapeHtml(currentHymnTitle(hymn)) + '</button></li>';
-    }).join("") + '</ol>'
-    : '<p class="public-content-unavailable">No aims have been added for this service yet.</p>';
-  return '<article class="public-program-post public-service-card">' +
-    '<header class="public-program-post-header"><img class="public-program-post-avatar" src="./assets/church-logo-placeholder.png" alt="" width="42" height="42">' +
-    '<div class="public-program-post-identity"><h2 class="public-program-post-title">' + title + '</h2>' +
-    '<time class="public-program-post-event-date" datetime="' + escapeHtml(dateValue) + '">' + escapeHtml(servicePlanDateText(plan)) + '</time></div></header>' +
-    '<div class="public-service-aims"><p class="public-service-aims-label">Aims</p>' + aimMarkup + '</div>' +
-    '</article>';
+  const name = escapeHtml(repairMojibake(String(plan.title || "Untitled service")));
+  const serviceTitle = escapeHtml(repairMojibake(String(plan.service_title || "")));
+  const theme = escapeHtml(repairMojibake(String(plan.theme || "")));
+  return '<button type="button" class="public-service-card" data-action="open-service-plan" data-plan-id="' + planId + '"><span class="public-service-day-tag">' + escapeHtml(servicePlanDateText(plan)) + '</span><strong>' + name + '</strong>' +
+    (serviceTitle ? '<span>' + serviceTitle + '</span>' : '') +
+    '<time datetime="' + escapeHtml(dateValue) + '">' + escapeHtml(publicDate(dateValue)) + '</time>' +
+    (theme ? '<span class="public-service-theme">' + theme + '</span>' : '') + '</button>';
 }
 
 function renderPublicServicePlans(plans, available) {
@@ -554,33 +562,36 @@ function renderPublicServicePlans(plans, available) {
   return '<div class="public-service-list">' + plans.map(renderServiceCard).join("") + '</div>';
 }
 
-function renderServiceAimDetail(plan, hymn) {
-  const title = escapeHtml(currentHymnTitle(hymn));
-  const firstLine = hymn.first_line_en || hymn.first_line_yoruba || "";
-  return '<section class="page public-service-aim-page">' +
-    '<button class="reader-back public-program-back" type="button" data-action="close-service-aim">← Back to service plans</button>' +
-    '<article class="public-program-post public-program-post-detail public-service-aim-detail">' +
-    '<header class="public-program-post-header"><img class="public-program-post-avatar" src="./assets/church-logo-placeholder.png" alt="" width="42" height="42">' +
-    '<div class="public-program-post-identity"><h1 class="public-program-post-title">' + title + '</h1>' +
-    '<time class="public-program-post-event-date" datetime="' + escapeHtml(String(plan.date || "").slice(0, 10)) + '">' + escapeHtml(repairMojibake(String(plan.title || ""))) + ' · ' + escapeHtml(servicePlanDateText(plan)) + '</time></div></header>' +
-    '<section class="public-program-details" aria-label="Aim details">' +
-    '<div class="public-program-detail-row"><span class="public-program-detail-title">Aim</span><span class="public-program-detail-value">' + escapeHtml(displayHymnNumber(hymn)) + ' · ' + title + '</span></div>' +
-    (firstLine ? '<div class="public-program-detail-row"><span class="public-program-detail-title">First line</span><span class="public-program-detail-value">' + escapeHtml(firstLine) + '</span></div>' : "") +
-    '</section>' +
-    '<div class="public-service-aim-actions"><button class="button button-primary" type="button" data-action="open-hymn" data-number="' + escapeHtml(hymn.hymn_number) + '">Open full hymn</button></div>' +
-    '</article></section>';
+function renderServicePlanDetail(plan) {
+  const title = escapeHtml(repairMojibake(String(plan.title || "Untitled service")));
+  const aims = servicePlanHymns(plan);
+  const hymnMarkup = aims.length
+    ? '<ol class="public-service-hymns" aria-label="Hymns for ' + title + '">' + aims.map(function (hymn) {
+      return '<li><button type="button" class="public-service-hymn" data-action="open-service-aim" data-plan-id="' + escapeHtml(plan.id) + '" data-hymn-id="' + escapeHtml(hymn.id) + '"><span>' + escapeHtml(displayHymnNumber(hymn)) + '</span>' + escapeHtml(currentHymnTitle(hymn)) + '</button></li>';
+    }).join("") + '</ol>'
+    : '<p class="public-content-unavailable">No hymns have been added for this service yet.</p>';
+  return '<section class="page public-service-detail"><button class="reader-back public-program-back" type="button" data-action="close-service-plan">← Back to services</button><article class="public-service-detail-card">' +
+    '<p class="public-service-day-tag">' + escapeHtml(servicePlanDateText(plan)) + '</p><h1>' + title + '</h1>' +
+    (plan.service_title ? '<p class="public-service-title">' + escapeHtml(repairMojibake(plan.service_title)) + '</p>' : '') +
+    '<p class="public-service-date">' + escapeHtml(publicDate(plan.date)) + '</p>' +
+    (plan.theme ? '<p class="public-service-theme">Theme: ' + escapeHtml(repairMojibake(plan.theme)) + '</p>' : '') +
+    '<h2>Hymns</h2>' + hymnMarkup + '</article></section>';
 }
+
 
 function renderPublicServicePlansPage() {
   const content = state.publicContent || { programs: [], servicePlans: [], programsAvailable: false, servicePlansAvailable: false };
-  if (state.serviceSelectedId && state.serviceAimId) {
+  if (state.serviceSelectedId) {
     const plan = content.servicePlans.find(function (item) { return String(item.id) === String(state.serviceSelectedId); });
-    const hymn = plan ? servicePlanHymns(plan).find(function (item) { return String(item.id) === String(state.serviceAimId); }) : null;
-    if (plan && hymn) return renderServiceAimDetail(plan, hymn);
+    if (plan && state.serviceAimId) {
+      const hymn = servicePlanHymns(plan).find(function (item) { return String(item.id) === String(state.serviceAimId); });
+      if (hymn) { state.selectedNumber = Number(hymn.hymn_number); state.readerReturnView = "services"; state.view = "reader"; return renderReader(); }
+    }
+    if (plan) return renderServicePlanDetail(plan);
     state.serviceSelectedId = null;
     state.serviceAimId = null;
   }
-  return '<section class="page public-service-plans-page">' + pageHeading("Service Planner", "Each service and the aims planned for it. Tap an aim to open it.") +
+  return '<section class="page public-service-plans-page">' + pageHeading("Service Planner", "Choose a service to see its details and hymns.") +
     '<section class="public-content-section" aria-label="Service plans">' + renderPublicServicePlans(content.servicePlans, content.servicePlansAvailable) + '</section></section>';
 }
 
@@ -760,8 +771,8 @@ function aboutBody() {
     + '<h2>The church</h2><p>C&S Bible Church is a Cherubim and Seraphim church. Lightbearer carries its worship life in English and Yorùbá, so members can reach the hymns of the church on any device, at any service or at home.</p>'
     + '<h2>The app</h2><p>Lightbearer is a free digital hymnal built for C&S Bible Church. It offers the full hymnary in English and Yorùbá, search by number, title or first line, favorites, recently viewed, service hymn sets, and live audio from church programmes. There are no accounts, no ads and no paid features, and your favorites stay on your own device.</p>'
     + '<h2>Forms</h2><p>Church forms and event registrations are available on the Forms page in the menu. Submitted forms receive a registration ID you can keep for reference.</p>'
-    + '<h2>Credits and rights</h2><p>Hymn texts courtesy of Seraph Media C&amp;S Hymnary &ndash; <a href="https://www.seraphmedia.com.ng" target="_blank" rel="noopener">seraphmedia.com.ng</a>. The app remains free for worship and devotion, and the texts are kept exactly as supplied.</p>'
-    + '<h2>Contact</h2><p>For questions about the app or the hymns, reach the church through its official social media channels.</p>'
+    + '<h2>Credits and rights</h2><p>Hymn texts courtesy of Seraph Media C&amp;S Hymnary. <a href="https://www.seraphmedia.com.ng" target="_blank" rel="noopener">seraphmedia.com.ng</a>. The app remains free for worship and devotion, and the texts are kept exactly as supplied.</p>'
+    + '<h2>Follow C&amp;S Bible Church</h2><p><a href="https://www.youtube.com/@consolationmandate2005" target="_blank" rel="noopener">YouTube</a> · <a href="https://www.facebook.com/share/19uL5pnf1Y/" target="_blank" rel="noopener">Facebook</a></p>'
     + '</div>';
 }
 

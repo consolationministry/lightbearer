@@ -2,7 +2,7 @@ import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "../admin/config.js";
 import { readLocal, writeLocal } from "./local-store.js";
 
 const PROGRAMS_CACHE_KEY = "cerc-public-programs-v5";
-const SERVICE_PLANS_CACHE_KEY = "cerc-public-service-plans-v2";
+const SERVICE_PLANS_CACHE_KEY = "cerc-public-service-plans-v3";
 
 function localDateKey(date) {
   return [
@@ -113,7 +113,9 @@ export async function getMemberContent() {
         { select: "id,title,venue,start_date,end_date,flyer_data_url", order: "start_date.desc" }
       ]
     ),
-    fetchRows("service_plans", "id,title,date,hymn_ids", "date.desc", SERVICE_PLANS_CACHE_KEY)
+    fetchRows("service_plans", "id,title,service_title,day,date,theme,hymn_ids", "date.desc", SERVICE_PLANS_CACHE_KEY, [
+      { select: "id,title,date,hymn_ids", order: "date.desc" }
+    ])
   ]);
 
   return {

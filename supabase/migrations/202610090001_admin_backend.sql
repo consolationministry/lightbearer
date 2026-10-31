@@ -77,11 +77,18 @@ create index if not exists hymns_updated_at on public.hymns (updated_at desc);
 create table if not exists public.service_plans (
   id uuid primary key default gen_random_uuid(),
   title text not null check (length(btrim(title)) between 1 and 100),
+  service_title text not null default '',
+  day text not null default '',
+  theme text not null default '',
   date date not null,
   hymn_ids uuid[] not null default '{}',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.service_plans add column if not exists service_title text not null default '';
+alter table public.service_plans add column if not exists day text not null default '';
+alter table public.service_plans add column if not exists theme text not null default '';
 
 create index if not exists service_plans_date on public.service_plans (date);
 

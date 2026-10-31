@@ -24,7 +24,8 @@ const PUBLIC_HYMN_COLUMNS = [
   "source_first_line_en",
   "source_hymnary_url",
   "lyrics_source_url",
-  "status"
+  "status",
+  "source_number_label"
 ].join(",");
 
 // Preserve printed "Various" labels without bundling hymn text in the member app.
@@ -104,7 +105,8 @@ async function fetchPublishedHymns() {
   const query = new URLSearchParams({
     select: PUBLIC_HYMN_COLUMNS,
     status: "eq.published",
-    order: "hymn_number.asc"
+    order: "hymn_number.asc",
+    limit: "1000"
   });
 
   try {
