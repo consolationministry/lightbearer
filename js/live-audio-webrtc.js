@@ -413,16 +413,11 @@ export async function startLiveAudioPublisher(options) {
         return;
       }
       const attempts = peerRecoveryAttempts.get(clientId) || 0;
-      if (attempts >= 3) {
-        channel.send({ type: "failed", sessionId: opts.sessionId, from: localClientId, to: clientId });
-        closePeer(clientId);
-        return;
-      }
       if (peer.signalingState !== "stable") {
         if (peer.signalingState === "have-local-offer") {
           try { await peer.setLocalDescription({ type: "rollback" }); } catch (error) {}
         } else {
-          schedulePeerRecovery(clientId, peer, 1500);
+          schedulePeerRecovery(clientId, peer, Math.min(5000, 500 * Math.pow(2, attempts)));
           return;
         }
       }
@@ -430,6 +425,7 @@ export async function startLiveAudioPublisher(options) {
       const iceQueue = peerIceQueues.get(clientId);
       if (!iceQueue) return;
       peerRecoveryAttempts.set(clientId, attempts + 1);
+      if (opts.onStatus) opts.onStatus("reconnecting");
       iceQueue.beginRemoteDescription();
       if (!channel.send({ type: "restart-start", sessionId: opts.sessionId, from: localClientId, to: clientId })) {
         await iceQueue.restoreRemoteDescription();
@@ -449,14 +445,14 @@ export async function startLiveAudioPublisher(options) {
           throw new Error("The live audio signaling channel is reconnecting.");
         }
         if (opts.onStatus) opts.onStatus("reconnecting");
-        schedulePeerRecovery(clientId, peer, 12000);
+        schedulePeerRecovery(clientId, peer, Math.min(5000, 500 * Math.pow(2, attempts + 1)));
       } catch (error) {
         await iceQueue.restoreRemoteDescription();
         channel.send({ type: "restart-cancel", sessionId: opts.sessionId, from: localClientId, to: clientId });
         if (peer.signalingState === "have-local-offer") {
           try { await peer.setLocalDescription({ type: "rollback" }); } catch (rollbackError) {}
         }
-        schedulePeerRecovery(clientId, peer, 2000);
+        schedulePeerRecovery(clientId, peer, Math.min(5000, 500 * Math.pow(2, attempts + 1)));
       }
     }, Math.max(0, Number(delayMs) || 0));
     peerRecoveryTimers.set(clientId, timer);
@@ -579,14 +575,11 @@ export async function startLiveAudioPublisher(options) {
           if (opts.onStatus) opts.onStatus("connected");
           void reportNetworkStats();
         } else if (peer.connectionState === "disconnected") {
-          if (!peerDisconnectTimers.has(message.from)) {
-            peerDisconnectTimers.set(message.from, globalThis.setTimeout(() => {
-              peerDisconnectTimers.delete(message.from);
-              schedulePeerRecovery(message.from, peer, 0);
-            }, 3000));
-          }
+          clearPeerTimer(peerDisconnectTimers, message.from);
+          schedulePeerRecovery(message.from, peer, Math.min(500, 500 * Math.pow(2, peerRecoveryAttempts.get(message.from) || 0)));
         } else if (peer.connectionState === "failed") {
-          schedulePeerRecovery(message.from, peer, 0);
+          clearPeerTimer(peerDisconnectTimers, message.from);
+          schedulePeerRecovery(message.from, peer, Math.min(500, 500 * Math.pow(2, peerRecoveryAttempts.get(message.from) || 0)));
         } else if (peer.connectionState === "closed") {
           closePeer(message.from);
         }
@@ -709,7 +702,7 @@ export async function startLiveAudioListener(options) {
     if (opts.onStatus) opts.onStatus("reconnecting");
     const delay = Number.isFinite(Number(delayMs))
       ? Math.max(0, Number(delayMs))
-      : Math.min(30000, 750 * Math.pow(2, reconnectAttempts)) + Math.round(Math.random() * 400);
+      : Math.min(5000, 500 * Math.pow(2, reconnectAttempts));
     reconnectAttempts = Math.min(reconnectAttempts + 1, 8);
     reconnectTimer = globalThis.setTimeout(() => {
       reconnectTimer = null;
@@ -834,9 +827,9 @@ export async function startLiveAudioListener(options) {
           if (opts.onStatus) opts.onStatus(getLiveAudioListenerStatus(nextPeer.connectionState, audioPlaybackStatus));
           if (playRemoteAudioTrack) playRemoteAudioTrack();
         } else if (nextPeer.connectionState === "disconnected") {
-          scheduleReconnect(5000);
+          scheduleReconnect(Math.min(5000, 500 * Math.pow(2, reconnectAttempts)));
         } else if (nextPeer.connectionState === "failed") {
-          scheduleReconnect(750);
+          scheduleReconnect(Math.min(5000, 500 * Math.pow(2, reconnectAttempts)));
         }
       };
       nextPeer.addTransceiver("audio", { direction: "recvonly" });

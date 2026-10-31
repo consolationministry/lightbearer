@@ -238,15 +238,17 @@ export function renderLiveAudioListener(data, programId, options) {
   const isLive = program.onAir && Boolean(program.liveSessionId);
   const joinError = opts.joinError && typeof opts.joinError.message === "string" ? opts.joinError : null;
   const joinStatus = opts.status || (opts.connecting ? "connecting" : "connected");
-  const showJoinOverlay = isLive && (joinError || opts.connecting ||
+  const showJoinOverlay = (isLive || opts.broadcastOffline) && (joinError || opts.connecting || opts.broadcastOffline ||
     ["connecting", "connected", "reconnecting", "disconnected"].includes(joinStatus));
+  const retryingOffline = Boolean(opts.broadcastOffline);
   const joinOverlay = showJoinOverlay
     ? '<div class="audio-live-join-overlay" role="' + (joinError ? "alert" : "status") + '" aria-live="' + (joinError ? "assertive" : "polite") + '">' +
       '<div class="audio-live-join-panel">' +
       (joinError
         ? '<span class="audio-live-join-error-mark" aria-hidden="true">!</span>'
-        : '<span class="audio-live-join-spinner" aria-hidden="true"></span>') +
-      '<p class="audio-live-join-message">' + escapeHtml(joinError ? joinError.message : publicLiveAudioConnectionMessage(joinStatus)) + '</p>' +
+        : '<span class="audio-stream-loading-ring" aria-hidden="true"></span>') +
+      (retryingOffline ? '<p class="audio-live-join-message">Broadcast went offline, will be back soon</p>' :
+        joinError ? '<p class="audio-live-join-message">' + escapeHtml(joinError.message) + '</p>' : '<span class="sr-only">Audio reconnecting</span>') +
       (joinError
         ? '<button class="audio-live-join-retry" type="button" data-action="retry-live-audio" data-program-id="' + escapeHtml(program.id) + '">' +
           (joinError.kind === "network" ? "Retry connection" : "Try again") + '</button>'
@@ -300,8 +302,8 @@ export function renderLiveAudioListener(data, programId, options) {
     : "";
   const player = isLive
     ? '<section class="audio-player audio-listener-player" aria-label="Live audio player"><div class="audio-listener-player-heading"><span class="audio-listener-player-live"><i></i> LIVE AUDIO</span><span class="audio-listener-player-caption">' +
-      (opts.connecting ? "Joining the live broadcast…" : opts.connected ? "Live audio connected" : "Live broadcast audio") + '</span></div>' +
-      '<audio class="audio-listener-audio-source" autoplay playsinline preload="none" data-live-audio-player data-audio-player="live" data-live-audio-segments="' + escapeHtml(JSON.stringify(liveSegments)) + '" aria-hidden="true" tabindex="-1" aria-label="Listen to ' + escapeHtml(program.title) + '"></audio>' +
+      ("Live broadcast audio") + '</span></div>' +
+      '<audio class="audio-listener-audio-source" autoplay playsinline muted="false" preload="none" data-live-audio-player data-audio-player="live" data-live-audio-segments="' + escapeHtml(JSON.stringify(liveSegments)) + '" aria-hidden="true" tabindex="-1" aria-label="Listen to ' + escapeHtml(program.title) + '"></audio>' +
       '<div class="audio-listener-controls" data-audio-player-controls="live">' +
       '<div class="audio-listener-waveform" data-audio-waveform="live" data-audio-waveform-seek role="img" aria-label="Live waveform and rewind timeline">' + audioWaveformBars() + '</div>' +
       '<input class="audio-listener-seek" type="range" min="0" max="1000" step="1" value="1000" data-audio-seek="live" aria-label="Rewind live broadcast" disabled>' +
@@ -311,7 +313,7 @@ export function renderLiveAudioListener(data, programId, options) {
       '<div class="audio-listener-secondary"><button class="audio-player-live-return" type="button" data-action="return-to-live-audio" aria-label="Return to live audio" hidden>LIVE</button>' +
       muteButton("live") + volumeControl("live", "Live audio volume") + '</div>' +
       '</div>' +
-      '<p class="audio-player-note" data-live-audio-status aria-live="polite">' + escapeHtml(opts.status || "Opening the live audio room…") + '</p>' +
+      '<p class="audio-player-note" data-live-audio-status aria-live="polite"><span class="sr-only">Live audio status</span></p>' +
       '</section>'
     : program.recordingUrl
       ? '<section class="audio-player audio-listener-player" aria-label="Recorded audio player"><div class="audio-listener-player-heading"><span class="audio-listener-recorded">RECORDED BROADCAST</span><span class="audio-listener-player-caption">Listen to the full service</span></div>' +
@@ -361,7 +363,7 @@ export function renderLiveAudioListener(data, programId, options) {
       '<div class="audio-stream-network-actions"><button type="button" class="audio-live-join-retry" data-action="retry-live-audio" data-program-id="' + escapeHtml(program.id) + '">Try again</button>' +
       '<button type="button" class="audio-pill" data-action="navigate" data-view="listen" data-category="__saved__">View saved programmes offline</button></div></div>'
     : "";
-  return '<section class="page audio-listener-page">' + header + openingOverlay + joinOverlay + libraryLoading + '<div class="audio-listener-content">' +
+  return '<section class="page audio-listener-page" data-live-listener-program="' + escapeHtml(program.id) + '">' + header + openingOverlay + joinOverlay + libraryLoading + '<div class="audio-listener-content">' +
     (data.error ? '<p class="audio-service-error" role="alert">' + escapeHtml(data.error) + '</p>' : "") + networkError + endedNotice + '<article class="audio-listener-card">' + artwork +
     '<div class="audio-listener-art-overlay">' +
     (isLive ? '<span class="audio-listener-live-badge"><i></i> LIVE</span><span class="audio-listener-viewers"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-4.2 0-7 2.1-7 4.5V21h14v-2.5c0-2.4-2.8-4.5-7-4.5Z"/></svg>' + listenerCount + '</span>' : '<span class="audio-listener-featured-badge">PUBLISHED PROGRAMME</span>') +
@@ -372,4 +374,72 @@ export function renderLiveAudioListener(data, programId, options) {
       meta.map(function (item) { return '<span>' + item + '</span>'; }).join("") + '</div>' : "") +
     pills + player + (program.description ? '<p class="audio-listener-description">' + escapeHtml(program.description) + '</p>' : "") +
     interactions + '</div></article>' + (offlinePlayback ? "" : '<p class="audio-preview-notice">Comments and reactions are shared with other listeners. Comments are public and anonymous; avoid sharing private information.</p>') + '</div></section>';
+}
+
+export function updateLiveAudioListener(root, data, programId, options) {
+  if (!root || !data || !Array.isArray(data.programs)) return false;
+  const page = root.querySelector("[data-live-listener-program]");
+  if (!page || page.dataset.liveListenerProgram !== String(programId)) return false;
+  const program = data.programs.find(item => item.id === programId && item.status === "published");
+  if (!program) return false;
+  const opts = options || {};
+  const isLive = Boolean(program.onAir && program.liveSessionId);
+  const joinError = opts.joinError && typeof opts.joinError.message === "string" ? opts.joinError : null;
+  const status = opts.status || (opts.connecting ? "connecting" : "connected");
+  const retryingOffline = Boolean(opts.broadcastOffline);
+  const show = (isLive || retryingOffline) && (joinError || opts.connecting || retryingOffline || ["connecting", "connected", "reconnecting", "disconnected"].includes(status));
+  let overlay = page.querySelector(".audio-live-join-overlay");
+  if (show && !overlay) {
+    overlay = document.createElement("div");
+    overlay.className = "audio-live-join-overlay";
+    page.prepend(overlay);
+  }
+  if (overlay && !show) overlay.remove();
+  if (overlay) {
+    overlay.setAttribute("role", joinError ? "alert" : "status");
+    overlay.setAttribute("aria-live", joinError ? "assertive" : "polite");
+    let panel = overlay.querySelector(".audio-live-join-panel");
+    if (!panel) {
+      panel = document.createElement("div");
+      panel.className = "audio-live-join-panel";
+      overlay.appendChild(panel);
+    }
+    const message = retryingOffline ? "Broadcast went offline, will be back soon" : joinError ? joinError.message : "";
+    const currentMessage = panel.querySelector(".audio-live-join-message");
+    if (currentMessage && currentMessage.textContent !== message) currentMessage.textContent = message;
+    if (joinError) {
+      let mark = panel.querySelector(".audio-live-join-error-mark");
+      if (!mark) { mark = document.createElement("span"); mark.className = "audio-live-join-error-mark"; mark.setAttribute("aria-hidden", "true"); panel.prepend(mark); }
+      mark.textContent = "!";
+      let retry = panel.querySelector(".audio-live-join-retry");
+      if (!retry) { retry = document.createElement("button"); retry.className = "audio-live-join-retry"; retry.type = "button"; retry.dataset.action = "retry-live-audio"; panel.appendChild(retry); }
+      retry.dataset.programId = String(program.id);
+      retry.textContent = joinError.kind === "network" ? "Retry connection" : "Try again";
+      if (!currentMessage) { const p = document.createElement("p"); p.className = "audio-live-join-message"; p.textContent = message; retry.before(p); }
+      panel.querySelector(".audio-stream-loading-ring")?.remove();
+    } else {
+      panel.querySelector(".audio-live-join-error-mark")?.remove();
+      panel.querySelector(".audio-live-join-retry")?.remove();
+      if (!panel.querySelector(".audio-stream-loading-ring")) {
+        const ring = document.createElement("span"); ring.className = "audio-stream-loading-ring"; ring.setAttribute("aria-hidden", "true"); panel.prepend(ring);
+      }
+      if (message && !currentMessage) { const p = document.createElement("p"); p.className = "audio-live-join-message"; p.textContent = message; panel.appendChild(p); }
+      if (!message && currentMessage) currentMessage.remove();
+    }
+  }
+  const count = Math.max(0, Number(program.listenCount) || 0);
+  const viewers = page.querySelector(".audio-listener-viewers");
+  if (viewers) viewers.lastChild.textContent = String(count);
+  const watchers = page.querySelector(".audio-comment-watchers");
+  if (watchers && isLive) watchers.textContent = count + " watching";
+  const liveStatus = page.querySelector("[data-live-audio-status]");
+  if (liveStatus) liveStatus.textContent = "";
+  const audio = page.querySelector("[data-live-audio-player]");
+  if (audio) {
+    audio.muted = false;
+    const segments = (program.liveSegments || []).filter(item => item && item.url);
+    const serialized = JSON.stringify(segments);
+    if (audio.dataset.liveAudioSegments !== serialized) audio.dataset.liveAudioSegments = serialized;
+  }
+  return true;
 }

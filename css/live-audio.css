@@ -519,7 +519,7 @@ body.audio-listener-mode .toast { bottom:calc(16px + env(safe-area-inset-bottom)
 .audio-stream-loading-overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: rgba(12, 6, 10, .55); backdrop-filter: blur(3px); }
 .audio-stream-loading-panel { display: grid; justify-items: center; gap: 12px; padding: 22px 26px; border-radius: 16px; background: rgba(30, 14, 22, .85); color: #f6efe2; }
 .audio-stream-loading-panel p { margin: 0; font-size: .92rem; letter-spacing: .02em; }
-.audio-stream-loading-ring { width: 42px; height: 42px; border: 3px solid rgba(212,175,55,.22); border-top-color: #d4af37; border-radius: 50%; animation: audio-live-join-spin .85s linear infinite; }
+.audio-stream-loading-ring { width: 42px; height: 42px; border: 3px solid rgba(29,78,216,.18); border-top-color: #1d4ed8; border-radius: 50%; animation: audio-live-join-spin .85s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .audio-stream-loading-ring { animation: none; } }
 
 .audio-stream-network-error { margin: 0 0 14px; padding: 16px 18px; border: 1px solid #b02a3a; border-radius: 14px; background: #2a0c15; color: #f6efe2; }

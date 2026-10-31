@@ -44,7 +44,7 @@ import {
   toggleAudioMute,
   toggleAudioPlayback
 } from "./live-audio-player.js";
-import { renderLiveAudioListener, renderLiveAudioPage } from "./live-audio-views.js";
+import { renderLiveAudioListener, renderLiveAudioPage, updateLiveAudioListener } from "./live-audio-views.js";
 
 const splashStartedAt = Date.now();
 const CHURCH_MOTTO = "Occupy Till I Come";
@@ -62,7 +62,7 @@ const updateMessage = document.getElementById("update-message");
 const updateVersion = document.getElementById("update-version");
 const updateStatus = document.getElementById("update-status");
 const updateInstallButton = document.getElementById("update-install");
-const state = { hymns: [], publicContent: null, programmeInteractions: {}, programmeInteractionsAvailable: null, programmeVotesAvailable: null, programmeVotePending: {}, programmeDescriptionsExpanded: {}, programmeSelectedId: null, programmeCategoryFilter: "", serviceSelectedId: null, serviceAimId: null, liveAudioData: emptyLiveAudioData(), savedLiveAudioPrograms: getSavedLiveAudioPrograms(), savingLiveAudioIds: new Set(), liveAudioPlaybackUrl: "", liveAudioOfflinePlayback: false, liveAudioOpenToken: 0, liveAudioLoading: false, liveAudioError: "", liveAudioJoinError: null, liveAudioQuery: "", liveAudioCategory: "", selectedLiveAudioProgramId: null, liveAudioStartedAt: null, liveAudioTimer: null, liveAudioPollTimer: null, liveAudioSegmentPollTimer: null, liveAudioSegmentRequest: false, liveAudioSegmentRequestToken: 0, liveAudioRequestToken: 0, liveAudioConnectToken: 0, liveAudioListener: null, liveAudioConnecting: false, liveAudioConnectionStatus: "", liveAudioStatusCode: "", liveAudioCountRecorded: false, liveAudioEnding: false, liveAudioEndingTimer: null, liveAudioBurstSub: null, liveAudioBurstProgramId: "", liveAudioListenEventId: "", view: "home", readerReturnView: "home", selectedNumber: null, query: "", category: "", searchOpen: false, settings: getSettings(), toastTimer: null };
+const state = { hymns: [], publicContent: null, programmeInteractions: {}, programmeInteractionsAvailable: null, programmeVotesAvailable: null, programmeVotePending: {}, programmeDescriptionsExpanded: {}, programmeSelectedId: null, programmeCategoryFilter: "", serviceSelectedId: null, serviceAimId: null, liveAudioData: emptyLiveAudioData(), savedLiveAudioPrograms: getSavedLiveAudioPrograms(), savingLiveAudioIds: new Set(), liveAudioPlaybackUrl: "", liveAudioOfflinePlayback: false, liveAudioOpenToken: 0, liveAudioLoading: false, liveAudioError: "", liveAudioJoinError: null, liveAudioQuery: "", liveAudioCategory: "", selectedLiveAudioProgramId: null, liveAudioStartedAt: null, liveAudioTimer: null, liveAudioPollTimer: null, liveAudioSegmentPollTimer: null, liveAudioSegmentRequest: false, liveAudioSegmentRequestToken: 0, liveAudioRequestToken: 0, liveAudioConnectToken: 0, liveAudioListener: null, liveAudioConnecting: false, liveAudioConnectionStatus: "", liveAudioStatusCode: "", liveAudioBroadcastOffline: false, liveAudioHasConnected: false, liveAudioCountRecorded: false, liveAudioEnding: false, liveAudioEndingTimer: null, liveAudioBurstSub: null, liveAudioBurstProgramId: "", liveAudioListenEventId: "", view: "home", readerReturnView: "home", selectedNumber: null, query: "", category: "", searchOpen: false, settings: getSettings(), toastTimer: null };
 
 try { state.query = localStorage.getItem("lightbearer-search") || ""; state.searchOpen = Boolean(state.query); } catch (error) {}
 
@@ -766,10 +766,39 @@ function aboutBody() {
 }
 
 function render() {
+  if (state.view === "listen" && state.selectedLiveAudioProgramId && main.querySelector("[data-live-listener-program]") && !state.liveAudioOpening) {
+    const data = getLiveAudioViewData();
+    const updated = updateLiveAudioListener(main, Object.assign({}, data, { error: state.liveAudioError }), state.selectedLiveAudioProgramId, {
+      status: state.liveAudioConnectionStatus,
+      connecting: state.liveAudioConnecting,
+      connected: Boolean(state.liveAudioListener),
+      joinError: state.liveAudioJoinError,
+      broadcastOffline: state.liveAudioBroadcastOffline
+    });
+    if (updated) {
+      renderNav();
+      return;
+    }
+  }
+
   document.body.classList.toggle("audio-library-mode", state.view === "listen" && !state.selectedLiveAudioProgramId);
   document.body.classList.toggle("audio-listener-mode", state.view === "listen" && Boolean(state.selectedLiveAudioProgramId));
   applyPreferences();
   renderHeader();
+  if (state.view === "listen" && state.selectedLiveAudioProgramId &&
+      updateLiveAudioListener(main, getLiveAudioViewData(), state.selectedLiveAudioProgramId, {
+        status: state.liveAudioConnectionStatus,
+        connecting: state.liveAudioConnecting,
+        connected: Boolean(state.liveAudioListener),
+        joinError: state.liveAudioJoinError,
+        broadcastOffline: state.liveAudioBroadcastOffline,
+        liveEnded: state.liveAudioStatusCode === "ended" && !state.liveAudioEnding,
+        liveEnding: state.liveAudioEnding
+      })) {
+    renderNav();
+    document.title = "Listen · C&S Bible Church Hymnal";
+    return;
+  }
   const isPreservingLiveAudioPlayer = state.view === "listen" && state.selectedLiveAudioProgramId &&
     (state.liveAudioConnecting || state.liveAudioListener);
   const isPreservingRecordedAudioPlayer = state.view === "listen" && state.selectedLiveAudioProgramId &&
@@ -793,6 +822,7 @@ function render() {
         offlinePlayback: state.liveAudioOfflinePlayback,
         joinError: state.liveAudioJoinError,
         loading: state.liveAudioLoading && navigator.onLine !== false && !liveAudioViewData.programs.length,
+        broadcastOffline: state.liveAudioBroadcastOffline,
         networkError: navigator.onLine === false || Boolean(state.liveAudioError && /network|connection|reach/i.test(state.liveAudioError)),
         liveEnded: state.liveAudioStatusCode === "ended" && !state.liveAudioEnding,
         liveEnding: state.liveAudioEnding,
@@ -1099,6 +1129,8 @@ function stopLiveAudioConnection() {
   state.liveAudioListener = null;
   state.liveAudioConnecting = false;
   state.liveAudioStatusCode = "";
+  state.liveAudioBroadcastOffline = false;
+  state.liveAudioHasConnected = false;
   state.liveAudioConnectionStatus = "";
   state.liveAudioJoinError = null;
   state.liveAudioSessionId = "";
@@ -1152,23 +1184,30 @@ function retryLiveAudioProgram(programId) {
 function updateLiveAudioConnectionStatus(connectToken, status) {
   if (connectToken !== state.liveAudioConnectToken) return;
   state.liveAudioStatusCode = status;
+  if (status === "reconnecting" || status === "disconnected") state.liveAudioBroadcastOffline = Boolean(state.liveAudioListener || state.liveAudioHasConnected);
+  if (status === "live") { state.liveAudioHasConnected = true; state.liveAudioBroadcastOffline = false; }
+  if (status === "connected" && state.liveAudioHasConnected) { state.liveAudioBroadcastOffline = false; }
   if (status === "failed") {
-    state.liveAudioJoinError = publicLiveAudioJoinError(new Error(""), getLiveAudioNetworkInfo());
+    state.liveAudioBroadcastOffline = Boolean(state.liveAudioHasConnected);
+    state.liveAudioJoinError = state.liveAudioBroadcastOffline ? null : publicLiveAudioJoinError(new Error(""), getLiveAudioNetworkInfo());
   } else if (status === "reconnecting" || status === "disconnected") {
-    state.liveAudioJoinError = publicLiveAudioNetworkIssue(getLiveAudioNetworkInfo());
+    state.liveAudioJoinError = state.liveAudioBroadcastOffline ? null : publicLiveAudioNetworkIssue(getLiveAudioNetworkInfo());
   } else {
     state.liveAudioJoinError = null;
   }
-  state.liveAudioConnectionStatus = state.liveAudioJoinError
-    ? state.liveAudioJoinError.message
-    : publicLiveAudioConnectionMessage(status);
+  state.liveAudioConnectionStatus = state.liveAudioBroadcastOffline
+    ? "Broadcast went offline, will be back soon"
+    : state.liveAudioJoinError
+      ? state.liveAudioJoinError.message
+      : publicLiveAudioConnectionMessage(status);
   const statusNode = main.querySelector("[data-live-audio-status]");
   if (statusNode) statusNode.textContent = state.liveAudioConnectionStatus;
 
   if (status === "live") {
     if (!state.liveAudioStartedAt) beginLiveAudioTimer();
+    state.liveAudioHasConnected = true;
     if (state.liveAudioListener) void recordCurrentLiveAudioListen(state.selectedLiveAudioProgramId, connectToken);
-  } else if (status === "ended" || status === "failed") {
+  } else if (status === "ended") {
     state.liveAudioConnectToken += 1;
     const listener = state.liveAudioListener;
     state.liveAudioListener = null;
@@ -1176,10 +1215,22 @@ function updateLiveAudioConnectionStatus(connectToken, status) {
     stopLiveAudioTimer();
     stopAudioPlayer(main.querySelector("[data-live-audio-player]"));
     if (listener) listener.stop().catch(() => {});
-    if (status === "ended") beginLiveAudioEnding();
+    beginLiveAudioEnding();
     render();
-    if (status === "ended") void refreshLiveAudioData();
+    void refreshLiveAudioData();
     return;
+  }
+  if (status === "failed" && state.liveAudioHasConnected) {
+    const failedListener = state.liveAudioListener;
+    state.liveAudioListener = null;
+    state.liveAudioConnecting = false;
+    if (failedListener) failedListener.stop().catch(() => {});
+    if (state.view === "listen" && state.selectedLiveAudioProgramId) {
+      const retryProgramId = state.selectedLiveAudioProgramId;
+      window.setTimeout(() => {
+        if (state.view === "listen" && state.selectedLiveAudioProgramId === retryProgramId && !state.liveAudioListener) void connectLiveAudioProgram(retryProgramId);
+      }, 500);
+    }
   }
   if (state.view === "listen") render();
 }
@@ -1188,12 +1239,37 @@ async function connectLiveAudioProgram(programId) {
   if (state.liveAudioConnecting || state.liveAudioListener) return;
   const program = state.liveAudioData.programs.find(item => item.id === programId);
   if (!program || !program.onAir || !program.liveSessionId) {
+    if (state.liveAudioHasConnected) {
+      state.liveAudioBroadcastOffline = true;
+      state.liveAudioConnectionStatus = "Broadcast went offline, will be back soon";
+      render();
+      window.setTimeout(() => {
+        if (state.view === "listen" && state.selectedLiveAudioProgramId === programId && state.liveAudioBroadcastOffline) {
+          void refreshLiveAudioData().then(() => {
+            const refreshed = state.liveAudioData.programs.find(item => item.id === programId);
+            if (refreshed && refreshed.onAir && refreshed.liveSessionId && !state.liveAudioListener) void connectLiveAudioProgram(programId);
+            else if (state.liveAudioBroadcastOffline) window.setTimeout(() => {
+              if (state.view === "listen" && state.selectedLiveAudioProgramId === programId && state.liveAudioBroadcastOffline) void connectLiveAudioProgram(programId);
+            }, 2000);
+          }).catch(() => {});
+        }
+      }, 2000);
+      return;
+    }
     showToast("This programme is no longer live. Refresh Listen to see the current broadcast.");
     void refreshLiveAudioData();
     return;
   }
 
+  const audioElement = main.querySelector("[data-live-audio-player]");
+  if (audioElement) {
+    audioElement.setAttribute("playsinline", "");
+    audioElement.muted = false;
+    const gesturePlayback = audioElement.play();
+    if (gesturePlayback && typeof gesturePlayback.catch === "function") gesturePlayback.catch(() => {});
+  }
   const connectToken = ++state.liveAudioConnectToken;
+  state.liveAudioBroadcastOffline = false;
   state.liveAudioConnecting = true;
   state.liveAudioJoinError = null;
   state.liveAudioConnectionStatus = publicLiveAudioConnectionMessage("connecting");
@@ -1201,8 +1277,8 @@ async function connectLiveAudioProgram(programId) {
   state.liveAudioCountRecorded = false;
   state.liveAudioListenEventId = createLiveAudioId();
   render();
-  const audioElement = main.querySelector("[data-live-audio-player]");
-  if (!audioElement) {
+  const activeAudioElement = audioElement || main.querySelector("[data-live-audio-player]");
+  if (!activeAudioElement) {
     state.liveAudioConnecting = false;
     state.liveAudioStatusCode = "failed";
     state.liveAudioJoinError = publicLiveAudioJoinError(new Error("The live player could not be opened."), getLiveAudioNetworkInfo());
@@ -1210,14 +1286,17 @@ async function connectLiveAudioProgram(programId) {
     render();
     return;
   }
-  void prepareAudioPlayer(audioElement);
+  activeAudioElement.setAttribute("playsinline", "");
+  activeAudioElement.muted = false;
+  void activeAudioElement.play().catch(() => {});
+  void prepareAudioPlayer(activeAudioElement);
 
   try {
     const listener = await startLiveAudioListener({
       programId: program.id,
       sessionId: program.liveSessionId,
-      audioElement,
-      onStream: stream => setLiveAudioStream(audioElement, stream),
+      audioElement: activeAudioElement,
+      onStream: stream => setLiveAudioStream(activeAudioElement, stream),
       onStatus: status => updateLiveAudioConnectionStatus(connectToken, status)
     });
     if (connectToken !== state.liveAudioConnectToken || state.view !== "listen" ||

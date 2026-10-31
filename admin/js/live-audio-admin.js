@@ -44,6 +44,7 @@ let audioSettings = Object.assign({}, DEFAULT_AUDIO_SETTINGS);
 let activeMicMuted = false;
 let activeListenerCount = 0;
 let activeSignalStatus = "connecting";
+let reconnectNoticeTimer = null;
 let activeNetworkStatus = { level: 0, label: "Checking", connectedListeners: 0, listenerCount: 0, weakListeners: 0, route: "—" };
 let networkAlertKey = "";
 let networkToastTimer = null;
@@ -1042,12 +1043,18 @@ async function beginBroadcast(programId, recordBroadcast) {
       onStatus: status => {
         activeSignalStatus = status;
         const node = document.querySelector("[data-audio-mic-status]");
-        if (node && status === "connected") node.textContent = "Connected. Waiting for listeners…";
-        if (node && status === "reconnecting" && activeBroadcaster) {
-          node.textContent = "Reconnecting… auto-retrying with backoff (listeners will resume when the link returns).";
+        if (node && status === "connected") {
+          node.textContent = "Connected. Waiting for listeners…";
+          if (reconnectNoticeTimer !== null) window.clearTimeout(reconnectNoticeTimer);
+          reconnectNoticeTimer = null;
         }
-        if (node && status === "disconnected" && activeBroadcaster) {
-          node.textContent = "Disconnected. Check your network; retrying automatically.";
+        if (node && (status === "reconnecting" || status === "disconnected") && activeBroadcaster) {
+          node.textContent = "Connection dropped. Reconnecting now…";
+          if (reconnectNoticeTimer !== null) window.clearTimeout(reconnectNoticeTimer);
+          reconnectNoticeTimer = window.setTimeout(() => {
+            reconnectNoticeTimer = null;
+            if (activeBroadcaster && activeSignalStatus === "connected" && node.isConnected) node.textContent = "Connected. Waiting for listeners…";
+          }, 3000);
         }
         const connection = document.querySelector("[data-studio-connection]");
         if (connection) {
