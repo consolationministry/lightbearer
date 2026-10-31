@@ -49,7 +49,6 @@ export async function loginAdmin(email, password) {
       body: { email: address, password: password },
       publicOnly: true
     });
-    saveSession(session);
     currentAdmin = await getVerifiedAdmin(session);
     return currentAdmin;
   } catch (error) {
@@ -103,11 +102,11 @@ export async function initializeAdminAuth() {
     currentAdmin = null;
     return { configured: false, authenticated: false, admin: null };
   }
-  const session = getStoredSession();
-  if (!session) {
-    currentAdmin = null;
-    return { configured: true, authenticated: false, admin: null };
-  }
+  // Owner directive: never auto-login. Every app open starts at the login screen,
+  // so the update popup is always seen before entering the workspace.
+  clearSession();
+  currentAdmin = null;
+  return { configured: true, authenticated: false, admin: null };
   try {
     currentAdmin = await getVerifiedAdmin(session);
     return { configured: true, authenticated: true, admin: currentAdmin };

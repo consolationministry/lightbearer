@@ -32,7 +32,7 @@ function response(body, status = 200) {
   };
 }
 
-test("configured admin sign-in stores a session only after server membership is confirmed", async () => {
+test("configured admin sign-in verifies membership and never stores a session", async () => {
   installStorage();
   clearSession();
   const seen = [];
@@ -58,7 +58,8 @@ test("configured admin sign-in stores a session only after server membership is 
   const admin = await loginAdmin(" admin@example.org ", "test-password");
   assert.deepEqual(admin, { id: "admin-uuid", email: "admin@example.org", role: "admin" });
   assert.equal(isAdminAuthenticated(), true);
-  assert.equal(getStoredSession().refresh_token, "refresh-test");
+  // owner rule: no persisted session, so the next app open always asks for credentials
+  assert.equal(getStoredSession(), null);
   assert.equal(seen.length, 3);
   assert.equal(seen[0].init.headers.get("authorization").startsWith("Bearer sb_publishable_"), true);
   assert.equal(seen[1].init.headers.get("authorization"), "Bearer access-test");
@@ -83,7 +84,7 @@ test("a signed-in non-admin is rejected and its session is removed", async () =>
   assert.equal(isAdminAuthenticated(), false);
 });
 
-test("an existing authorized session is revalidated before admin access", async () => {
+test("a stored session never auto-restores: every open starts at login", async () => {
   installStorage();
   clearSession();
   globalThis.fetch = async function (url) {
@@ -99,9 +100,8 @@ test("an existing authorized session is revalidated before admin access", async 
   };
   await loginAdmin("admin@example.org", "test-password");
   const result = await initializeAdminAuth();
-  assert.equal(result.authenticated, true);
-  assert.equal(result.admin.id, "admin-uuid");
+  assert.equal(result.authenticated, false);
+  assert.equal(getStoredSession(), null);
   await logoutAdmin();
   assert.equal(getStoredSession(), null);
 });
-
