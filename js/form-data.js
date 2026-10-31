@@ -5,3 +5,4 @@ export async function getPublicForm(id){const r=await req("rest/v1/forms?select=
 export async function saveResponse(payload){return req("rest/v1/rpc/submit_form_response",{method:"POST",body:payload})}
 export async function checkDraft(email,id){const r=await req("rest/v1/rpc/get_tester_draft",{method:"POST",body:{p_form_id:id,p_email:email.toLowerCase()}});return r?.form? r:false}
 export async function getMyResponses(email){return req("rest/v1/rpc/get_my_form_responses",{method:"POST",body:{p_email:email.toLowerCase()}})}
+export async function updateMyResponse(responseId,email,data){return req("rest/v1/rpc/update_my_form_response",{method:"POST",body:{p_response_id:responseId,p_email:email.toLowerCase(),p_data:data}})}
