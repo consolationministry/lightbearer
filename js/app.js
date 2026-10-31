@@ -1425,13 +1425,15 @@ async function openLiveAudioProgram(programId) {
   state.selectedLiveAudioProgramId = programId;
   state.view = "listen";
   stopLiveAudioTimer();
-  state.liveAudioOpening = true;
-  window.setTimeout(function () {
-    if (state.liveAudioOpening && state.selectedLiveAudioProgramId === programId) {
-      state.liveAudioOpening = false;
-      if (state.view === "listen") render();
-    }
-  }, 1400);
+  state.liveAudioOpening = Boolean(program.onAir && program.liveSessionId);
+  if (state.liveAudioOpening) {
+    window.setTimeout(function () {
+      if (state.liveAudioOpening && state.selectedLiveAudioProgramId === programId) {
+        state.liveAudioOpening = false;
+        if (state.view === "listen") render();
+      }
+    }, 1400);
+  }
   render();
   window.scrollTo(0, 0);
   main.focus({ preventScroll: true });

@@ -297,7 +297,7 @@ export function renderLiveAudioListener(data, programId, options) {
       '<output class="audio-listener-time" data-audio-duration="' + playerType + '">--:--</output></div>';
   };
   const endedNotice = opts.liveEnding && !isLive ? liveEndingSpinner() : (opts.liveEnded && !isLive ? liveEndedBanner(program) : "");
-  const openingOverlay = opts.opening
+  const openingOverlay = opts.opening && isLive
     ? '<div class="audio-stream-loading-overlay" role="status" aria-live="polite"><div class="audio-stream-loading-panel"><span class="audio-stream-loading-ring" aria-hidden="true"></span><p>searching for the stream</p></div></div>'
     : "";
   const player = isLive

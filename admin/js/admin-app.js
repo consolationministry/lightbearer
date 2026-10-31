@@ -6,6 +6,7 @@ import { adminHymnNumberLabel, adminHymnTitle, filterAdminHymnsByLanguage, hasAd
 import { handleLiveAudioAdminAction, handleLiveAudioAdminSubmit, renderLiveAudioAdmin, stopAdminAudioMicTest } from "./live-audio-admin.js?v=11";
 import { getCloudinarySettings, renderCloudinarySettingsPanel, removeCloudinarySettings, saveCloudinarySettings } from "./cloudinary-settings.js?v=4";
 import { getProgrammeInteractions } from "../../js/programme-interactions.js";
+import { applyAvailableUpdate, initializeUpdates } from "../../js/updates.js";
 import { repairMojibake } from "../../js/programme-feed-utils.js";
 
 const root = document.getElementById("admin-root");
@@ -1487,6 +1488,39 @@ window.addEventListener("beforeunload", function (event) {
   if (isFormDirty() || isSettingsFormDirty() || isQuoteSettingsFormDirty() || isProgramFormDirty()) { event.preventDefault(); event.returnValue = ""; }
 });
 
+
+let adminUpdateNoticeShown = false;
+function showAdminUpdateNotice(update) {
+  if (adminUpdateNoticeShown || !update) return;
+  adminUpdateNoticeShown = true;
+  const bar = document.createElement("div");
+  bar.id = "admin-update-bar";
+  bar.setAttribute("role", "status");
+  bar.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:9999;background:#13092f;color:#fff;padding:10px 14px;border-radius:12px;display:flex;gap:10px;align-items:center;font:500 14px 'DM Sans',sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25)";
+  const label = document.createElement("span");
+  label.textContent = "Admin app update available" + (update.version ? " (v" + update.version + ")" : "");
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = "Install update";
+  btn.style.cssText = "background:#7f3aee;color:#fff;border:0;border-radius:8px;padding:6px 12px;font:600 13px 'DM Sans',sans-serif;cursor:pointer";
+  btn.addEventListener("click", async function () {
+    btn.disabled = true;
+    btn.textContent = "Downloading…";
+    try {
+      await applyAvailableUpdate(function (message) { btn.textContent = message; });
+      btn.textContent = "Install now, then reopen";
+      alert("Update downloaded. Open the file to install, then reopen the admin app.");
+    } catch (error) {
+      btn.disabled = false;
+      btn.textContent = "Install update";
+      alert((error && error.message) || "The update could not be downloaded.");
+    }
+  });
+  bar.appendChild(label);
+  bar.appendChild(btn);
+  document.body.appendChild(bar);
+}
+
 renderLogin();
 initializeAdminAuth().then(async function (result) {
   state.authStatus = result;
@@ -1494,6 +1528,7 @@ initializeAdminAuth().then(async function (result) {
   try {
     state.activeView = "dashboard";
     renderShell();
+    initializeUpdates({ onAvailable: showAdminUpdateNotice });
   } catch (error) {
     state.authStatus = { configured: true, authenticated: false, admin: null };
     await logoutAdmin();
