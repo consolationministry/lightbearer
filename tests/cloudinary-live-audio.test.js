@@ -55,7 +55,7 @@ test("Cloudinary admin settings never prefill or render saved API secrets", () =
   assert.match(html, /Connected to Cloudinary · test-cloud/);
   assert.match(html, /id="cloudinary-api-key"[^>]*type="password"/);
   assert.match(html, /id="cloudinary-api-secret"[^>]*type="password"/);
-  assert.match(html, /Leave the API key and secret blank to keep the current credentials/);
+  assert.match(html, /Leave both credential fields blank to keep the saved credentials/);
   assert.doesNotMatch(html, /id="cloudinary-api-secret"[^>]*value=/);
 });
 
@@ -78,8 +78,10 @@ test("Cloudinary settings save only succeeds after Supabase confirms the saved a
     }
   };
   globalThis.fetch = async function (url, init) {
-    requests.push({ url: String(url), method: init.method, body: JSON.parse(init.body) });
-    return response({ configured: true, cloudName: "test-cloud" });
+    const body = init.body ? JSON.parse(init.body) : null;
+    requests.push({ url: String(url), method: init.method, body });
+    if (init.method === "GET") return response([{ cloudinary_cloud_name: "", cloudinary_api_key: "", cloudinary_api_secret: "" }]);
+    return response([{ cloudinary_cloud_name: "test-cloud", cloudinary_api_key: "test-api-key", cloudinary_api_secret: "test-api-secret" }]);
   };
 
   try {
@@ -88,15 +90,12 @@ test("Cloudinary settings save only succeeds after Supabase confirms the saved a
       apiKey: "test-api-key",
       apiSecret: "test-api-secret"
     });
-    assert.deepEqual(result, { configured: true, cloudName: "test-cloud" });
-    assert.match(requests[0].url, /\/functions\/v1\/cloudinary-live-audio$/);
-    assert.equal(requests[0].method, "POST");
-    assert.deepEqual(requests[0].body, {
-      action: "save-config",
-      cloudName: "test-cloud",
-      apiKey: "test-api-key",
-      apiSecret: "test-api-secret"
-    });
+    assert.deepEqual(result, { available: true, configured: true, cloudName: "test-cloud" });
+    assert.match(requests[0].url, /\/rest\/v1\/admin_settings\?/);
+    assert.equal(requests[0].method, "GET");
+    assert.equal(requests[1].method, "PATCH");
+    assert.deepEqual(requests[1].body, { cloudinary_cloud_name: "test-cloud", cloudinary_api_key: "test-api-key", cloudinary_api_secret: "test-api-secret", updated_at: requests[1].body.updated_at });
+    assert.doesNotMatch(JSON.stringify(requests[0]), /test-api-secret/);
   } finally {
     globalThis.fetch = originalFetch;
     if (originalWindow === undefined) delete globalThis.window;
@@ -114,8 +113,9 @@ test("Cloudinary settings reject a response that does not confirm persistence", 
       removeItem() {}
     }
   };
-  globalThis.fetch = async function () {
-    return response({ configured: false, cloudName: "" });
+  globalThis.fetch = async function (url, init) {
+    if (init.method === "GET") return response([{ cloudinary_cloud_name: "", cloudinary_api_key: "", cloudinary_api_secret: "" }]);
+    return response([]);
   };
 
   try {
@@ -130,23 +130,13 @@ test("Cloudinary settings reject a response that does not confirm persistence", 
   }
 });
 
-test("Cloudinary secrets are service-role-only and playback signing stays server-side", async () => {
-  const migration = await readFile(new URL("../supabase/migrations/202610250003_cloudinary_live_audio.sql", import.meta.url), "utf8");
-  const functionSource = await readFile(new URL("../supabase/functions/cloudinary-live-audio/index.ts", import.meta.url), "utf8");
-  const config = await readFile(new URL("../supabase/config.toml", import.meta.url), "utf8");
+test("Cloudinary API secret is used only on admin upload paths; members accept saved public URLs", async () => {
+  const adminData = await readFile(new URL("../admin/js/live-audio-admin-data.js", import.meta.url), "utf8");
+  const settings = await readFile(new URL("../admin/js/cloudinary-settings.js", import.meta.url), "utf8");
   const publicClient = await readFile(new URL("../js/cloudinary-live-audio.js", import.meta.url), "utf8");
-
-  assert.match(migration, /alter table public\.cloudinary_credentials enable row level security/);
-  assert.match(migration, /revoke all on public\.cloudinary_credentials from public, anon, authenticated/);
-  assert.match(migration, /grant all on public\.cloudinary_credentials to service_role/);
-  assert.match(functionSource, /SUPABASE_SERVICE_ROLE_KEY/);
-  assert.match(functionSource, /api_secret/);
-  assert.match(functionSource, /resolution=merge-duplicates,return=representation/);
-  assert.match(functionSource, /Supabase did not confirm that the Cloudinary credentials were stored/);
-  assert.match(functionSource, /error instanceof SafeCloudinaryError/);
-  assert.doesNotMatch(functionSource, /jsonResponse\(\{ error: error\.message/);
-  assert.match(functionSource, /action === "resolve-playback-url"/);
-  assert.match(functionSource, /status: "eq\.published"/);
+  assert.match(settings, /cloudinary_api_secret/);
+  assert.match(adminData, /cloudinary_api_secret/);
+  assert.match(adminData, /subtle\.digest\("SHA-1"/);
   assert.doesNotMatch(publicClient, /api_secret|apiSecret/);
-  assert.match(config, /\[functions\.cloudinary-live-audio\]\s+verify_jwt = false/);
+  assert.match(publicClient, /isCloudinaryPublicUrl/);
 });

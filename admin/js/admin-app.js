@@ -4,7 +4,7 @@ import { createCategory, createHymn, createProgram, createService, deleteCategor
 
 import { adminHymnNumberLabel, adminHymnTitle, filterAdminHymnsByLanguage, hasAdminHymnTitle } from "./admin-hymn-display.js?v=2";
 import { handleLiveAudioAdminAction, handleLiveAudioAdminSubmit, renderLiveAudioAdmin, stopAdminAudioMicTest } from "./live-audio-admin.js?v=11";
-import { getCloudinarySettings, renderCloudinarySettingsPanel, removeCloudinarySettings, saveCloudinarySettings } from "./cloudinary-settings.js?v=2";
+import { getCloudinarySettings, renderCloudinarySettingsPanel, removeCloudinarySettings, saveCloudinarySettings } from "./cloudinary-settings.js?v=4";
 import { getProgrammeInteractions } from "../../js/programme-interactions.js";
 import { repairMojibake } from "../../js/programme-feed-utils.js";
 
