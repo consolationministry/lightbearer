@@ -126,8 +126,7 @@ function renderNav() {
     ["services", "Services", "calendar"],
     ["recent", "Recent", "history"],
     ["settings", "Settings", "settings"],
-    ["favorites", "Favorites", "heart"],
-    ["set", "Service Sets", "plus"]
+    ["live", "Live", "radio"]
   ];
   nav.innerHTML = items.map(function (item) {
     if (item[0] === "forms") return '<a class="nav-item" href="./forms.html" data-testid="nav-forms">' + icon(item[2]) + '<span>Forms</span></a>';
@@ -749,7 +748,7 @@ function clearSavedAudioPlayback() {
 }
 
 function renderInfoPage(view) {
-  const pages={books:["Books","Church books and reading resources."],blog:["Blog","Updates and reflections from C&S Bible Church."],history:["Our history","The story and heritage of C&S Bible Church."],about:["About Lightbearer","A free church hymnal for C&S Bible Church members."],community:["Community","A community feed for church encouragement and updates."],set:["Service hymn sets","Build a service set from available hymns."]};
+  const pages={books:["Books","Church books and reading resources."],blog:["Blog","Updates and reflections from C&S Bible Church."],history:["Our history","The story and heritage of C&S Bible Church."],about:["About Lightbearer","A free church hymnal for C&S Bible Church members."],community:["Community","A community feed for church encouragement and updates."],};
   const entry=pages[view]||pages.about;
   const rows=state.hymns.slice(0,8).map(function(h){return '<label class="set-hymn"><input type="checkbox" value="'+escapeHtml(h.hymn_number)+'"> '+escapeHtml(displayHymnNumber(h)+' · '+currentHymnTitle(h))+'</label>';}).join('');
   const body=view==='set'?'<input id="service-set-name" placeholder="Service set name" maxlength="80"><div>'+rows+'</div><button class="button-primary" data-action="save-service-set">Save set</button>':(view==='about'?aboutBody():'<p>'+escapeHtml(entry[1])+'</p>');
@@ -809,7 +808,6 @@ function render() {
     );
   else if (state.view === "programs") main.innerHTML = renderPublicProgramsPage();
   else if (state.view === "services") main.innerHTML = renderPublicServicePlansPage();
-  else if (state.view === "favorites") main.innerHTML = renderFavorites();
   else if (state.view === "recent") main.innerHTML = renderRecentlyViewed();
   else if (state.view === "settings") main.innerHTML = renderSettings();
   else main.innerHTML = renderReader();
@@ -872,7 +870,7 @@ function openHymn(number) {
 }
 
 function navigate(view) {
-  if (!["home", "listen", "programs", "services", "favorites", "recent", "settings", "books", "blog", "history", "about", "community", "set"].includes(view)) return;
+  if (!["home", "listen", "live", "programs", "services", "recent", "settings"].includes(view)) return;
   if (state.view === "listen" && (view !== "listen" || state.selectedLiveAudioProgramId)) {
     state.liveAudioOpenToken += 1;
     main.querySelectorAll("[data-audio-player]").forEach(stopAudioPlayer);
@@ -1510,7 +1508,6 @@ document.addEventListener("click", function (event) {
   else if (action === "install-update") installAvailableUpdate();
   else if (action === "save-settings") saveCurrentSettings();
   else if (action === "navigate") navigate(target.dataset.view);
-  else if (action === "save-service-set") { try { const sets=JSON.parse(localStorage.getItem("lightbearer-service-sets")||"[]"); sets.push({name:document.getElementById("service-set-name").value.trim()||"Service set",hymns:Array.from(main.querySelectorAll(".set-hymn input:checked")).map(function(x){return x.value;})}); localStorage.setItem("lightbearer-service-sets",JSON.stringify(sets));showToast("Service set saved on this device."); } catch(e){showToast("Could not save service set.");} }
   else if (action === "language") setSettings({ language: target.dataset.language });
   else if (action === "header-search") {
       if (state.view === "home") {

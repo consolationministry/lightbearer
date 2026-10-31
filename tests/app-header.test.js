@@ -12,7 +12,7 @@ test("main app header keeps the hymnal controls without public duplicate-section
   assert.doesNotMatch(appSource, /toggle-menu|button-header-menu|header-nav|menuOpen/);
   const navSource = appSource.match(/function renderNav\(\) \{([\s\S]*?)\n\}/)?.[1] || "";
   assert.ok(navSource, "public navigation renderer should be present");
-  for (const removedEntry of ["Support", "Community", "Stream", "Listen", "Read"]) {
+  for (const removedEntry of ["Support", "Community", "Stream", "Read", "Favorites", "Service"]) {
     assert.ok(!new RegExp("\\b" + removedEntry + "\\b", "i").test(navSource), `public navigation should not expose ${removedEntry}`);
   }
   assert.match(appSource, /languageToggle\(\)/);
