@@ -479,3 +479,7 @@ a { color: inherit; }
 .library-add-banner strong { display: block; font-size: 1rem; color: #13092f; }
 .library-add-banner span { font-size: .85rem; color: #4b4b63; }
 .library-books-heading { margin: 0 0 10px; font-size: 1.05rem; color: #13092f; }
+.library-upload-progress { margin: 14px 0; }
+.library-upload-bar { height: 10px; background: #e0e7ff; border-radius: 999px; overflow: hidden; }
+.library-upload-bar-fill { height: 100%; background: linear-gradient(90deg, #895af6, #1d4ed8); border-radius: 999px; transition: width .3s ease; }
+.library-upload-label { display: block; margin-top: 6px; font-size: .85rem; color: #5b5b73; font-weight: 600; }

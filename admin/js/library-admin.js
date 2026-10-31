@@ -119,6 +119,7 @@ function renderLibraryForm(root) {
     '<label>Back cover image<input name="back_cover" type="file" accept="image/*"></label>' +
     (book ? '<label>Re-upload book file (optional: replaces pages)<input name="bookfile" type="file" accept=".pdf,.txt"></label>' : '<label>Book file (PDF or TXT)<input name="bookfile" type="file" accept=".pdf,.txt" required></label>') +
     (state.error ? '<p class="form-error">' + escape(state.error) + '</p>' : '') +
+    '<div class="library-upload-progress" hidden><div class="library-upload-bar"><div class="library-upload-bar-fill" style="width:2%"></div></div><span class="library-upload-label">Preparing…</span></div>' +
     '<button class="admin-button primary" type="submit" ' + (state.busy ? "disabled" : "") + '>' + (state.busy ? "Saving…" : (book ? "Save changes" : "Upload book")) + '</button></form></section>';
   const form = root.querySelector("#library-book-form");
   form.addEventListener("submit", function (event) { event.preventDefault(); saveBookForm(form); });
@@ -130,13 +131,25 @@ function escape(value) {
   });
 }
 
+function setUploadProgress(root, percent, label) {
+  const box = root.querySelector(".library-upload-progress");
+  if (!box) return;
+  box.hidden = false;
+  box.querySelector(".library-upload-bar-fill").style.width = Math.min(100, Math.max(2, percent)) + "%";
+  box.querySelector(".library-upload-label").textContent = label;
+}
+
 async function saveBookForm(form) {
   const data = new FormData(form);
   state.busy = true; state.error = ""; renderLibraryForm(document.getElementById("admin-content"));
+  const liveRoot = document.getElementById("admin-content");
+  setUploadProgress(liveRoot, 5, "Checking covers…");
   try {
     const title = String(data.get("title") || "").trim();
     if (!title) throw new Error("Enter the book title.");
+    setUploadProgress(liveRoot, 12, "Uploading front cover…");
     const front = await uploadLibraryImage(data.get("front_cover"), "front");
+    setUploadProgress(liveRoot, 30, "Uploading back cover…");
     const back = await uploadLibraryImage(data.get("back_cover"), "back");
     const file = data.get("bookfile");
     let body = { title, author: String(data.get("author") || "").trim(), updated_at: new Date().toISOString() };
@@ -154,7 +167,9 @@ async function saveBookForm(form) {
       Object.assign(editing, body);
     }
     if (file && file.size) {
+      setUploadProgress(liveRoot, 55, "Reading the book file…");
       const parsed = await parseBookFile(file);
+      setUploadProgress(liveRoot, 75, "Saving " + parsed.length + " pages…");
       if (!parsed.length) throw new Error("The file had no readable pages.");
       await supabaseRequest("rest/v1/book_pages?book_id=eq." + encodeURIComponent(editing.id), { method: "DELETE" });
       const rows = [];
