@@ -18,7 +18,7 @@ async function checkAndroidRelease() {
     if (!response.ok) return;
     const release = await response.json();
     const appInfo = await App.getInfo();
-    const apkAsset = window.location.pathname.indexOf("/admin") >= 0 ? ADMIN_APK_ASSET : MEMBER_APK_ASSET;
+    const apkAsset = (window.__LIGHTBEARER_ADMIN__ === true || window.location.pathname.indexOf("/admin") >= 0) ? ADMIN_APK_ASSET : MEMBER_APK_ASSET;
     const update = getAndroidApkRelease(release, appInfo.version || APP_VERSION, apkAsset);
     if (!update) return;
     availableUpdate = update;
@@ -34,6 +34,11 @@ export async function initializeNativeUpdates(onAvailable) {
   onUpdateAvailable = onAvailable;
   checkAndroidRelease();
   window.addEventListener("online", checkAndroidRelease);
+  // Keep checking so the popup can appear on any screen, even minutes after launch.
+  window.setInterval(checkAndroidRelease, 5 * 60 * 1000);
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) checkAndroidRelease();
+  });
 }
 
 export async function applyNativeUpdate(onProgress) {
