@@ -105,7 +105,13 @@ export function renderLibraryAdmin(root) {
     '<h2 class="library-books-heading">All books</h2>' +
     (state.error ? '<p class="form-error">' + escape(state.error) + '</p>' : '') +
     '<div class="library-admin-list">' + rows + '</div></section>';
-  loadLibraryStats().then(function (stats) { state.stats = stats; const cards = root.querySelector(".library-stats-grid"); if (cards) { renderLibraryAdmin(root); } }).catch(function () {});
+  loadLibraryStats().then(function (stats) {
+    state.stats = stats;
+    const grid = root.querySelector(".library-stats-grid");
+    if (!grid) return;
+    const values = [state.books.length, stats.readers, stats.likes, stats.comments];
+    grid.querySelectorAll(".library-stat-value").forEach(function (el, index) { el.textContent = String(values[index]); });
+  }).catch(function () {});
 }
 
 function renderLibraryForm(root) {
@@ -156,6 +162,7 @@ async function saveBookForm(form) {
     if (front) body.front_cover_url = front;
     if (back) body.back_cover_url = back;
     let editing = state.editingId ? state.books.find(function (item) { return String(item.id) === String(state.editingId); }) : null;
+    const createdNew = !editing;
     if (!editing) {
       body.status = "published";
       const created = await supabaseRequest("rest/v1/books", { method: "POST", body: JSON.stringify([body]) });
@@ -187,6 +194,10 @@ async function saveBookForm(form) {
     await loadBooks();
     renderLibraryAdmin(document.getElementById("admin-content"));
   } catch (error) {
+    if (createdNew && editing && editing.id) {
+      try { await supabaseRequest("rest/v1/books?id=eq." + encodeURIComponent(editing.id), { method: "DELETE" }); } catch (cleanupError) {}
+      state.books = state.books.filter(function (item) { return item !== editing; });
+    }
     state.busy = false; state.error = (error && error.message) || "Could not save the book.";
     renderLibraryForm(document.getElementById("admin-content"));
   }
