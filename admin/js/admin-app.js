@@ -1570,13 +1570,14 @@ function showAdminUpdateNotice(update) {
 }
 
 renderLogin();
+// check for app updates immediately, before login — same flow as the public app
+initializeUpdates({ onAvailable: showAdminUpdateNotice });
 initializeAdminAuth().then(async function (result) {
   state.authStatus = result;
   if (!result.authenticated) return;
   try {
     state.activeView = "dashboard";
     renderShell();
-    initializeUpdates({ onAvailable: showAdminUpdateNotice });
   } catch (error) {
     state.authStatus = { configured: true, authenticated: false, admin: null };
     await logoutAdmin();
