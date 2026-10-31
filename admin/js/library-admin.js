@@ -1,4 +1,4 @@
-import { supabaseRequest } from "./supabase-client.js?v=33";
+import { supabaseRequest } from "./supabase-client.js?v=34";
 import { splitLongPage } from "../../js/library-data.js";
 
 async function getLibraryCloudinaryCredentials() {
