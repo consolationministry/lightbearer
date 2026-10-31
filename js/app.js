@@ -45,6 +45,7 @@ import {
   toggleAudioPlayback
 } from "./live-audio-player.js";
 import { renderLiveAudioListener, renderLiveAudioPage, updateLiveAudioListener } from "./live-audio-views.js";
+import { fetchLibraryBooks, fetchBookPages, fetchPageSocial, likeBookPage, commentOnBookPage } from "./library-data.js";
 
 const splashStartedAt = Date.now();
 const CHURCH_MOTTO = "Occupy Till I Come";
