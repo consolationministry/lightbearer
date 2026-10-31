@@ -1,7 +1,7 @@
 {
   "name": "Lightbearer",
   "short_name": "Lightbearer",
-  "version": "1.12.2",
+  "version": "1.12.3",
   "start_url": "./hymnal.html",
   "scope": "./",
   "display": "standalone",

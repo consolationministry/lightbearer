@@ -68,6 +68,29 @@ test("offline app worker caches the reader and the Vite build emits both pages",
   assert.ok(viteConfig.includes("hymnal.html"));
 });
 
+test("public forms show church branding and bottom navigation, and gate form access on a saved device email", async () => {
+  const [page, script, css] = await Promise.all([read("forms.html"), read("js/forms-public.js"), read("css/forms.css")]);
+  assert.ok(page.includes("C&amp;S Bible Church"));
+  assert.ok(page.includes('class="forms-bottom-nav"'));
+  assert.ok(page.includes("lightbearer-icon-512.png"));
+  assert.ok(script.includes("Start with your email"));
+  assert.ok(script.includes("lightbearer-user-email"));
+  assert.ok(script.includes("if(!emailGate())return"));
+  assert.ok(script.includes("data-query-for"));
+  assert.ok(script.includes("suggestion-option"));
+  assert.ok(css.includes(".forms-bottom-nav"));
+});
+
+test("admin response cards provide prominent registration IDs, copy actions, labeled answers, and narrow-screen styles", async () => {
+  const [script, css] = await Promise.all([read("admin/js/forms-admin.js"), read("admin/css/forms-admin.css")]);
+  assert.ok(script.includes("response-registration"));
+  assert.ok(script.includes("data-copy"));
+  assert.ok(script.includes("response-answer"));
+  assert.ok(script.includes("response-summary-date"));
+  assert.ok(css.includes(".response-registration"));
+  assert.ok(css.includes("@media(max-width:560px)"));
+});
+
 test("Pages build includes the admin workspace and its runtime dependencies", async () => {
   await run(process.execPath, ["node_modules/vite/bin/vite.js", "build"], { cwd: repositoryRoot });
   await run(process.execPath, ["scripts/build-web.mjs"], { cwd: repositoryRoot });
