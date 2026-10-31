@@ -12,10 +12,16 @@ create table if not exists public.forms (
 create unique index if not exists forms_active_name_unique on public.forms(lower(name)) where deleted_at is null;
 create table if not exists public.form_fields (
  id uuid primary key default gen_random_uuid(), form_id uuid not null references public.forms(id) on delete cascade, label text not null default '', placeholder text not null default '',
- kind text not null check(kind in ('text','number','date','file','text_number','gender','country_state_lga')), required boolean not null default false,
+ kind text not null check(kind in ('text','number','date','file','text_number','gender','email','phone','country_state_lga')), required boolean not null default false,
  options jsonb not null default 'null'::jsonb, position integer not null default 0, section_index integer not null default 0, section_style jsonb not null default '{}'::jsonb, created_at timestamptz not null default now()
 );
 create index if not exists form_fields_form_position on public.form_fields(form_id,position);
+alter table public.form_fields drop constraint if exists form_fields_kind_check;
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname='form_fields_kind_check') then
+    alter table public.form_fields add constraint form_fields_kind_check check(kind in ('text','number','date','file','text_number','gender','email','phone','country_state_lga'));
+  end if;
+end $$;
 create table if not exists public.form_testers (
  id uuid primary key default gen_random_uuid(), form_id uuid not null references public.forms(id) on delete cascade,
  email text not null default '', created_at timestamptz not null default now(), unique(form_id,email)
@@ -59,10 +65,10 @@ begin
  if coalesce(trim(p_respondent_email),'')<>'' and exists(select 1 from public.form_responses where form_id=p_form_id and deleted_at is null and lower(respondent_email)=lower(trim(p_respondent_email))) then raise exception 'duplicate respondent email'; end if;
  if coalesce(trim(p_respondent_phone),'')<>'' and exists(select 1 from public.form_responses where form_id=p_form_id and deleted_at is null and respondent_phone=trim(p_respondent_phone)) then raise exception 'duplicate respondent phone'; end if;
  insert into public.form_responses(form_id,respondent_name,respondent_email,respondent_phone,data) values(p_form_id,coalesce(trim(p_respondent_name),''),lower(coalesce(trim(p_respondent_email),'')),coalesce(trim(p_respondent_phone),''),coalesce(p_data,'{}'::jsonb)) returning id into rid;
- if f.form_type='registration' then
-  cfg:=coalesce(f.registration_config,'{}'::jsonb); seq:=nextval('public.form_registration_sequence'); n:=greatest(1,least(coalesce((cfg->>'length')::integer,6),20));
-  if cfg->>'alphabet'='alphabet' then generated:=lpad(to_char(seq,'FM99999999999999999999'),n,'A'); else generated:=lpad(seq::text,n,'0'); end if;
-  code:=coalesce(cfg->>'prefix','')||generated||coalesce(cfg->>'suffix','');
+ cfg:=coalesce(f.registration_config,'{}'::jsonb);
+ if f.form_type='registration' and coalesce((cfg->>'enabled')::boolean,true) then
+  seq:=nextval('public.form_registration_sequence'); n:=greatest(4,least(coalesce((cfg->>'length')::integer,4),12));
+  code:=coalesce(nullif(cfg->>'prefix',''),'REG-'||to_char(current_date,'YYYY')||'-')||lpad(seq::text,n,'0')||coalesce(cfg->>'suffix','');
   update public.form_responses set registration_code=code where id=rid;
   insert into public.registration_codes(form_id,response_id,code,sequence_number) values(p_form_id,rid,code,seq);
  end if;
