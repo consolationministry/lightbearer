@@ -62,7 +62,7 @@ const updateMessage = document.getElementById("update-message");
 const updateVersion = document.getElementById("update-version");
 const updateStatus = document.getElementById("update-status");
 const updateInstallButton = document.getElementById("update-install");
-const state = { hymns: [], publicContent: null, programmeInteractions: {}, programmeInteractionsAvailable: null, programmeVotesAvailable: null, programmeVotePending: {}, programmeDescriptionsExpanded: {}, programmeSelectedId: null, programmeCategoryFilter: "", serviceSelectedId: null, serviceAimId: null, liveAudioData: emptyLiveAudioData(), savedLiveAudioPrograms: getSavedLiveAudioPrograms(), savingLiveAudioIds: new Set(), liveAudioPlaybackUrl: "", liveAudioOfflinePlayback: false, liveAudioOpenToken: 0, liveAudioLoading: false, liveAudioError: "", liveAudioJoinError: null, liveAudioQuery: "", liveAudioCategory: "", selectedLiveAudioProgramId: null, liveAudioStartedAt: null, liveAudioTimer: null, liveAudioPollTimer: null, liveAudioSegmentPollTimer: null, liveAudioSegmentRequest: false, liveAudioSegmentRequestToken: 0, liveAudioRequestToken: 0, liveAudioConnectToken: 0, liveAudioListener: null, liveAudioConnecting: false, liveAudioConnectionStatus: "", liveAudioStatusCode: "", liveAudioBroadcastOffline: false, liveAudioHasConnected: false, liveAudioCountRecorded: false, liveAudioEnding: false, liveAudioEndingTimer: null, liveAudioBurstSub: null, liveAudioBurstProgramId: "", liveAudioListenEventId: "", view: "home", readerReturnView: "home", selectedNumber: null, query: "", category: "", searchOpen: false, settings: getSettings(), toastTimer: null };
+const state = { hymns: [], publicContent: null, programmeInteractions: {}, programmeInteractionsAvailable: null, programmeVotesAvailable: null, programmeVotePending: {}, programmeDescriptionsExpanded: {}, programmeSelectedId: null, programmeCategoryFilter: "", serviceSelectedId: null, serviceAimId: null, liveAudioData: emptyLiveAudioData(), savedLiveAudioPrograms: getSavedLiveAudioPrograms(), savingLiveAudioIds: new Set(), liveAudioPlaybackUrl: "", liveAudioOfflinePlayback: false, liveAudioOpenToken: 0, liveAudioLoading: false, liveAudioError: "", liveAudioJoinError: null, liveAudioQuery: "", liveAudioCategory: "", selectedLiveAudioProgramId: null, liveAudioStartedAt: null, liveAudioTimer: null, liveAudioPollTimer: null, liveAudioSegmentPollTimer: null, liveAudioSegmentRequest: false, liveAudioSegmentRequestToken: 0, liveAudioRequestToken: 0, liveAudioConnectToken: 0, liveAudioListener: null, liveAudioConnecting: false, liveAudioConnectionStatus: "", liveAudioStatusCode: "", liveAudioBroadcastOffline: false, liveAudioHasConnected: false, liveAudioCountRecorded: false, liveAudioEnding: false, liveAudioEndingTimer: null, liveAudioBurstSub: null, liveAudioBurstProgramId: "", liveAudioListenEventId: "", view: "home", readerReturnView: "home", libraryBooks: [], libraryLoaded: false, bookId: null, bookPages: [], bookPagesLoaded: false, bookPageIndex: 0, bookPageSocial: null, bookPageLikedMap: {}, selectedNumber: null, query: "", category: "", searchOpen: false, settings: getSettings(), toastTimer: null };
 
 try { state.query = localStorage.getItem("lightbearer-search") || ""; state.searchOpen = Boolean(state.query); } catch (error) {}
 
@@ -124,6 +124,7 @@ function renderNav() {
     ["forms", "Forms", "layers"],
     ["programs", "Programs", "sparkle"],
     ["services", "Services", "calendar"],
+    ["library", "Library", "book"],
     ["recent", "Recent", "history"],
     ["settings", "Settings", "settings"],
     ["listen", "Live", "radio"]
@@ -270,6 +271,123 @@ function poemSection(label, lyrics, chorus, languageCode, hasMeterPreface, hymna
   }).join("");
   return '<section class="language-reading" lang="' + languageCode + '"><h2>' + label + '</h2>' + partsMarkup + '</section>';
 }
+
+
+// ---- Library (books) ----
+function renderLibraryPage() {
+  const books = state.libraryBooks || [];
+  if (!state.libraryLoaded) {
+    fetchLibraryBooks().then(function (rows) { state.libraryBooks = rows || []; state.libraryLoaded = true; render(); });
+    return '<section class="page library-page">' + pageHeading("Library", "Church books and reading resources.") + '<p class="results-meta">Loading books…</p></section>';
+  }
+  const grid = books.length ? books.map(function (book) {
+    const cover = book.front_cover_url || "";
+    return '<article class="library-book-card"><button class="library-book-open" type="button" data-action="open-book" data-book="' + book.id + '">' +
+      (cover ? '<img src="' + escapeHtml(cover) + '" alt="" loading="lazy">' : '<span class="library-book-placeholder">' + escapeHtml(String(book.title || "Book").slice(0, 1)) + '</span>') +
+      '<strong>' + escapeHtml(book.title || "Untitled") + '</strong></button><span class="library-book-author">' + escapeHtml(book.author || "") + '</span></article>';
+  }).join("") : '<p class="results-meta">No books have been added yet.</p>';
+  return '<section class="page library-page">' + pageHeading("Library", "Church books and reading resources.") +
+    '<div class="library-grid">' + grid + '</div></section>';
+}
+
+function renderBookReaderPage() {
+  const book = (state.libraryBooks || []).find(function (item) { return String(item.id) === String(state.bookId); });
+  if (!book) return '<section class="page book-page">' + pageHeading("Library", "") + '<p class="results-meta">Book not found. <button class="link-button" type="button" data-action="navigate" data-view="library">Back to Library</button></p></section>';
+  const pages = state.bookPages || [];
+  if (!state.bookPagesLoaded) {
+    fetchBookPages(book.id).then(function (rows) { state.bookPages = rows || []; state.bookPagesLoaded = true; render(); });
+    return '<section class="page book-page">' + pageHeading(book.title, book.author || "") + '<p class="results-meta">Loading pages…</p></section>';
+  }
+  if (!pages.length) return '<section class="page book-page">' + pageHeading(book.title, book.author || "") + '<p class="results-meta">This book has no pages yet.</p></section>';
+  const index = Math.min(Math.max(state.bookPageIndex || 0, 0), pages.length - 1);
+  const page = pages[index];
+  const social = state.bookPageSocial;
+  const colored = page.is_colored && /<(img|div|svg|figure)/i.test(page.content || "");
+  const bodyHtml = colored ? (page.content || "") : '<p class="book-page-text">' + escapeHtml(page.content || "").replace(/\n/g, "<br>") + '</p>';
+  const liked = social && social.liked;
+  return '<section class="page book-reader-page">' +
+    '<header class="book-reader-heading"><button class="icon-button" type="button" data-action="book-back" aria-label="Back to Library">' + icon("arrow") + '</button>' +
+    '<div><strong>' + escapeHtml(book.title) + '</strong><span>' + escapeHtml(book.author || "") + '</span></div></header>' +
+    '<article class="book-sheet" data-testid="book-page-' + index + '">' +
+    '<header class="book-sheet-head"><span class="book-page-title">' + escapeHtml(page.page_title || ("Page " + (index + 1))) + '</span><span class="book-page-number">' + escapeHtml(String(page.page_number || index + 1).padStart(2, "0")) + '</span></header>' +
+    '<div class="book-sheet-body">' + bodyHtml + '</div>' +
+    '<footer class="book-sheet-foot"><button class="book-turn" type="button" data-action="book-prev"' + (index === 0 ? " disabled" : "") + '>‹ Back</button>' +
+    '<span class="book-footer-label">' + escapeHtml(book.title) + ' · ' + (index + 1) + ' of ' + pages.length + '</span>' +
+    '<button class="book-turn" type="button" data-action="book-next"' + (index >= pages.length - 1 ? " disabled" : "") + '>Next ›</button></footer>' +
+    '</article>' +
+    '<div class="book-social"><button class="book-like' + (liked ? " liked" : "") + '" type="button" data-action="book-like" data-testid="book-like">' + (liked ? "👍" : "👍") + ' <span>' + (social ? social.likeCount : 0) + '</span></button>' +
+    '<form class="book-comment-form" data-testid="book-comment-form"><input name="comment" type="text" placeholder="Comment on this page…" required><button type="submit">Post</button></form>' +
+    '<ul class="book-comments">' + ((social && social.comments) || []).map(function (c) { return '<li><strong>' + escapeHtml(c.author_name || "Reader") + '</strong> ' + escapeHtml(c.comment || "") + '</li>'; }).join("") + '</ul></div>' +
+    '</section>';
+}
+
+async function loadBookPageSocial() {
+  const book = (state.libraryBooks || []).find(function (item) { return String(item.id) === String(state.bookId); });
+  const pages = state.bookPages || [];
+  const index = Math.min(Math.max(state.bookPageIndex || 0, 0), pages.length - 1);
+  if (!book || !pages.length) { state.bookPageSocial = { likeCount: 0, comments: [], liked: false }; return; }
+  const page = pages[index];
+  const social = await fetchPageSocial(book.id, page.page_number || index + 1);
+  social.liked = Boolean(state.bookPageLikedMap && state.bookPageLikedMap[String(book.id) + ":" + (page.page_number || index + 1)]);
+  state.bookPageSocial = social;
+  render();
+}
+
+
+function openBook(bookId) {
+  state.bookId = String(bookId);
+  state.bookPages = null;
+  state.bookPagesLoaded = false;
+  state.bookPageIndex = 0;
+  state.bookPageSocial = null;
+  state.view = "book";
+  state.libraryLoaded = true;
+  render();
+}
+
+function turnBookPage(direction) {
+  const pages = state.bookPages || [];
+  if (!pages.length) return;
+  const next = Math.min(Math.max((state.bookPageIndex || 0) + direction, 0), pages.length - 1);
+  if (next === state.bookPageIndex) return;
+  state.bookPageIndex = next;
+  state.bookPageSocial = null;
+  const sheet = document.querySelector(".book-sheet");
+  if (sheet) { sheet.classList.add(direction > 0 ? "turning-next" : "turning-prev"); }
+  window.setTimeout(function () { render(); loadBookPageSocial(); window.scrollTo({ top: 0, behavior: "smooth" }); }, 180);
+}
+
+async function likeCurrentBookPage() {
+  const book = (state.libraryBooks || []).find(function (item) { return String(item.id) === String(state.bookId); });
+  const pages = state.bookPages || [];
+  if (!book || !pages.length) return;
+  const index = Math.min(Math.max(state.bookPageIndex || 0, 0), pages.length - 1);
+  const page = pages[index];
+  const key = String(book.id) + ":" + (page.page_number || index + 1);
+  state.bookPageLikedMap = state.bookPageLikedMap || {};
+  if (state.bookPageLikedMap[key]) return;
+  state.bookPageLikedMap[key] = true;
+  try { await likeBookPage(book.id, page.page_number || index + 1); } catch (error) { state.bookPageLikedMap[key] = false; return; }
+  loadBookPageSocial();
+}
+
+document.addEventListener("submit", function (event) {
+  const form = event.target.closest(".book-comment-form");
+  if (!form) return;
+  event.preventDefault();
+  const input = form.querySelector("input[name=comment]");
+  const value = String(input && input.value || "").trim();
+  if (!value) return;
+  const book = (state.libraryBooks || []).find(function (item) { return String(item.id) === String(state.bookId); });
+  const pages = state.bookPages || [];
+  if (!book || !pages.length) return;
+  const index = Math.min(Math.max(state.bookPageIndex || 0, 0), pages.length - 1);
+  const page = pages[index];
+  commentOnBookPage(book.id, page.page_number || index + 1, value, readLocal("cns-form-email", "") || "Reader").then(function () {
+    input.value = "";
+    loadBookPageSocial();
+  }).catch(function () {});
+});
 
 function renderRecentlyViewed() {
   const viewed = getRecentNumbers().map(function (number) {
@@ -849,6 +967,8 @@ function render() {
     );
   else if (state.view === "programs") main.innerHTML = renderPublicProgramsPage();
   else if (state.view === "services") main.innerHTML = renderPublicServicePlansPage();
+  else if (state.view === "library") main.innerHTML = renderLibraryPage();
+  else if (state.view === "book") main.innerHTML = renderBookReaderPage();
   else if (state.view === "recent") main.innerHTML = renderRecentlyViewed();
   else if (state.view === "settings") main.innerHTML = renderSettings();
   else main.innerHTML = renderReader();
@@ -911,7 +1031,7 @@ function openHymn(number) {
 }
 
 function navigate(view) {
-  if (!["home", "listen", "programs", "services", "recent", "settings"].includes(view)) return;
+  if (!["home", "listen", "programs", "services", "recent", "settings", "library", "book"].includes(view)) return;
   if (state.view === "listen" && (view !== "listen" || state.selectedLiveAudioProgramId)) {
     state.liveAudioOpenToken += 1;
     main.querySelectorAll("[data-audio-player]").forEach(stopAudioPlayer);
@@ -1600,6 +1720,11 @@ document.addEventListener("click", function (event) {
   else if (action === "install-update") installAvailableUpdate();
   else if (action === "save-settings") saveCurrentSettings();
   else if (action === "navigate") navigate(target.dataset.view);
+  else if (action === "open-book") openBook(target.dataset.book);
+  else if (action === "book-back") navigate("library");
+  else if (action === "book-prev") turnBookPage(-1);
+  else if (action === "book-next") turnBookPage(1);
+  else if (action === "book-like") likeCurrentBookPage();
   else if (action === "language") setSettings({ language: target.dataset.language });
   else if (action === "header-search") {
       if (state.view === "home") {

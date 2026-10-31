@@ -8,6 +8,7 @@ import { getCloudinarySettings, renderCloudinarySettingsPanel, removeCloudinaryS
 import { getProgrammeInteractions } from "../../js/programme-interactions.js";
 import { applyAvailableUpdate, initializeUpdates } from "../../js/updates.js";
 import { repairMojibake } from "../../js/programme-feed-utils.js";
+import { handleLibraryAdminAction as handleLibraryAdminActionBridge } from "./library-admin.js";
 
 const root = document.getElementById("admin-root");
 const state = { view: "login", activeView: "dashboard", menuOpen: false, authStatus: null, hymnMode: "list", editingHymnId: null, hymnSaving: false, search: "", statusFilter: "", categoryFilter: "", formStart: null, categoryMode: "list", editingCategoryName: null, categoryFormStart: null, serviceMode: "list", editingServiceId: null, serviceFormStart: null, programMode: "list", editingProgramId: null, programFlyerUrl: "", programFormStart: null, settingsFormStart: null, quoteSettingsFormStart: null, toastTimer: null,   hymnRowsCache: { hymns: null, drafts: null }, hymnRowsLoading: { hymns: null, drafts: null }, hymnRowsVersion: { hymns: 0, drafts: 0 }, selectedHymnIds: new Set(), hymnLanguage: "english", hymnUploadRows: [], hymnUploadLanguage: "english" };
@@ -18,6 +19,7 @@ const navigation = [
   { id: "drafts", label: "Drafts", icon: "clock" },
   { id: "categories", label: "Categories", icon: "layers" },
   { id: "services", label: "Service Planner", icon: "calendar" },
+  { id: "library", label: "Library", icon: "book" },
   { id: "programs", label: "Upcoming Programmes", icon: "event" },
   { id: "live-audio", label: "Live Audio", icon: "radio" },
   { id: "settings", label: "Settings", icon: "settings" }
@@ -820,6 +822,7 @@ function renderCurrentView() {
   else if (state.activeView === "categories") renderCategoryWorkspace();
   else if (state.activeView === "services") renderServiceWorkspace();
   else if (state.activeView === "programs") renderProgramWorkspace();
+  else if (state.activeView === "library") { import("./library-admin.js").then(function (module) { module.renderLibraryAdmin(document.getElementById("admin-content")); }); }
   else if (state.activeView === "live-audio") {
     const content = document.getElementById("admin-content");
     if (content) content.innerHTML = renderLiveAudioAdmin();
@@ -1314,6 +1317,7 @@ async function setHymnStatus(id, status) {
 
 root.addEventListener("click", async function (event) {
   const button = event.target.closest("[data-action]"); if (!button) return;
+  if (state.activeView === "library" && button.dataset.libraryAction) { const handled = await handleLibraryAdminActionBridge(button); if (handled) return; }
   if (state.activeView === "live-audio" && await handleLiveAudioAdminAction(button)) return;
   const action = button.dataset.action;
   if (action === "remove-cloudinary-settings") {
