@@ -1317,7 +1317,7 @@ async function setHymnStatus(id, status) {
 
 root.addEventListener("click", async function (event) {
   const button = event.target.closest("[data-action]"); if (!button) return;
-  if (state.activeView === "library" && button.dataset.libraryAction) { const handled = await handleLibraryAdminActionBridge(button); if (handled) return; }
+  if (state.activeView === "library" && button.dataset.libraryAction) { const handled = await handleLibraryAdminActionBridge(button, document.getElementById("admin-content")); if (handled) return; }
   if (state.activeView === "live-audio" && await handleLiveAudioAdminAction(button)) return;
   const action = button.dataset.action;
   if (action === "remove-cloudinary-settings") {

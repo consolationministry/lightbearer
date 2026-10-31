@@ -469,3 +469,13 @@ a { color: inherit; }
 
 .cloudinary-status { min-height: 1.5em; margin: 12px 0 0; color: var(--muted); font-size: .82rem; line-height: 1.5; }
 .cloudinary-status.is-error { color: #1d4ed8; }
+
+/* Library dashboard */
+.library-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin: 0 0 18px; }
+.library-stat-card { background: var(--surface, #fff); border: 1px solid var(--line, #e5e7ff); border-radius: 14px; padding: 16px; display: grid; gap: 4px; box-shadow: 0 1px 3px rgba(19, 9, 47, .06); }
+.library-stat-value { font-size: 1.7rem; font-weight: 700; color: #1d4ed8; }
+.library-stat-label { font-size: .82rem; color: var(--muted, #5b5b73); font-weight: 600; }
+.library-add-banner { display: flex; align-items: center; justify-content: space-between; gap: 14px; background: linear-gradient(135deg, #eef2ff, #e0e7ff); border: 1px solid #c7d2fe; border-radius: 14px; padding: 16px 18px; margin: 0 0 20px; }
+.library-add-banner strong { display: block; font-size: 1rem; color: #13092f; }
+.library-add-banner span { font-size: .85rem; color: #4b4b63; }
+.library-books-heading { margin: 0 0 10px; font-size: 1.05rem; color: #13092f; }

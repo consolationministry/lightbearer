@@ -23,6 +23,19 @@ async function loadBooks() {
   state.loaded = true;
 }
 
+async function loadLibraryStats() {
+  const parts = await Promise.all([
+    supabaseRequest("rest/v1/book_pages?select=book_id&page_number=gt.0&limit=1000") || [],
+    supabaseRequest("rest/v1/book_page_likes?select=*&limit=1000") || [],
+    supabaseRequest("rest/v1/book_page_comments?select=*&limit=1000") || []
+  ]);
+  const pages = parts[0] || [], likes = parts[1] || [], comments = parts[2] || [];
+  const readers = new Set();
+  (likes || []).forEach(function (row) { if (row.device_id) readers.add(row.device_id); });
+  (comments || []).forEach(function (row) { if (row.device_id) readers.add(row.device_id); });
+  return { pages: pages.length, likes: likes.length, comments: comments.length, readers: readers.size };
+}
+
 async function uploadLibraryImage(file, kind) {
   if (!file || !file.size) return "";
   if (!/^image\/(jpeg|png|webp|gif)$/.test(String(file.type || ""))) throw new Error("Choose a JPG, PNG, WebP or GIF image for the " + kind + " cover.");
@@ -79,10 +92,20 @@ export function renderLibraryAdmin(root) {
       '<div class="library-admin-actions"><button class="admin-button" type="button" data-library-action="edit" data-id="' + book.id + '">Edit</button>' +
       '<button class="admin-button danger" type="button" data-library-action="delete" data-id="' + book.id + '">Delete</button></div></div>';
   }).join("") || '<p>No books yet. Click “Add book” to upload the first one.</p>';
-  root.innerHTML = '<section class="panel library-admin-panel"><header class="panel-head"><div><h1>Library</h1><p>Upload and manage church books. Members read them in the app.</p></div>' +
-    '<button class="admin-button primary" type="button" data-library-action="add">Add book</button></header>' +
+  const stats = state.stats || { pages: "…", likes: "…", comments: "…", readers: "…" };
+  root.innerHTML = '<section class="panel library-admin-panel"><header class="panel-head"><div><h1>Library dashboard</h1><p>Church books at a glance. Members read them in the app.</p></div></header>' +
+    '<div class="library-stats-grid">' +
+    '<div class="library-stat-card"><span class="library-stat-value">' + escape(state.books.length) + '</span><span class="library-stat-label">Total books</span></div>' +
+    '<div class="library-stat-card"><span class="library-stat-value">' + escape(stats.readers) + '</span><span class="library-stat-label">Total readers</span></div>' +
+    '<div class="library-stat-card"><span class="library-stat-value">' + escape(stats.likes) + '</span><span class="library-stat-label">Total likes</span></div>' +
+    '<div class="library-stat-card"><span class="library-stat-value">' + escape(stats.comments) + '</span><span class="library-stat-label">Total comments</span></div>' +
+    '</div>' +
+    '<div class="library-add-banner"><div><strong>Add a book</strong><span>Upload the file, choose the covers, and members get it instantly.</span></div>' +
+    '<button class="admin-button primary" type="button" data-library-action="add">Add book</button></div>' +
+    '<h2 class="library-books-heading">All books</h2>' +
     (state.error ? '<p class="form-error">' + escape(state.error) + '</p>' : '') +
     '<div class="library-admin-list">' + rows + '</div></section>';
+  loadLibraryStats().then(function (stats) { state.stats = stats; const cards = root.querySelector(".library-stats-grid"); if (cards) { renderLibraryAdmin(root); } }).catch(function () {});
 }
 
 function renderLibraryForm(root) {
