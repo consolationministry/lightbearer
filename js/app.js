@@ -126,7 +126,7 @@ function renderNav() {
     ["services", "Services", "calendar"],
     ["recent", "Recent", "history"],
     ["settings", "Settings", "settings"],
-    ["live", "Live", "radio"]
+    ["listen", "Live", "radio"]
   ];
   nav.innerHTML = items.map(function (item) {
     if (item[0] === "forms") return '<a class="nav-item" href="./forms.html" data-testid="nav-forms">' + icon(item[2]) + '<span>Forms</span></a>';
@@ -870,7 +870,7 @@ function openHymn(number) {
 }
 
 function navigate(view) {
-  if (!["home", "listen", "live", "programs", "services", "recent", "settings"].includes(view)) return;
+  if (!["home", "listen", "programs", "services", "recent", "settings"].includes(view)) return;
   if (state.view === "listen" && (view !== "listen" || state.selectedLiveAudioProgramId)) {
     state.liveAudioOpenToken += 1;
     main.querySelectorAll("[data-audio-player]").forEach(stopAudioPlayer);
