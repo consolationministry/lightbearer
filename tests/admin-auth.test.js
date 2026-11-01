@@ -3,7 +3,8 @@ import test from "node:test";
 import {
   clearSession,
   getStoredSession,
-  isSupabaseConfigured
+  isSupabaseConfigured,
+  supabaseRequest
 } from "../admin/js/supabase-client.js?v=31";
 import {
   initializeAdminAuth,
@@ -48,6 +49,8 @@ test("configured admin sign-in verifies membership and never stores a session", 
     if (String(url).endsWith("/auth/v1/user")) {
       return response({ id: "admin-uuid", email: "admin@example.org" });
     }
+    if (String(url).includes("/rest/v1/categories")) return response([{ id: "category-1" }]);
+    if (String(url).endsWith("/auth/v1/logout")) return response(null, 204);
     if (String(url).includes("/rest/v1/admin_users")) {
       return response([{ user_id: "admin-uuid" }]);
     }
@@ -63,6 +66,17 @@ test("configured admin sign-in verifies membership and never stores a session", 
   assert.equal(seen.length, 3);
   assert.equal(seen[0].init.headers.get("authorization").startsWith("Bearer sb_publishable_"), true);
   assert.equal(seen[1].init.headers.get("authorization"), "Bearer access-test");
+  await supabaseRequest("rest/v1/categories?select=id");
+  assert.equal(seen[3].init.headers.get("authorization"), "Bearer access-test");
+  assert.equal(isAdminAuthenticated(), true);
+  await logoutAdmin();
+  assert.equal(getStoredSession(), null);
+  assert.equal(seen[4].init.headers.get("authorization"), "Bearer access-test");
+  const storedValues = installStorage();
+  storedValues.set("cns-lightbearer-admin-session-v1", JSON.stringify({ access_token: "persisted-access", refresh_token: "persisted-refresh" }));
+  const initialized = await initializeAdminAuth();
+  assert.equal(initialized.authenticated, false);
+  assert.equal(getStoredSession(), null);
 });
 
 test("a signed-in non-admin is rejected and its session is removed", async () => {

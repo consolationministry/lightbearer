@@ -16,6 +16,46 @@ async function signLibraryParams(params, apiSecret) {
   return Array.from(digest).map(function (byte) { return byte.toString(16).padStart(2, "0"); }).join("");
 }
 
+export function buildBookPageRows(bookId, parsed) {
+  const rows = [];
+  let pageNumber = 1;
+  for (const sourcePage of parsed || []) {
+    const chunks = splitLongPage(sourcePage.content);
+    for (const chunk of chunks) {
+      rows.push({ book_id: bookId, page_number: pageNumber, text_content: chunk, image_url: sourcePage.image_url || null, background_color: sourcePage.background_color || null });
+      pageNumber += 1;
+    }
+  }
+  return rows;
+}
+
+export async function replaceBookPages(bookId, parsed, request) {
+  const send = request || supabaseRequest;
+  const previous = await send("rest/v1/book_pages?select=page_number,text_content,image_url,background_color&book_id=eq." + encodeURIComponent(bookId) + "&order=page_number.asc");
+  const replacementRows = buildBookPageRows(bookId, parsed);
+  if (!replacementRows.length) throw new Error("The file had no readable pages.");
+  await send("rest/v1/book_pages?book_id=eq." + encodeURIComponent(bookId), { method: "DELETE" });
+  try {
+    for (let i = 0; i < replacementRows.length; i += 100) {
+      await send("rest/v1/book_pages", { method: "POST", body: JSON.stringify(replacementRows.slice(i, i + 100)) });
+    }
+  } catch (originalError) {
+    try {
+      await send("rest/v1/book_pages?book_id=eq." + encodeURIComponent(bookId), { method: "DELETE" });
+      for (let i = 0; i < previous.length; i += 100) {
+        const rows = previous.slice(i, i + 100).map(function (row) { return Object.assign({ book_id: bookId }, row); });
+        await send("rest/v1/book_pages", { method: "POST", body: JSON.stringify(rows) });
+      }
+    } catch (cleanupError) {
+      const originalMessage = originalError && originalError.message ? originalError.message : "Page save failed.";
+      const cleanupMessage = cleanupError && cleanupError.message ? cleanupError.message : "Could not restore the previous pages.";
+      throw new Error(originalMessage + " Previous pages may not have been restored: " + cleanupMessage);
+    }
+    throw originalError;
+  }
+  return replacementRows.length;
+}
+
 let state = { books: [], loaded: false, mode: "list", editingId: null, busy: false, error: "", pages: [], librarySection: "church", publicFrom: "", publicTo: "", storageUsage: "Usage unavailable. Cloudinary admin API needs a secured server function and credentials." };
 
 async function loadBooks() {
@@ -250,25 +290,20 @@ async function saveBookForm(form) {
       const parsed = state.preparedPages && state.preparedPages.length ? state.preparedPages : await parseBookFile(file, function (done, total, page, pages) { setUploadProgress(liveRoot, 55 + (pages ? page / pages * 20 : done / Math.max(total, 1) * 20), pages ? "Parsing page " + page + " of " + pages : "Parsing " + done + " of " + total + " bytes…"); });
       setUploadProgress(liveRoot, 75, "Saving " + parsed.length + " pages…");
       if (!parsed.length) throw new Error("The file had no readable pages.");
-      await supabaseRequest("rest/v1/book_pages?book_id=eq." + encodeURIComponent(editing.id), { method: "DELETE" });
-      const rows = [];
-      let pageNumber = 1;
-      for (const sourcePage of parsed) {
-        const chunks = splitLongPage(sourcePage.content);
-        for (const chunk of chunks) {
-          rows.push({ book_id: editing.id, page_number: pageNumber, page_title: sourcePage.title || ("Page " + pageNumber), content: chunk, is_colored: /<(img|svg|figure)/i.test(chunk) });
-          pageNumber += 1;
-        }
-      }
-      for (let i = 0; i < rows.length; i += 100) await supabaseRequest("rest/v1/book_pages", { method: "POST", body: JSON.stringify(rows.slice(i, i + 100)) });
+      await replaceBookPages(editing.id, parsed);
     }
     state.mode = "list"; state.busy = false;
     await loadBooks();
     renderLibraryAdmin(document.getElementById("admin-content"));
   } catch (error) {
     if (createdNew && editing && editing.id) {
-      try { await supabaseRequest("rest/v1/books?id=eq." + encodeURIComponent(editing.id), { method: "DELETE" }); } catch (cleanupError) {}
       state.books = state.books.filter(function (item) { return item !== editing; });
+      try { await supabaseRequest("rest/v1/books?id=eq." + encodeURIComponent(editing.id), { method: "DELETE" }); }
+      catch (cleanupError) {
+        const originalMessage = error && error.message ? error.message : "Could not save the book.";
+        const cleanupMessage = cleanupError && cleanupError.message ? cleanupError.message : "Could not remove the incomplete book record.";
+        error = new Error(originalMessage + " The incomplete book record could not be removed: " + cleanupMessage);
+      }
     }
     state.busy = false; state.error = (error && error.message) || "Could not save the book.";
     renderLibraryForm(document.getElementById("admin-content"));

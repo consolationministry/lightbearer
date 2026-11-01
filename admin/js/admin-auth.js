@@ -1,4 +1,4 @@
-import { clearSession, getStoredSession, isSupabaseConfigured, saveSession, supabaseRequest } from "./supabase-client.js?v=31";
+import { clearSession, clearActiveSession, getActiveSession, isSupabaseConfigured, setActiveSession, supabaseRequest } from "./supabase-client.js?v=31";
 
 export const ADMIN_AUTH_CONFIGURED = isSupabaseConfigured();
 
@@ -50,9 +50,12 @@ export async function loginAdmin(email, password) {
       publicOnly: true
     });
     currentAdmin = await getVerifiedAdmin(session);
+    setActiveSession(session);
     return currentAdmin;
   } catch (error) {
     currentAdmin = null;
+    clearActiveSession();
+    clearSession();
     if (error instanceof AdminAuthError) throw error;
     if (error && error.status === 400 && /invalid login credentials/i.test(error.message || "")) {
       throw new AdminAuthError("INVALID_CREDENTIALS", "Email or password is incorrect.");
@@ -62,7 +65,7 @@ export async function loginAdmin(email, password) {
 }
 
 export async function logoutAdmin() {
-  const session = getStoredSession();
+  const session = getActiveSession() || getStoredSession();
   currentAdmin = null;
   try {
     if (session) {
@@ -102,17 +105,7 @@ export async function initializeAdminAuth() {
     currentAdmin = null;
     return { configured: false, authenticated: false, admin: null };
   }
-  // Owner directive: never auto-login. Every app open starts at the login screen,
-  // so the update popup is always seen before entering the workspace.
-  clearSession();
   currentAdmin = null;
+  clearSession();
   return { configured: true, authenticated: false, admin: null };
-  try {
-    currentAdmin = await getVerifiedAdmin(session);
-    return { configured: true, authenticated: true, admin: currentAdmin };
-  } catch (error) {
-    currentAdmin = null;
-    if (error && error.code !== "ADMIN_REQUIRED") clearSession();
-    return { configured: true, authenticated: false, admin: null, error: asAdminError(error) };
-  }
 }

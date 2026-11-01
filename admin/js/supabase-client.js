@@ -1,6 +1,22 @@
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "../config.js?v=31";
 
 const SESSION_KEY = "cns-lightbearer-admin-session-v1";
+let activeSession = null;
+
+export function setActiveSession(session) {
+  if (!session || typeof session.access_token !== "string" || !session.access_token) {
+    throw new Error("Supabase returned an invalid sign-in session.");
+  }
+  activeSession = session;
+}
+
+export function getActiveSession() {
+  return activeSession;
+}
+
+export function clearActiveSession() {
+  activeSession = null;
+}
 
 export class SupabaseRequestError extends Error {
   constructor(message, status, code) {
@@ -34,14 +50,13 @@ export function saveSession(session) {
   if (!session || typeof session.access_token !== "string" || typeof session.refresh_token !== "string") {
     throw new Error("Supabase returned an invalid sign-in session.");
   }
-  try {
-    window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  } catch (error) {
-    throw new Error("This browser cannot safely keep the admin session. Allow site storage, then sign in again.");
-  }
+  activeSession = session;
+  try { window.localStorage.setItem(SESSION_KEY, JSON.stringify(session)); }
+  catch (error) { throw new Error("This browser cannot safely keep the admin session. Allow site storage, then sign in again."); }
 }
 
 export function clearSession() {
+  clearActiveSession();
   try { window.localStorage.removeItem(SESSION_KEY); } catch (error) {}
 }
 
@@ -71,27 +86,33 @@ async function refreshSession(session) {
     clearSession();
     return null;
   }
-  const response = await fetch(makeUrl("auth/v1/token?grant_type=refresh_token"), {
-    method: "POST",
-    headers: {
-      apikey: SUPABASE_PUBLISHABLE_KEY,
-      "content-type": "application/json"
-    },
-    body: JSON.stringify({ refresh_token: session.refresh_token })
-  });
-  const payload = await parseResponse(response);
+  let response;
+  try {
+    response = await fetch(makeUrl("auth/v1/token?grant_type=refresh_token"), {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({ refresh_token: session.refresh_token })
+    });
+  } catch (error) {
+    throw new SupabaseRequestError(error && error.message ? error.message : "The admin session could not be refreshed.", 0, "NETWORK_ERROR");
+  }
+  const refreshed = await parseResponse(response);
   if (!response.ok) {
+    clearActiveSession();
     clearSession();
     return null;
   }
-  saveSession(payload);
-  return payload;
+  setActiveSession(refreshed);
+  return refreshed;
 }
 
 export async function supabaseRequest(path, options) {
   const opts = options || {};
   if (!isSupabaseConfigured()) throw new SupabaseRequestError("Admin backend configuration is missing.", 0, "NOT_CONFIGURED");
-  const session = opts.session || (!opts.publicOnly ? getStoredSession() : null);
+  const session = opts.session || (!opts.publicOnly ? (getActiveSession() || getStoredSession()) : null);
   const headers = new Headers(opts.headers || {});
   const blobBody = typeof Blob !== "undefined" && opts.body instanceof Blob;
   headers.set("apikey", SUPABASE_PUBLISHABLE_KEY);
@@ -104,7 +125,13 @@ export async function supabaseRequest(path, options) {
   if (opts.body !== undefined) {
     init.body = blobBody ? opts.body : typeof opts.body === "string" ? opts.body : JSON.stringify(opts.body);
   }
-  const response = await fetch(makeUrl(path), init);
+  let response;
+  try {
+    response = await fetch(makeUrl(path), init);
+  } catch (error) {
+    if (error && error.name === "AbortError") throw new SupabaseRequestError("The request timed out. Check your connection and try again.", 0, "NETWORK_TIMEOUT");
+    throw new SupabaseRequestError(error && error.message ? error.message : "Network request failed. Check your connection and try again.", 0, "NETWORK_ERROR");
+  }
   const payload = await parseResponse(response);
 
   if (response.status === 401 && session && session.refresh_token && !opts.noRefresh) {

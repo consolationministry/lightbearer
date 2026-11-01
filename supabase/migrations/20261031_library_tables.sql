@@ -17,8 +17,9 @@ create table if not exists public.book_pages (
   book_id uuid not null references public.books(id) on delete cascade,
   page_number integer not null,
   page_title text default '',
-  content text not null default '',
-  is_colored boolean not null default false,
+  text_content text not null default '',
+  image_url text,
+  background_color text,
   created_at timestamptz not null default now(),
   unique (book_id, page_number)
 );
