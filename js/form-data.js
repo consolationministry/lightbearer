@@ -4,5 +4,5 @@ export async function getPublicForms(){return req("rest/v1/forms?select=id,title
 export async function getPublicForm(id){const r=await req("rest/v1/forms?select=id,title,name,description,expires_at,form_type,registration_config,section_style,form_fields(*)&id=eq."+encodeURIComponent(id)+"&status=eq.published&deleted_at=is.null");return r?.[0]||null}
 export async function saveResponse(payload){return req("rest/v1/rpc/submit_form_response",{method:"POST",body:payload})}
 export async function checkDraft(email,id){const r=await req("rest/v1/rpc/get_tester_draft",{method:"POST",body:{p_form_id:id,p_email:email.toLowerCase()}});return r?.form? r:false}
-export async function getMyResponses(email){return req("rest/v1/rpc/get_my_form_responses",{method:"POST",body:{p_email:email.toLowerCase()}})}
-export async function updateMyResponse(responseId,email,data){return req("rest/v1/rpc/update_my_form_response",{method:"POST",body:{p_response_id:responseId,p_email:email.toLowerCase(),p_data:data}})}
+export async function getMyResponses(){return req("rest/v1/rpc/get_my_form_responses",{method:"POST",body:{p_email:""}})}
+export async function updateMyResponse(responseId,data){return req("rest/v1/rpc/update_my_form_response",{method:"POST",body:{p_response_id:responseId,p_email:"",p_data:data}})}

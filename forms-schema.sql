@@ -31,9 +31,7 @@ create table if not exists public.form_responses (
  respondent_name text not null default '', respondent_email text not null default '', respondent_phone text not null default '', data jsonb not null default '{}'::jsonb,
  registration_code text not null default '', created_at timestamptz not null default now(), deleted_at timestamptz, deleted_by uuid references auth.users(id) on delete set null
 );
-create unique index if not exists form_responses_unique_name on public.form_responses(form_id,lower(respondent_name)) where deleted_at is null and respondent_name<>'';
 create unique index if not exists form_responses_unique_email on public.form_responses(form_id,lower(respondent_email)) where deleted_at is null and respondent_email<>'';
-create unique index if not exists form_responses_unique_phone on public.form_responses(form_id,respondent_phone) where deleted_at is null and respondent_phone<>'';
 create index if not exists form_responses_form_created on public.form_responses(form_id,created_at desc);
 create table if not exists public.registration_codes (
  id uuid primary key default gen_random_uuid(), form_id uuid not null references public.forms(id) on delete cascade,
@@ -61,9 +59,7 @@ declare f public.forms%rowtype; rid uuid; code text:=''; seq bigint; cfg jsonb; 
 begin
  select * into f from public.forms where id=p_form_id and status='published' and deleted_at is null and (expires_at is null or expires_at>=current_date) for update;
  if not found then raise exception 'This form is unavailable or expired.'; end if;
- if coalesce(trim(p_respondent_name),'')<>'' and exists(select 1 from public.form_responses where form_id=p_form_id and deleted_at is null and lower(respondent_name)=lower(trim(p_respondent_name))) then raise exception 'duplicate respondent name'; end if;
  if coalesce(trim(p_respondent_email),'')<>'' and exists(select 1 from public.form_responses where form_id=p_form_id and deleted_at is null and lower(respondent_email)=lower(trim(p_respondent_email))) then raise exception 'duplicate respondent email'; end if;
- if coalesce(trim(p_respondent_phone),'')<>'' and exists(select 1 from public.form_responses where form_id=p_form_id and deleted_at is null and respondent_phone=trim(p_respondent_phone)) then raise exception 'duplicate respondent phone'; end if;
  insert into public.form_responses(form_id,respondent_name,respondent_email,respondent_phone,data) values(p_form_id,coalesce(trim(p_respondent_name),''),lower(coalesce(trim(p_respondent_email),'')),coalesce(trim(p_respondent_phone),''),coalesce(p_data,'{}'::jsonb)) returning id into rid;
  cfg:=coalesce(f.registration_config,'{}'::jsonb);
  if f.form_type='registration' and coalesce((cfg->>'enabled')::boolean,true) then
@@ -73,12 +69,29 @@ begin
   insert into public.registration_codes(form_id,response_id,code,sequence_number) values(p_form_id,rid,code,seq);
  end if;
  return jsonb_build_object('id',rid,'registration_code',code);
-exception when unique_violation then raise exception 'duplicate respondent name, email, or phone';
+exception when unique_violation then raise exception 'duplicate respondent email';
 end; $$;
-create or replace function public.get_my_form_responses(p_email text) returns jsonb language sql stable security definer set search_path=public as $$
+create or replace function public.get_my_form_responses(p_email text) returns jsonb language sql stable security definer set search_path=public,auth as $$
  select coalesce(jsonb_agg(jsonb_build_object('id',r.id,'form_id',r.form_id,'respondent_name',r.respondent_name,'registration_code',r.registration_code,'created_at',r.created_at,'forms',jsonb_build_object('title',f.title,'name',f.name)) order by r.created_at desc),'[]'::jsonb)
- from public.form_responses r join public.forms f on f.id=r.form_id where lower(r.respondent_email)=lower(coalesce(p_email,'')) and r.deleted_at is null and f.deleted_at is null;
+ from public.form_responses r join public.forms f on f.id=r.form_id
+ join auth.users u on u.id=auth.uid()
+ where lower(r.respondent_email)=lower(u.email) and lower(coalesce(p_email,''))=lower(u.email)
+   and r.deleted_at is null and f.deleted_at is null;
 $$;
+
+create or replace function public.update_my_form_response(p_response_id uuid,p_email text,p_data jsonb) returns boolean language plpgsql security definer set search_path=public,auth as $$
+declare changed integer;
+begin
+ update public.form_responses r set data=coalesce(p_data,'{}'::jsonb),
+   respondent_name=coalesce(nullif(trim(p_data->>'respondent_name'),''),nullif(trim(p_data->>'f_name'),''),r.respondent_name),
+   respondent_phone=coalesce(nullif(trim(p_data->>'respondent_phone'),''),nullif(trim(p_data->>'f_phone'),''),r.respondent_phone)
+ from auth.users u
+ where r.id=p_response_id and r.deleted_at is null and u.id=auth.uid()
+   and lower(r.respondent_email)=lower(u.email) and lower(coalesce(p_email,''))=lower(u.email);
+ get diagnostics changed = row_count;
+ if changed=0 then raise exception 'response not found or not owned by this account'; end if;
+ return true;
+end; $$;
 
 alter table public.forms enable row level security;
 alter table public.form_fields enable row level security;
@@ -101,4 +114,6 @@ drop policy if exists registrations_admin_access on public.registration_codes;
 create policy registrations_admin_access on public.registration_codes for all to authenticated using(exists(select 1 from public.forms f where f.id=form_id and (f.created_by=auth.uid() or public.is_lightbearer_form_admin()))) with check(exists(select 1 from public.forms f where f.id=form_id and (f.created_by=auth.uid() or public.is_lightbearer_form_admin())));
 grant select on public.forms,public.form_fields to anon,authenticated;
 grant execute on function public.is_lightbearer_form_admin() to authenticated;
-grant execute on function public.authorize_form_tester(uuid,text),public.get_tester_draft(uuid,text),public.submit_form_response(uuid,jsonb,text,text,text),public.get_my_form_responses(text) to anon,authenticated;
+grant execute on function public.authorize_form_tester(uuid,text),public.get_tester_draft(uuid,text),public.submit_form_response(uuid,jsonb,text,text,text) to anon,authenticated;
+grant execute on function public.get_my_form_responses(text),public.update_my_form_response(uuid,text,jsonb) to authenticated;
+revoke all on function public.get_my_form_responses(text),public.update_my_form_response(uuid,text,jsonb) from anon;
