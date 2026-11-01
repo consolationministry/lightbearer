@@ -161,14 +161,13 @@ export function buildBookPublishPatch(book, published) {
 
 export async function saveBookPublishState(book, published, request) {
   const send = request || supabaseRequest;
-  const path = "rest/v1/books?id=eq." + encodeURIComponent(book.id) + "&select=id,published";
-  const options = {
-    method: "PATCH",
-    body: JSON.stringify(buildBookPublishPatch(book, published)),
-    headers: { Prefer: "return=representation" }
-  };
-  const result = await send(path, options);
-  const receipt = Array.isArray(result) ? result.find(function (row) { return String(row.id) === String(book.id); }) : null;
+  if (!book || !book.id || !book.is_public) throw new Error("Only public books can be published from this list.");
+  await send("rest/v1/rpc/set_public_book_published", {
+    method: "POST",
+    body: JSON.stringify({ book_id: book.id, make_published: Boolean(published) })
+  });
+  const rows = await send("rest/v1/books?id=eq." + encodeURIComponent(book.id) + "&select=id,published");
+  const receipt = Array.isArray(rows) ? rows.find(function (row) { return String(row.id) === String(book.id); }) : null;
   if (!receipt || receipt.published !== Boolean(published)) throw new Error("The publish update was not confirmed by the server. Refresh and check the status.");
   return receipt;
 }

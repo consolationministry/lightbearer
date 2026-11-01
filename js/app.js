@@ -675,7 +675,7 @@ function servicePlanHymns(plan) {
 
 function servicePlanDateText(plan) {
   const dateValue = String(plan.date || "").slice(0, 10);
-  return plan.day || servicePlanDayLabel(dateValue) || publicDate(dateValue) || "";
+  return servicePlanDayLabel(dateValue) || publicDate(dateValue) || "";
 }
 
 function renderServiceCard(plan) {

@@ -8,13 +8,15 @@ test("book publish writes the published flag used by the member catalog and requ
   const calls = [];
   const receipt = await saveBookPublishState(publicBook, true, async (path, options) => {
     calls.push({ path, options });
+    if (path.includes("rpc/set_public_book_published")) return null;
     return [{ id: "book-1", published: true }];
   });
   assert.deepEqual(receipt, { id: "book-1", published: true });
-  assert.match(calls[0].path, /select=id,published/);
-  assert.deepEqual(JSON.parse(calls[0].options.body), { published: true });
-  assert.equal(calls[0].options.headers.Prefer, "return=representation");
-  await assert.rejects(saveBookPublishState(publicBook, true, async () => []), /not confirmed by the server/);
+  assert.match(calls[0].path, /rpc\/set_public_book_published/);
+  assert.equal(calls[0].options.method, "POST");
+  assert.deepEqual(JSON.parse(calls[0].options.body), { book_id: "book-1", make_published: true });
+  assert.match(calls[1].path, /select=id,published/);
+  await assert.rejects(saveBookPublishState(publicBook, true, async (path) => path.includes("rpc/") ? null : []), /not confirmed by the server/);
   assert.throws(() => buildBookPublishPatch({ id: "private-1", is_public: false }, true), /Only public books/);
 });
 test("library page payload uses the exact fields consumed by the member app", () => {

@@ -39,6 +39,11 @@ export const AUDIO_PRESETS = Object.freeze({
   bright: { label: "Bright", values: { treble: 5, eq4000: 3, eq5600: 2, eq8000: 4 } }
 });
 
+export function getLiveAudioReconnectDelay(attempt) {
+  const count = Math.max(0, Math.floor(Number(attempt) || 0));
+  return Math.min(3000, 250 * Math.pow(2, count));
+}
+
 export function getLiveAudioListenerStatus(connectionState, playbackStatus) {
   if (playbackStatus === "blocked") return "tap-to-play";
   if (connectionState !== "connected") return "connecting";
@@ -702,7 +707,7 @@ export async function startLiveAudioListener(options) {
     if (opts.onStatus) opts.onStatus("reconnecting");
     const delay = Number.isFinite(Number(delayMs))
       ? Math.max(0, Number(delayMs))
-      : Math.min(5000, 500 * Math.pow(2, reconnectAttempts));
+      : getLiveAudioReconnectDelay(reconnectAttempts);
     reconnectAttempts = Math.min(reconnectAttempts + 1, 8);
     reconnectTimer = globalThis.setTimeout(() => {
       reconnectTimer = null;
@@ -827,9 +832,9 @@ export async function startLiveAudioListener(options) {
           if (opts.onStatus) opts.onStatus(getLiveAudioListenerStatus(nextPeer.connectionState, audioPlaybackStatus));
           if (playRemoteAudioTrack) playRemoteAudioTrack();
         } else if (nextPeer.connectionState === "disconnected") {
-          scheduleReconnect(Math.min(5000, 500 * Math.pow(2, reconnectAttempts)));
+          scheduleReconnect();
         } else if (nextPeer.connectionState === "failed") {
-          scheduleReconnect(Math.min(5000, 500 * Math.pow(2, reconnectAttempts)));
+          scheduleReconnect();
         }
       };
       nextPeer.addTransceiver("audio", { direction: "recvonly" });
@@ -884,7 +889,7 @@ export async function startLiveAudioListener(options) {
       return;
     }
     if (message.type === "failed") {
-      scheduleReconnect(500);
+      scheduleReconnect();
       return;
     }
     if (message.type === "restart-start" && peer && iceQueue &&
@@ -912,7 +917,7 @@ export async function startLiveAudioListener(options) {
           description: descriptionToJson(peer.localDescription)
         });
       } catch (error) {
-        scheduleReconnect(500);
+        scheduleReconnect();
       }
       return;
     }
@@ -923,7 +928,7 @@ export async function startLiveAudioListener(options) {
         reconnectAttempts = 0;
         finishConnected();
       } catch (error) {
-        scheduleReconnect(500);
+        scheduleReconnect();
       }
     }
   };

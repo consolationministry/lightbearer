@@ -4,11 +4,19 @@ import { test } from "node:test";
 import {
   classifyLiveAudioNetworkQuality,
   createLiveAudioIceCandidateQueue,
+  getLiveAudioReconnectDelay,
   readLiveAudioPeerStats,
   getLiveAudioListenerStatus,
   startLiveAudioListener
 } from "../js/live-audio-webrtc.js";
 
+test("listener reconnect backoff starts quickly and caps at three seconds", () => {
+  assert.equal(getLiveAudioReconnectDelay(0), 250);
+  assert.equal(getLiveAudioReconnectDelay(1), 500);
+  assert.equal(getLiveAudioReconnectDelay(2), 1000);
+  assert.equal(getLiveAudioReconnectDelay(4), 3000);
+  assert.equal(getLiveAudioReconnectDelay(20), 3000);
+});
 test("trickle ICE buffers remote candidates until the SDP description is installed", async () => {
   let finishRemoteDescription;
   const remoteDescriptionReady = new Promise(resolve => {
