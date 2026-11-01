@@ -27,22 +27,33 @@ export async function fetchLibraryBooks() {
 }
 
 export async function fetchBookPages(bookId) {
-  try { return await rest("rest/v1/book_pages?select=id,page_number,page_title,content,is_colored&book_id=eq." + encodeURIComponent(bookId) + "&order=page_number.asc&limit=2000"); }
-  catch (error) { return []; }
+  try {
+    const result = await rest("rest/v1/book_pages?select=id,page_number,text_content,image_url,background_color&book_id=eq." + encodeURIComponent(bookId) + "&order=page_number.asc&limit=2000");
+    return (result || []).map(function (row) { return { id: row.id, page_number: row.page_number, content: row.text_content || "", page_title: "Page " + row.page_number, is_colored: false, image_url: row.image_url, background_color: row.background_color }; });
+  } catch (error) { return []; }
 }
 
 export async function fetchPageSocial(bookId, pageNumber) {
-  const likes = await rest("rest/v1/book_page_likes?select=id&book_id=eq." + encodeURIComponent(bookId) + "&page_number=eq." + pageNumber).catch(function () { return []; });
-  const comments = await rest("rest/v1/book_page_comments?select=id,author_name,comment,created_at&book_id=eq." + encodeURIComponent(bookId) + "&page_number=eq." + pageNumber + "&order=created_at.asc&limit=200").catch(function () { return []; });
-  return { likeCount: (likes || []).length, comments: comments || [] };
+  const pageResult = await rest("rest/v1/book_pages?select=id&book_id=eq." + encodeURIComponent(bookId) + "&page_number=eq." + pageNumber).catch(function () { return []; });
+  const pageId = pageResult && pageResult[0] && pageResult[0].id;
+  if (!pageId) return { likeCount: 0, comments: [] };
+  const [likes, comments] = await Promise.all([
+    rest("rest/v1/book_page_likes?select=id&page_id=eq." + encodeURIComponent(pageId)).catch(function () { return []; }),
+    rest("rest/v1/book_page_comments?select=id,author,content,created_at&page_id=eq." + encodeURIComponent(pageId) + "&order=created_at.asc&limit=200").catch(function () { return []; })
+  ]);
+  return { likeCount: (likes || []).length, comments: (comments || []).map(function (row) { return { author_name: row.author, comment: row.content }; }) };
 }
 
 export async function likeBookPage(bookId, pageNumber) {
-  await rest("rest/v1/book_page_likes", { method: "POST", body: JSON.stringify({ book_id: bookId, page_number: pageNumber, device_id: libraryDeviceId() }) });
+  const pages = await rest("rest/v1/book_pages?select=id&book_id=eq." + encodeURIComponent(bookId) + "&page_number=eq." + pageNumber);
+  if (!pages || !pages[0]) throw new Error("Book page is unavailable.");
+  await rest("rest/v1/book_page_likes", { method: "POST", body: JSON.stringify({ page_id: pages[0].id, device_id: libraryDeviceId() }) });
 }
 
 export async function commentOnBookPage(bookId, pageNumber, comment, authorName) {
-  await rest("rest/v1/book_page_comments", { method: "POST", body: JSON.stringify({ book_id: bookId, page_number: pageNumber, comment: comment, author_name: authorName || "Reader", device_id: libraryDeviceId() }) });
+  const pages = await rest("rest/v1/book_pages?select=id&book_id=eq." + encodeURIComponent(bookId) + "&page_number=eq." + pageNumber);
+  if (!pages || !pages[0]) throw new Error("Book page is unavailable.");
+  await rest("rest/v1/book_page_comments", { method: "POST", body: JSON.stringify({ page_id: pages[0].id, author: authorName || "Reader", content: comment, device_id: libraryDeviceId() }) });
 }
 
 // Split a page's text into page-sized chunks so very long source pages render as two book pages.

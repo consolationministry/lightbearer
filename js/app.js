@@ -63,7 +63,7 @@ const updateMessage = document.getElementById("update-message");
 const updateVersion = document.getElementById("update-version");
 const updateStatus = document.getElementById("update-status");
 const updateInstallButton = document.getElementById("update-install");
-const state = { hymns: [], publicContent: null, programmeInteractions: {}, programmeInteractionsAvailable: null, programmeVotesAvailable: null, programmeVotePending: {}, programmeDescriptionsExpanded: {}, programmeSelectedId: null, programmeCategoryFilter: "", serviceSelectedId: null, serviceAimId: null, liveAudioData: emptyLiveAudioData(), savedLiveAudioPrograms: getSavedLiveAudioPrograms(), savingLiveAudioIds: new Set(), liveAudioPlaybackUrl: "", liveAudioOfflinePlayback: false, liveAudioOpenToken: 0, liveAudioLoading: false, liveAudioError: "", liveAudioJoinError: null, liveAudioQuery: "", liveAudioCategory: "", selectedLiveAudioProgramId: null, liveAudioStartedAt: null, liveAudioTimer: null, liveAudioPollTimer: null, liveAudioSegmentPollTimer: null, liveAudioSegmentRequest: false, liveAudioSegmentRequestToken: 0, liveAudioRequestToken: 0, liveAudioConnectToken: 0, liveAudioListener: null, liveAudioConnecting: false, liveAudioConnectionStatus: "", liveAudioStatusCode: "", liveAudioBroadcastOffline: false, liveAudioHasConnected: false, liveAudioCountRecorded: false, liveAudioEnding: false, liveAudioEndingTimer: null, liveAudioBurstSub: null, liveAudioBurstProgramId: "", liveAudioListenEventId: "", view: "home", readerReturnView: "home", libraryBooks: [], libraryLoaded: false, bookId: null, bookPages: [], bookPagesLoaded: false, bookPageIndex: 0, bookPageSocial: null, bookPageLikedMap: {}, selectedNumber: null, query: "", category: "", searchOpen: false, settings: getSettings(), toastTimer: null };
+const state = { hymns: [], publicContent: null, programmeInteractions: {}, programmeInteractionsAvailable: null, programmeVotesAvailable: null, programmeVotePending: {}, programmeDescriptionsExpanded: {}, programmeSelectedId: null, programmeCategoryFilter: "", serviceSelectedId: null, serviceAimId: null, liveAudioData: emptyLiveAudioData(), savedLiveAudioPrograms: getSavedLiveAudioPrograms(), savingLiveAudioIds: new Set(), liveAudioPlaybackUrl: "", liveAudioOfflinePlayback: false, liveAudioOpenToken: 0, liveAudioLoading: false, liveAudioError: "", liveAudioJoinError: null, liveAudioQuery: "", liveAudioCategory: "", selectedLiveAudioProgramId: null, liveAudioStartedAt: null, liveAudioTimer: null, liveAudioPollTimer: null, liveAudioSegmentPollTimer: null, liveAudioSegmentRequest: false, liveAudioSegmentRequestToken: 0, liveAudioRequestToken: 0, liveAudioConnectToken: 0, liveAudioListener: null, liveAudioConnecting: false, liveAudioConnectionStatus: "", liveAudioStatusCode: "", liveAudioBroadcastOffline: false, liveAudioHasConnected: false, liveAudioCountRecorded: false, liveAudioEnding: false, liveAudioEndingTimer: null, liveAudioBurstSub: null, liveAudioBurstProgramId: "", liveAudioListenEventId: "", view: "home", readerReturnView: "home",    libraryBooks: [], libraryLoaded: false, bookDisclaimerVisible: false, bookDisclaimerTimer: null, bookId: null,bookPages: [], bookPagesLoaded: false, bookPageIndex: 0, bookPageSocial: null, bookPageLikedMap: {}, selectedNumber: null, query: "", category: "", searchOpen: false, settings: getSettings(), toastTimer: null };
 
 try { state.query = localStorage.getItem("lightbearer-search") || ""; state.searchOpen = Boolean(state.query); } catch (error) {}
 
@@ -301,6 +301,8 @@ function renderLibraryPage() {
 function renderBookReaderPage() {
   const book = (state.libraryBooks || []).find(function (item) { return String(item.id) === String(state.bookId); });
   if (!book) return '<section class="page book-page">' + pageHeading("Library", "") + '<p class="results-meta">Book not found. <button class="link-button" type="button" data-action="navigate" data-view="library">Back to Library</button></p></section>';
+  const cover = book.front_cover_url || book.cover_url || "";
+  if (cover && !state.bookCoverShown) { state.bookCoverShown = true; }
   const pages = state.bookPages || [];
   if (!state.bookPagesLoaded) {
     fetchBookPages(book.id).then(function (rows) { state.bookPages = rows || []; state.bookPagesLoaded = true; render(); });
@@ -313,8 +315,12 @@ function renderBookReaderPage() {
   const colored = page.is_colored && /<(img|div|svg|figure)/i.test(page.content || "");
   const bodyHtml = colored ? (page.content || "") : '<p class="book-page-text">' + escapeHtml(page.content || "").replace(/\n/g, "<br>") + '</p>';
   const liked = social && social.liked;
-  return '<section class="page book-reader-page">' +
+  const notice = book.is_public && state.bookDisclaimerVisible
+    ? '<div class="public-book-notice" role="status">This book is not from C&amp;S Bible Church. It was taken from ' + escapeHtml(book.source_name || "the listed source") + '.</div>'
+    : "";
+  return '<section class="page book-reader-page">' + notice +
     '<header class="book-reader-heading"><button class="icon-button" type="button" data-action="book-back" aria-label="Back to Library">' + icon("arrow") + '</button>' +
+    (cover ? '<img class="book-reader-cover" src="' + escapeHtml(cover) + '" alt="Cover of ' + escapeHtml(book.title) + '">' : '') +
     '<div><strong>' + escapeHtml(book.title) + '</strong><span>' + escapeHtml(book.author || "") + '</span></div></header>' +
     '<article class="book-sheet" data-testid="book-page-' + index + '">' +
     '<header class="book-sheet-head"><span class="book-page-title">' + escapeHtml(page.page_title || ("Page " + (index + 1))) + '</span><span class="book-page-number">' + escapeHtml(String(page.page_number || index + 1).padStart(2, "0")) + '</span></header>' +
@@ -348,6 +354,10 @@ function openBook(bookId) {
   state.bookPagesLoaded = false;
   state.bookPageIndex = 0;
   state.bookPageSocial = null;
+  state.bookCoverShown = false;
+  state.bookDisclaimerVisible = Boolean((state.libraryBooks || []).find(function (book) { return String(book.id) === String(bookId); })?.is_public);
+  if (state.bookDisclaimerTimer) window.clearTimeout(state.bookDisclaimerTimer);
+  state.bookDisclaimerTimer = state.bookDisclaimerVisible ? window.setTimeout(function () { state.bookDisclaimerVisible = false; if (state.view === "book") render(); }, 1800) : null;
   state.view = "book";
   state.libraryLoaded = true;
   render();

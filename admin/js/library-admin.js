@@ -16,7 +16,7 @@ async function signLibraryParams(params, apiSecret) {
   return Array.from(digest).map(function (byte) { return byte.toString(16).padStart(2, "0"); }).join("");
 }
 
-let state = { books: [], loaded: false, mode: "list", editingId: null, busy: false, error: "", pages: [] };
+let state = { books: [], loaded: false, mode: "list", editingId: null, busy: false, error: "", pages: [], librarySection: "church", publicFrom: "", publicTo: "", storageUsage: "Usage unavailable. Cloudinary admin API needs a secured server function and credentials." };
 
 async function loadBooks() {
   state.books = await supabaseRequest("rest/v1/books?select=*&order=created_at.asc&limit=200") || [];
@@ -117,7 +117,8 @@ async function parseBookFile(file, onProgress) {
 export function renderLibraryAdmin(root) {
   if (!state.loaded) { loadBooks().then(function () { renderLibraryAdmin(root); }); root.innerHTML = '<section class="panel"><p>Loading library…</p></section>'; return; }
   if (state.mode === "form") { renderLibraryForm(root); return; }
-  const rows = state.books.map(function (book) {
+  const visibleBooks = state.books.filter(function (book) { return book.is_public === (state.librarySection === "public"); });
+  const rows = visibleBooks.map(function (book) {
     const actionButtons = '<button class="admin-button" type="button" data-library-action="toggle-publish" data-id="' + book.id + '">' + (book.published ? "Unpublish" : "Publish") + '</button><button class="admin-button danger" type="button" data-library-action="delete" data-id="' + book.id + '">Delete</button>';
     const bookActions = book.is_public ? actionButtons : '<button class="admin-button" type="button" data-library-action="edit" data-id="' + book.id + '">Edit</button><button class="admin-button danger" type="button" data-library-action="delete" data-id="' + book.id + '">Delete</button>';
     return '<div class="library-admin-row"><img class="library-admin-cover" src="' + escape(book.front_cover_url || book.cover_url || "") + '" alt=""><div class="library-admin-meta"><strong>' + escape(book.title) + '</strong><span>' + escape(book.author || "") + '</span></div><div class="library-admin-actions">' + bookActions + '</div></div>';
@@ -132,9 +133,10 @@ export function renderLibraryAdmin(root) {
   root.innerHTML = '<section class="panel library-admin-panel"><header class="panel-head"><div><h1>Library dashboard</h1><p>Church books at a glance. Members read them in the app.</p></div></header>' +
     '<div class="library-stats-grid"><div class="library-stat-card"><span class="library-stat-value">' + escape(state.books.length) + '</span><span class="library-stat-label">Total books</span></div><div class="library-stat-card"><span class="library-stat-value">' + escape(stats.readers) + '</span><span class="library-stat-label">Total readers</span></div><div class="library-stat-card"><span class="library-stat-value">' + escape(stats.likes) + '</span><span class="library-stat-label">Total likes</span></div><div class="library-stat-card"><span class="library-stat-value">' + escape(stats.comments) + '</span><span class="library-stat-label">Total comments</span></div></div>' +
     '<div class="library-add-banner"><div><strong>Add a book</strong><span>Upload the file, choose the covers, and members get it instantly.</span></div><button class="admin-button primary" type="button" data-library-action="add">Add book</button></div>' +
-    '<h2 class="library-books-heading">All books</h2>' + (state.error ? '<p class="form-error">' + escape(state.error) + '</p>' : '') + '<div class="library-admin-list">' + rows + '</div>' +
-    '<h2>Public books</h2><div class="library-date-filter"><label>From <input type="date" data-public-date="from" value="' + escape(state.publicFrom || "") + '"></label><label>To <input type="date" data-public-date="to" value="' + escape(state.publicTo || "") + '"></label></div><div class="library-admin-list">' + publics + '</div>' +
+    '<nav class="library-section-tabs"><button type="button" data-library-section="church">Church books</button><button type="button" data-library-section="public">Public books</button></nav><h2 class="library-books-heading">' + (state.librarySection === "public" ? "Public books" : "Church books") + '</h2>' + (state.error ? '<p class="form-error">' + escape(state.error) + '</p>' : '') + '<div class="library-admin-list">' + rows + '</div>' +
+    (state.librarySection === "public" ? '<div class="library-date-filter"><label>From <input type="date" data-public-date="from" value="' + escape(state.publicFrom || "") + '"></label><label>To <input type="date" data-public-date="to" value="' + escape(state.publicTo || "") + '"></label></div><div class="library-admin-list">' + publics + '</div>' : '') +
     '<div class="library-storage-card"><strong>Cloudinary storage</strong><span>' + escape(state.storageUsage || "Usage unavailable. Configure Cloudinary admin credentials to show usage.") + '</span></div></section>';
+  root.querySelectorAll("[data-library-section]").forEach(function (button) { button.addEventListener("click", function () { state.librarySection = button.dataset.librarySection; renderLibraryAdmin(root); }); });
   root.querySelectorAll("[data-public-date]").forEach(function (input) { input.addEventListener("change", function () { state[input.dataset.publicDate === "from" ? "publicFrom" : "publicTo"] = input.value; renderLibraryAdmin(root); }); });
   loadLibraryStats().then(function (stats) { state.stats = stats; const grid = root.querySelector(".library-stats-grid"); if (!grid) return; [state.books.length, stats.readers, stats.likes, stats.comments].forEach(function (value, i) { const el = grid.querySelectorAll(".library-stat-value")[i]; if (el) el.textContent = String(value); }); }).catch(function () {});
 }
@@ -234,14 +236,16 @@ async function saveBookForm(form) {
     if (back) body.back_cover_url = back;
     if (!editing) {
       body.status = form.dataset.publish === "true" ? "published" : "draft";
+      body.is_public = false;
+      body.published = body.status === "published";
       const created = await supabaseRequest("rest/v1/books", { method: "POST", body: JSON.stringify([body]) });
       editing = Array.isArray(created) ? created[0] : created;
       if (!editing || !editing.id) throw new Error("The book row was not saved. Try again.");
       state.books.push(editing);
     } else {
       await supabaseRequest("rest/v1/books?id=eq." + encodeURIComponent(editing.id), { method: "PATCH", body: JSON.stringify(body) });
-      Object.assign(editing, body);
     }
+    Object.assign(editing, body);
     if (file && file.size) {
       const parsed = state.preparedPages && state.preparedPages.length ? state.preparedPages : await parseBookFile(file, function (done, total, page, pages) { setUploadProgress(liveRoot, 55 + (pages ? page / pages * 20 : done / Math.max(total, 1) * 20), pages ? "Parsing page " + page + " of " + pages : "Parsing " + done + " of " + total + " bytes…"); });
       setUploadProgress(liveRoot, 75, "Saving " + parsed.length + " pages…");
@@ -274,6 +278,14 @@ async function saveBookForm(form) {
 export async function handleLibraryAdminAction(button, root) {
   const action = button.dataset.libraryAction;
   if (!action) return false;
+  if (action === "toggle-publish") {
+    const book = state.books.find(function (item) { return String(item.id) === String(button.dataset.id); });
+    if (!book || !book.is_public) return true;
+    const published = !book.published;
+    await supabaseRequest("rest/v1/books?id=eq." + encodeURIComponent(book.id), { method: "PATCH", body: JSON.stringify({ published: published }) });
+    book.published = published;
+    renderLibraryAdmin(root); return true;
+  }
   if (action === "add") { state.mode = "form"; state.editingId = null; state.error = ""; renderLibraryForm(root); return true; }
   if (action === "cancel") { state.mode = "list"; state.error = ""; renderLibraryAdmin(root); return true; }
   if (action === "edit") { state.mode = "form"; state.editingId = button.dataset.id; state.error = ""; renderLibraryForm(root); return true; }

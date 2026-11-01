@@ -1,20 +1,19 @@
-name: Daily free Christian books
+name: Daily free Christian book ingestion
 on:
   schedule:
-    - cron: '17 3 * * *'
+    - cron: '30 4 * * *'
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  collect:
+  ingest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
-      - name: Collect freely offered books
+          node-version: 20
+      - run: node scripts/scrape-free-books.mjs
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node scripts/scrape-free-books.mjs
