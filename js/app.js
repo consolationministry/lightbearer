@@ -278,18 +278,25 @@ function poemSection(label, lyrics, chorus, languageCode, hasMeterPreface, hymna
 function renderLibraryPage() {
   const books = state.libraryBooks || [];
   if (!state.libraryLoaded) {
-    fetchLibraryBooks().then(function (rows) { state.libraryBooks = rows || []; state.libraryLoaded = true; render(); });
+    fetchLibraryBooks().then(function (rows) { state.libraryBooks = rows || []; state.libraryLoaded = true; render(); }).catch(function () { state.libraryBooks = []; state.libraryLoaded = true; render(); });
     return '<section class="page library-page">' + pageHeading("Library", "Church books and reading resources.") + '<p class="results-meta">Loading books…</p></section>';
   }
-  const grid = books.length ? books.map(function (book) {
-    const cover = book.front_cover_url || "";
-    return '<article class="library-book-card"><button class="library-book-open" type="button" data-action="open-book" data-book="' + book.id + '">' +
+  const isPublic = function (book) { return book.is_public === true; };
+  const filter = state.librarySection || "church";
+  const selected = books.filter(function (book) { return isPublic(book) === (filter === "public"); });
+  const categories = Array.from(new Set(selected.map(function (book) { return book.category || "Christian Living"; }))).sort();
+  const category = state.libraryCategory || "All categories";
+  const filtered = selected.filter(function (book) { return category === "All categories" || (book.category || "Christian Living") === category; });
+  const grid = filtered.length ? filtered.map(function (book) {
+    const cover = book.front_cover_url || book.cover_url || "";
+    return '<article class="library-book-card"><button class="library-book-open" type="button" data-action="open-book" data-book="' + escapeHtml(book.id) + '">' +
       (cover ? '<img src="' + escapeHtml(cover) + '" alt="" loading="lazy">' : '<span class="library-book-placeholder">' + escapeHtml(String(book.title || "Book").slice(0, 1)) + '</span>') +
-      '<strong>' + escapeHtml(book.title || "Untitled") + '</strong></button><span class="library-book-author">' + escapeHtml(book.author || "") + '</span></article>';
-  }).join("") : '<p class="results-meta">No books have been added yet.</p>';
-  return '<section class="page library-page">' + pageHeading("Library", "Church books and reading resources.") +
-    '<div class="library-grid">' + grid + '</div></section>';
+      '<strong>' + escapeHtml(book.title || "Untitled") + '</strong></button><span class="library-book-author">' + escapeHtml(book.author || book.source_name || "") + '</span></article>';
+  }).join("") : '<p class="results-meta">No books in this section yet.</p>';
+  const chips = filter === "public" ? '<div class="library-category-filter"><button data-action="library-category" data-category="All categories" class="' + (category === "All categories" ? "selected" : "") + '">All</button>' + categories.map(function (item) { return '<button data-action="library-category" data-category="' + escapeHtml(item) + '" class="' + (category === item ? "selected" : "") + '">' + escapeHtml(item) + '</button>'; }).join("") + '</div>' : '';
+  return '<section class="page library-page">' + pageHeading("Library", "Church books and reading resources.") + '<nav class="library-section-tabs"><button data-action="library-section" data-section="church" class="' + (filter === "church" ? "selected" : "") + '">Church Books</button><button data-action="library-section" data-section="public" class="' + (filter === "public" ? "selected" : "") + '">Public Books</button></nav>' + chips + '<div class="library-grid">' + grid + '</div></section>';
 }
+
 
 function renderBookReaderPage() {
   const book = (state.libraryBooks || []).find(function (item) { return String(item.id) === String(state.bookId); });

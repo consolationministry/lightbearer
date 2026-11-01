@@ -22,8 +22,8 @@ async function rest(path, options) {
 }
 
 export async function fetchLibraryBooks() {
-  try { return await rest("rest/v1/books?select=*&status=eq.published&order=created_at.asc&limit=200"); }
-  catch (error) { return []; }
+  const result = await rest("rest/v1/books?select=*&status=eq.published&order=created_at.asc&limit=200");
+  return (result || []).filter(function (book) { return !book.is_public || book.published === true; });
 }
 
 export async function fetchBookPages(bookId) {

@@ -46,72 +46,97 @@ async function uploadLibraryImage(file, kind) {
   const form = new FormData();
   form.append("file", file, file.name); form.append("api_key", credentials.apiKey); form.append("timestamp", String(timestamp)); form.append("folder", params.folder); form.append("signature", signature);
   const endpoint = "https://api.cloudinary.com/v1_1/" + encodeURIComponent(credentials.cloudName) + "/image/upload";
-  const response = await fetch(endpoint, { method: "POST", body: form });
-  const result = await response.json().catch(function () { return null; });
-  if (!response.ok || !result || !result.secure_url) throw new Error("Cloudinary rejected the " + kind + " cover upload.");
+  const controller = new AbortController();
+  const timeout = setTimeout(function () { controller.abort(); }, 90000);
+  let response;
+  let result;
+  try {
+    response = await fetch(endpoint, { method: "POST", body: form, signal: controller.signal });
+    result = await response.json().catch(function () { return null; });
+  } catch (error) {
+    if (error && error.name === "AbortError") throw new Error("Cloudinary " + kind + " cover upload timed out after 90 seconds. Check the network and Cloudinary upload configuration, then retry.");
+    throw new Error("Cloudinary " + kind + " cover upload failed: " + ((error && error.message) || "network error"));
+  } finally {
+    clearTimeout(timeout);
+  }
+  if (!response.ok || !result || !result.secure_url) {
+    const detail = result && result.error && result.error.message;
+    throw new Error("Cloudinary rejected the " + kind + " cover upload" + (detail ? ": " + detail : " (HTTP " + response.status + ")") + ".");
+  }
   return result.secure_url;
 }
 
-async function parseBookFile(file) {
+async function parseBookFile(file, onProgress) {
   const name = String(file.name || "").toLowerCase();
-  if (name.endsWith(".txt")) return [{ title: "", content: (await file.text()).trim() }];
+  const progress = typeof onProgress === "function" ? onProgress : function () {};
+  const loadScript = function (src, globalName) {
+    return new Promise(function (resolve, reject) {
+      if (globalThis[globalName]) return resolve(globalThis[globalName]);
+      const script = document.createElement("script"); script.src = src;
+      script.onload = function () { globalThis[globalName] ? resolve(globalThis[globalName]) : reject(new Error("Parser library did not initialize.")); };
+      script.onerror = function () { reject(new Error("Could not load the document parser.")); }; document.head.append(script);
+    });
+  };
+  if (/\.(txt|md|html?|rtf|csv)$/i.test(name)) {
+    const text = await file.text(); progress(file.size, file.size, 1, 1);
+    if (name.endsWith(".csv")) {
+      const lines = text.split(/\r?\n/).filter(Boolean).map(function (line) { return line.split(",").map(function (cell) { return cell.replace(/^\"|\"$/g, ""); }).join(" | "); });
+      return lines.map(function (line, i) { return { title: "Row " + (i + 1), content: line }; });
+    }
+    return [{ title: "", content: text.trim() }];
+  }
+  if (/\.docx$/i.test(name)) {
+    const mammoth = await loadScript("https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js", "mammoth");
+    const arrayBuffer = await file.arrayBuffer(); progress(file.size, file.size, 0, 1);
+    const result = await mammoth.extractRawText({ arrayBuffer }); progress(file.size, file.size, 1, 1);
+    const paragraphs = result.value.split(/\n\s*\n/).filter(Boolean);
+    return paragraphs.map(function (content, i) { return { title: i ? "" : "", content }; });
+  }
+  if (/\.(xlsx|xls)$/i.test(name)) {
+    const XLSX = await loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js", "XLSX");
+    const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
+    return workbook.SheetNames.map(function (sheetName) { const text = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName], { FS: " | " }); progress(file.size, file.size, 1, 1); return { title: sheetName, content: text }; }).filter(function (p) { return p.content.trim(); });
+  }
   if (name.endsWith(".pdf")) {
     if (!globalThis.pdfjsLib) {
-      await new Promise(function (resolve, reject) {
-        const script = document.createElement("script");
-        script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
-        script.onload = resolve; script.onerror = function () { reject(new Error("PDF parser failed to load.")); };
-        document.head.append(script);
-      });
+      await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js", "pdfjsLib");
       globalThis.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     }
     const pdf = await globalThis.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
     const pages = [];
     for (let i = 1; i <= pdf.numPages; i++) {
-      const source = await pdf.getPage(i);
-      const textContent = await source.getTextContent();
-      let text = textContent.items.map(function (item) { return item.str; }).join("\n").replace(/\n{3,}/g, "\n\n").trim();
-      if (i === 1) {
-        const lines = text.split("\n");
-        text = lines.slice(1).join("\n").trim() || text;
-        var firstTitle = (lines[0] || "").trim();
-      }
-      pages.push({ title: firstTitle || "", content: text });
+      const source = await pdf.getPage(i); const textContent = await source.getTextContent();
+      pages.push({ title: "Page " + i, content: textContent.items.map(function (item) { return item.str; }).join("\\n").trim() });
+      progress(file.size, file.size, i, pdf.numPages);
     }
     return pages.filter(function (page) { return page.content; });
   }
-  throw new Error("Choose a PDF or TXT book file.");
+  throw new Error("This document format could not be read by the supported text extractors.");
 }
 
 export function renderLibraryAdmin(root) {
   if (!state.loaded) { loadBooks().then(function () { renderLibraryAdmin(root); }); root.innerHTML = '<section class="panel"><p>Loading library…</p></section>'; return; }
   if (state.mode === "form") { renderLibraryForm(root); return; }
   const rows = state.books.map(function (book) {
-    return '<div class="library-admin-row"><img class="library-admin-cover" src="' + escape(book.front_cover_url) + '" alt="" >' +
-      '<div class="library-admin-meta"><strong>' + escape(book.title) + '</strong><span>' + escape(book.author || "") + '</span></div>' +
-      '<div class="library-admin-actions"><button class="admin-button" type="button" data-library-action="edit" data-id="' + book.id + '">Edit</button>' +
-      '<button class="admin-button danger" type="button" data-library-action="delete" data-id="' + book.id + '">Delete</button></div></div>';
+    const actionButtons = '<button class="admin-button" type="button" data-library-action="toggle-publish" data-id="' + book.id + '">' + (book.published ? "Unpublish" : "Publish") + '</button><button class="admin-button danger" type="button" data-library-action="delete" data-id="' + book.id + '">Delete</button>';
+    const bookActions = book.is_public ? actionButtons : '<button class="admin-button" type="button" data-library-action="edit" data-id="' + book.id + '">Edit</button><button class="admin-button danger" type="button" data-library-action="delete" data-id="' + book.id + '">Delete</button>';
+    return '<div class="library-admin-row"><img class="library-admin-cover" src="' + escape(book.front_cover_url || book.cover_url || "") + '" alt=""><div class="library-admin-meta"><strong>' + escape(book.title) + '</strong><span>' + escape(book.author || "") + '</span></div><div class="library-admin-actions">' + bookActions + '</div></div>';
   }).join("") || '<p>No books yet. Click “Add book” to upload the first one.</p>';
+  const publics = state.books.filter(function (book) { return book.is_public; }).filter(function (book) {
+    const date = String(book.scraped_at || book.created_at || "").slice(0, 10);
+    return (!state.publicFrom || date >= state.publicFrom) && (!state.publicTo || date <= state.publicTo);
+  }).map(function (book) {
+    return '<div class="library-admin-row"><img class="library-admin-cover" src="' + escape(book.cover_url || "") + '" alt=""><div class="library-admin-meta"><strong>' + escape(book.title) + '</strong><span>' + escape(book.category || "Christian Living") + ' · ' + escape(book.source_name || "") + ' · ' + escape(book.scraped_at || book.created_at || "") + '</span><a href="' + escape(book.source_url || "#") + '" target="_blank" rel="noopener">Source</a></div><div class="library-admin-actions"><button class="admin-button" data-library-action="toggle-publish" data-id="' + book.id + '">' + (book.published ? "Unpublish" : "Publish") + '</button><button class="admin-button danger" data-library-action="delete" data-id="' + book.id + '">Delete</button></div></div>';
+  }).join("") || '<p>No public books match this date range.</p>';
   const stats = state.stats || { pages: "…", likes: "…", comments: "…", readers: "…" };
   root.innerHTML = '<section class="panel library-admin-panel"><header class="panel-head"><div><h1>Library dashboard</h1><p>Church books at a glance. Members read them in the app.</p></div></header>' +
-    '<div class="library-stats-grid">' +
-    '<div class="library-stat-card"><span class="library-stat-value">' + escape(state.books.length) + '</span><span class="library-stat-label">Total books</span></div>' +
-    '<div class="library-stat-card"><span class="library-stat-value">' + escape(stats.readers) + '</span><span class="library-stat-label">Total readers</span></div>' +
-    '<div class="library-stat-card"><span class="library-stat-value">' + escape(stats.likes) + '</span><span class="library-stat-label">Total likes</span></div>' +
-    '<div class="library-stat-card"><span class="library-stat-value">' + escape(stats.comments) + '</span><span class="library-stat-label">Total comments</span></div>' +
-    '</div>' +
-    '<div class="library-add-banner"><div><strong>Add a book</strong><span>Upload the file, choose the covers, and members get it instantly.</span></div>' +
-    '<button class="admin-button primary" type="button" data-library-action="add">Add book</button></div>' +
-    '<h2 class="library-books-heading">All books</h2>' +
-    (state.error ? '<p class="form-error">' + escape(state.error) + '</p>' : '') +
-    '<div class="library-admin-list">' + rows + '</div></section>';
-  loadLibraryStats().then(function (stats) {
-    state.stats = stats;
-    const grid = root.querySelector(".library-stats-grid");
-    if (!grid) return;
-    const values = [state.books.length, stats.readers, stats.likes, stats.comments];
-    grid.querySelectorAll(".library-stat-value").forEach(function (el, index) { el.textContent = String(values[index]); });
-  }).catch(function () {});
+    '<div class="library-stats-grid"><div class="library-stat-card"><span class="library-stat-value">' + escape(state.books.length) + '</span><span class="library-stat-label">Total books</span></div><div class="library-stat-card"><span class="library-stat-value">' + escape(stats.readers) + '</span><span class="library-stat-label">Total readers</span></div><div class="library-stat-card"><span class="library-stat-value">' + escape(stats.likes) + '</span><span class="library-stat-label">Total likes</span></div><div class="library-stat-card"><span class="library-stat-value">' + escape(stats.comments) + '</span><span class="library-stat-label">Total comments</span></div></div>' +
+    '<div class="library-add-banner"><div><strong>Add a book</strong><span>Upload the file, choose the covers, and members get it instantly.</span></div><button class="admin-button primary" type="button" data-library-action="add">Add book</button></div>' +
+    '<h2 class="library-books-heading">All books</h2>' + (state.error ? '<p class="form-error">' + escape(state.error) + '</p>' : '') + '<div class="library-admin-list">' + rows + '</div>' +
+    '<h2>Public books</h2><div class="library-date-filter"><label>From <input type="date" data-public-date="from" value="' + escape(state.publicFrom || "") + '"></label><label>To <input type="date" data-public-date="to" value="' + escape(state.publicTo || "") + '"></label></div><div class="library-admin-list">' + publics + '</div>' +
+    '<div class="library-storage-card"><strong>Cloudinary storage</strong><span>' + escape(state.storageUsage || "Usage unavailable. Configure Cloudinary admin credentials to show usage.") + '</span></div></section>';
+  root.querySelectorAll("[data-public-date]").forEach(function (input) { input.addEventListener("change", function () { state[input.dataset.publicDate === "from" ? "publicFrom" : "publicTo"] = input.value; renderLibraryAdmin(root); }); });
+  loadLibraryStats().then(function (stats) { state.stats = stats; const grid = root.querySelector(".library-stats-grid"); if (!grid) return; [state.books.length, stats.readers, stats.likes, stats.comments].forEach(function (value, i) { const el = grid.querySelectorAll(".library-stat-value")[i]; if (el) el.textContent = String(value); }); }).catch(function () {});
 }
 
 function renderLibraryForm(root) {
@@ -123,11 +148,38 @@ function renderLibraryForm(root) {
     '<label class="library-field"><span>Author name</span><input name="author" placeholder="e.g. Pastor D. Peter" value="' + escape(book && book.author || "") + '"></label></div>' +
     '<div class="library-form-row"><label class="library-file-field"><span>Front cover image</span><input name="front_cover" type="file" accept="image/*" data-file-label="front"><span class="library-file-box"><b>Choose image</b><em class="library-file-name">No file chosen</em></span><img class="library-cover-preview" hidden alt=""></label>' +
     '<label class="library-file-field"><span>Back cover image</span><input name="back_cover" type="file" accept="image/*" data-file-label="back"><span class="library-file-box"><b>Choose image</b><em class="library-file-name">No file chosen</em></span><img class="library-cover-preview" hidden alt=""></label></div>' +
-    '<label class="library-file-field library-bookfile"><span>' + (book ? "Re-upload book file (optional: replaces pages)" : "Book file (PDF or TXT)") + '</span><input name="bookfile" type="file" accept=".pdf,.txt"' + (book ? "" : " required") + ' data-file-label="book"><span class="library-file-box"><b>Choose file</b><em class="library-file-name">No file chosen</em></span></label>' +
+    '<label class="library-file-field library-bookfile"><span>' + (book ? "Re-upload book file (optional: replaces pages)" : "Book file (PDF, DOCX, TXT, Excel, CSV and other readable formats)") + '</span><input name="bookfile" type="file"' + (book ? "" : " required") + ' data-file-label="book"><span class="library-file-box"><b>Choose file</b><em class="library-file-name">No file chosen</em></span></label>' +
+    '<div class="library-parse-overlay" hidden><div class="library-parse-card"><strong>Parsing…</strong><span class="library-parse-progress-label">Preparing document</span><progress max="100" value="0"></progress></div></div>' +
+    '<div class="library-parse-success" hidden>Parsing succeeded</div>' +
     (state.error ? '<p class="form-error">' + escape(state.error) + '</p>' : '') +
     '<div class="library-upload-progress" hidden><div class="library-upload-bar"><div class="library-upload-bar-fill" style="width:2%"></div></div><span class="library-upload-label">Preparing…</span></div>' +
-    '<div class="library-form-actions"><button class="admin-button primary" type="submit" ' + (state.busy ? "disabled" : "") + '>' + (state.busy ? "Saving…" : (book ? "Save changes" : "Upload book")) + '</button></div></form></section>';
+    '<div class="library-form-actions"><button class="admin-button primary" type="submit" ' + (state.busy ? "disabled" : "") + '>' + (state.busy ? "Saving…" : (book ? "Save changes" : "Save book")) + '</button><button class="admin-button" type="button" data-library-publish ' + (state.preparedPages && state.preparedPages.length ? "" : "disabled") + '>Publish</button></div></form></section>' +
+    '<style>.library-parse-overlay{position:fixed;inset:0;z-index:1000;background:rgba(20,35,70,.16);display:grid;place-items:center;backdrop-filter:blur(1px)}.library-parse-overlay[hidden]{display:none}.library-parse-card{background:rgba(255,255,255,.94);border:1px solid #d9e4fa;border-radius:16px;padding:22px;min-width:min(320px,85vw);box-shadow:0 10px 40px #14234422;color:#183b76}.library-parse-card strong,.library-parse-card span{display:block;margin-bottom:10px}.library-parse-card progress{width:100%;accent-color:#2b64c8}.library-parse-success{color:#23623c;margin:10px 0;font-weight:600}</style></section>';
   const form = root.querySelector("#library-book-form");
+  const parseOverlay = form.querySelector(".library-parse-overlay");
+  const parseProgress = parseOverlay.querySelector("progress");
+  const parseLabel = form.querySelector(".library-parse-progress-label");
+  const parseSuccess = form.querySelector(".library-parse-success");
+  form.elements.bookfile.addEventListener("change", async function () {
+    const file = form.elements.bookfile.files && form.elements.bookfile.files[0];
+    if (!file) { parseOverlay.hidden = true; parseSuccess.hidden = true; state.preparedPages = null; return; }
+    parseOverlay.hidden = false; parseSuccess.hidden = true; parseProgress.value = 0; parseLabel.textContent = "Reading " + file.name;
+    try {
+      state.preparedPages = await parseBookFile(file, function (bytesDone, bytesTotal, pageDone, pageTotal) {
+        const pct = pageTotal ? Math.round(pageDone / pageTotal * 100) : Math.round(bytesDone / Math.max(bytesTotal, 1) * 100);
+        parseProgress.value = Math.min(100, pct);
+        parseLabel.textContent = pageTotal ? "Page " + pageDone + " of " + pageTotal : Math.min(bytesDone, bytesTotal) + " of " + bytesTotal + " bytes";
+      });
+      if (!state.preparedPages.length) throw new Error("The file had no readable text.");
+      parseProgress.value = 100; parseLabel.textContent = "Parsed " + state.preparedPages.length + " sections";
+      parseOverlay.hidden = true; parseSuccess.hidden = false;
+      form.querySelector('button[type="submit"]').textContent = book ? "Save changes" : "Save book";
+      const publish = form.querySelector("[data-library-publish]"); if (publish) publish.disabled = false;
+    } catch (error) {
+      state.preparedPages = null; parseOverlay.hidden = true; state.error = error.message || "Could not parse this document.";
+      const message = form.querySelector(".form-error"); if (message) message.textContent = state.error; else { const p = document.createElement("p"); p.className = "form-error"; p.textContent = state.error; form.prepend(p); }
+    }
+  });
   form.querySelectorAll('input[type=file]').forEach(function (input) {
     input.addEventListener("change", function () {
       const box = form.querySelector('.library-file-box:has(input[name="' + input.name + '"])') || input.parentElement.querySelector(".library-file-box");
@@ -140,7 +192,12 @@ function renderLibraryForm(root) {
       }
     });
   });
-  form.addEventListener("submit", function (event) { event.preventDefault(); saveBookForm(form); });
+  form.querySelector('[data-library-publish]').addEventListener("click", function () {
+    form.dataset.publish = "true";
+    if (!form.reportValidity()) return;
+    saveBookForm(form);
+  });
+  form.addEventListener("submit", function (event) { event.preventDefault(); form.dataset.publish = "false"; saveBookForm(form); });
 }
 
 function escape(value) {
@@ -162,6 +219,8 @@ async function saveBookForm(form) {
   state.busy = true; state.error = ""; renderLibraryForm(document.getElementById("admin-content"));
   const liveRoot = document.getElementById("admin-content");
   setUploadProgress(liveRoot, 5, "Checking covers…");
+  let editing = state.editingId ? state.books.find(function (item) { return String(item.id) === String(state.editingId); }) : null;
+  let createdNew = !editing;
   try {
     const title = String(data.get("title") || "").trim();
     if (!title) throw new Error("Enter the book title.");
@@ -173,10 +232,8 @@ async function saveBookForm(form) {
     let body = { title, author: String(data.get("author") || "").trim(), updated_at: new Date().toISOString() };
     if (front) body.front_cover_url = front;
     if (back) body.back_cover_url = back;
-    let editing = state.editingId ? state.books.find(function (item) { return String(item.id) === String(state.editingId); }) : null;
-    const createdNew = !editing;
     if (!editing) {
-      body.status = "published";
+      body.status = form.dataset.publish === "true" ? "published" : "draft";
       const created = await supabaseRequest("rest/v1/books", { method: "POST", body: JSON.stringify([body]) });
       editing = Array.isArray(created) ? created[0] : created;
       if (!editing || !editing.id) throw new Error("The book row was not saved. Try again.");
@@ -186,8 +243,7 @@ async function saveBookForm(form) {
       Object.assign(editing, body);
     }
     if (file && file.size) {
-      setUploadProgress(liveRoot, 55, "Reading the book file…");
-      const parsed = await parseBookFile(file);
+      const parsed = state.preparedPages && state.preparedPages.length ? state.preparedPages : await parseBookFile(file, function (done, total, page, pages) { setUploadProgress(liveRoot, 55 + (pages ? page / pages * 20 : done / Math.max(total, 1) * 20), pages ? "Parsing page " + page + " of " + pages : "Parsing " + done + " of " + total + " bytes…"); });
       setUploadProgress(liveRoot, 75, "Saving " + parsed.length + " pages…");
       if (!parsed.length) throw new Error("The file had no readable pages.");
       await supabaseRequest("rest/v1/book_pages?book_id=eq." + encodeURIComponent(editing.id), { method: "DELETE" });
