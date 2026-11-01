@@ -471,6 +471,18 @@ a { color: inherit; }
 .cloudinary-status.is-error { color: #1d4ed8; }
 
 /* Library dashboard */
+.library-admin-row { display:grid; grid-template-columns:104px minmax(0,1fr) auto; grid-template-areas:"cover meta actions" "cover error error"; align-items:center; gap:14px 18px; min-width:0; padding:16px; border:1px solid var(--line); border-radius:14px; background:#fff; box-shadow:0 5px 18px rgba(30,64,175,.06); }
+.library-admin-cover { grid-area:cover; display:block; width:100%; max-width:104px; aspect-ratio:3/4; height:auto; object-fit:cover; object-position:center; border:1px solid #dbe5f2; border-radius:9px; background:#eff6ff; }
+.library-admin-meta { grid-area:meta; display:grid; align-content:center; gap:5px; min-width:0; overflow-wrap:anywhere; }
+.library-admin-meta strong { color:#172b4d; font-size:1rem; line-height:1.35; overflow-wrap:anywhere; }
+.library-admin-meta span,.library-admin-meta a { color:#52647d; font-size:.86rem; line-height:1.45; overflow-wrap:anywhere; }
+.library-admin-meta a { color:#1d4ed8; }
+.library-admin-actions { grid-area:actions; display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:8px; min-width:0; }
+.library-admin-actions .admin-button { white-space:nowrap; }
+.library-publish-badge,.library-draft-badge { display:inline-flex; align-items:center; width:max-content; max-width:100%; padding:4px 9px; border:1px solid #bfdbfe; border-radius:999px; color:#1e40af!important; background:#eff6ff; font-size:.75rem!important; font-weight:700; }
+.library-draft-badge { border-color:#cbdaf0; color:#52647d!important; background:#f8fbff; }
+.library-publish-error { grid-area:error; margin:0; padding:9px 11px; border:1px solid #fecaca; border-radius:9px; color:#991b1b; background:#fef2f2; font-size:.86rem; line-height:1.4; overflow-wrap:anywhere; }
+@media(max-width:640px) { .library-admin-row { grid-template-columns:76px minmax(0,1fr); grid-template-areas:"cover meta" "actions actions" "error error"; gap:12px; padding:12px; } .library-admin-cover { max-width:76px; } .library-admin-actions { justify-content:flex-start; } }
 .library-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin: 0 0 18px; }
 .library-stat-card { background: var(--surface, #fff); border: 1px solid var(--line, #e5e7ff); border-radius: 14px; padding: 16px; display: grid; gap: 4px; box-shadow: 0 1px 3px rgba(19, 9, 47, .06); }
 .library-stat-value { font-size: 1.7rem; font-weight: 700; color: #1d4ed8; }

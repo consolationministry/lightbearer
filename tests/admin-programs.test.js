@@ -18,8 +18,8 @@ import {
   updateDailyQuoteSettings,
   updateProgram
 } from "../admin/js/admin-data.js?v=35";
-import { clearSession } from "../admin/js/supabase-client.js?v=31";
-import { loginAdmin, logoutAdmin } from "../admin/js/admin-auth.js?v=31";
+import { clearSession } from "../admin/js/supabase-client.js?v=32";
+import { loginAdmin, logoutAdmin } from "../admin/js/admin-auth.js?v=32";
 
 function response(body, status = 200) {
   return {

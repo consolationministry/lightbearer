@@ -5,13 +5,13 @@ import {
   getStoredSession,
   isSupabaseConfigured,
   supabaseRequest
-} from "../admin/js/supabase-client.js?v=31";
+} from "../admin/js/supabase-client.js?v=32";
 import {
   initializeAdminAuth,
   isAdminAuthenticated,
   loginAdmin,
   logoutAdmin
-} from "../admin/js/admin-auth.js?v=31";
+} from "../admin/js/admin-auth.js?v=32";
 
 function installStorage() {
   const values = new Map();

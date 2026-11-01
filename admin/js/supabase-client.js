@@ -1,7 +1,9 @@
-import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "../config.js?v=31";
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "../config.js?v=32";
 
 const SESSION_KEY = "cns-lightbearer-admin-session-v1";
 let activeSession = null;
+let adminAuthorizationRequired = false;
+let publicRequestPaths = new Set();
 
 export function setActiveSession(session) {
   if (!session || typeof session.access_token !== "string" || !session.access_token) {
@@ -16,6 +18,14 @@ export function getActiveSession() {
 
 export function clearActiveSession() {
   activeSession = null;
+}
+
+export function requireAdminAuthorization() {
+  adminAuthorizationRequired = true;
+}
+
+export function setPublicRequestPaths(paths) {
+  publicRequestPaths = new Set((paths || []).map(function (path) { return String(path || ""); }));
 }
 
 export class SupabaseRequestError extends Error {
@@ -112,13 +122,18 @@ async function refreshSession(session) {
 export async function supabaseRequest(path, options) {
   const opts = options || {};
   if (!isSupabaseConfigured()) throw new SupabaseRequestError("Admin backend configuration is missing.", 0, "NOT_CONFIGURED");
-  const session = opts.session || (!opts.publicOnly ? (getActiveSession() || getStoredSession()) : null);
+  const isExplicitlyPublic = opts.publicOnly || publicRequestPaths.has(String(path || ""));
+  const session = isExplicitlyPublic ? null : (opts.session || getActiveSession() || (!adminAuthorizationRequired ? getStoredSession() : null));
+  if (adminAuthorizationRequired && !isExplicitlyPublic && !session) {
+    throw new SupabaseRequestError("A verified administrator session is required. Sign in again.", 401, "ADMIN_SESSION_REQUIRED");
+  }
   const headers = new Headers(opts.headers || {});
   const blobBody = typeof Blob !== "undefined" && opts.body instanceof Blob;
   headers.set("apikey", SUPABASE_PUBLISHABLE_KEY);
   if (!headers.has("content-type") && opts.body !== undefined && !blobBody) headers.set("content-type", "application/json");
   if (!headers.has("accept")) headers.set("accept", "application/json");
-  headers.set("authorization", "Bearer " + (session && session.access_token ? session.access_token : SUPABASE_PUBLISHABLE_KEY));
+  if (session && session.access_token) headers.set("authorization", "Bearer " + session.access_token);
+  else if (!adminAuthorizationRequired || isExplicitlyPublic) headers.set("authorization", "Bearer " + SUPABASE_PUBLISHABLE_KEY);
   if (opts.prefer) headers.set("prefer", opts.prefer);
 
   const init = { method: opts.method || "GET", headers: headers };

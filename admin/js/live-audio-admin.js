@@ -224,7 +224,11 @@ function tabButton(id, label) {
 function refreshAdminData() {
   if (loadingPromise) return loadingPromise;
   loadError = "";
-  loadingPromise = loadAdminLiveAudioData().then(data => {
+  let timeoutId;
+  loadingPromise = Promise.race([
+    loadAdminLiveAudioData(),
+    new Promise((resolve, reject) => { timeoutId = setTimeout(() => reject(new Error("Live Audio timed out while connecting to the broadcast service. Check the API response and try again.")), 15000); })
+  ]).then(data => {
     cachedData = data;
     loadError = "";
     return data;
@@ -232,6 +236,7 @@ function refreshAdminData() {
     loadError = error && error.message ? error.message : "Live Audio setup could not be loaded.";
     throw error;
   }).finally(() => {
+    clearTimeout(timeoutId);
     loadingPromise = null;
     rerender();
   });

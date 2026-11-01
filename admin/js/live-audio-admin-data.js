@@ -1,4 +1,4 @@
-import { supabaseRequest } from "./supabase-client.js?v=33";
+import { supabaseRequest } from "./supabase-client.js?v=32";
 import { parseCloudinaryLiveAudioReference } from "../../js/cloudinary-live-audio.js";
 
 const CATEGORIES = ["Bible Study", "Sunday Service", "Prayer Meeting", "Worship", "Youth Service", "Other"];
@@ -67,8 +67,11 @@ async function uploadToCloudinary(signature, blob, filename) {
 
 export async function loadAdminLiveAudioData() {
   const [programRows, categoryRows, stats] = await Promise.all([supabaseRequest("rest/v1/live_audio_programs?select=*&order=updated_at.desc"), supabaseRequest("rest/v1/live_audio_categories?select=name&order=name.asc"), supabaseRequest("rest/v1/rpc/get_live_audio_admin_stats", { method: "POST", body: {} })]);
-  const categories = asArray(categoryRows).map(row => String(row.name || "").trim()).filter(Boolean);
-  return { programs: asArray(programRows).map(normalizeProgram), categories: categories.length ? categories : CATEGORIES.slice(), stats: stats || { total_broadcasts: 0, total_listeners: 0, total_likes: 0, total_comments: 0 } };
+  if (!Array.isArray(programRows) || !Array.isArray(categoryRows) || !stats || typeof stats !== "object" || Array.isArray(stats)) {
+    throw new Error("Live Audio returned an incomplete response. Check the broadcast tables and get_live_audio_admin_stats RPC, then retry.");
+  }
+  const categories = categoryRows.map(row => String(row.name || "").trim()).filter(Boolean);
+  return { programs: programRows.map(normalizeProgram), categories: categories.length ? categories : CATEGORIES.slice(), stats };
 }
 export async function loadAdminLiveAudioInteractions(programId) {
   if (!programId) return null;

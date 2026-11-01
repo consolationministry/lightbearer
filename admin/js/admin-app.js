@@ -1,9 +1,9 @@
 import { parseHymnText, splitHymnText } from "./hymn-upload-parser.js?v=3";
-import { ADMIN_AUTH_CONFIGURED, initializeAdminAuth, loginAdmin, logoutAdmin } from "./admin-auth.js?v=31";
-import { createCategory, createHymn, createProgram, createService, deleteCategory, deleteHymn, deleteHymns, deleteProgram, deleteService, getAdminSettings, getCategories, getDailyQuoteSettings, getDashboardStats, getHymn, getHymns, getHymnListRows, getDraftHymns, getProgram, getPrograms, getRecentlyUpdatedHymns, getServicePlan, getServicePlans, getStorageMode, initializeAdminData, moveAllPublishedHymnsToDrafts, publishHymn, saveHymnAsDraft, setHymnsStatus, updateAdminSettings, updateCategory, updateDailyQuoteSettings, updateHymn, updateProgram, updateService } from "./admin-data.js?v=44";
+import { ADMIN_AUTH_CONFIGURED, initializeAdminAuth, loginAdmin, logoutAdmin } from "./admin-auth.js?v=32";
+import { createCategory, createHymn, createProgram, createService, deleteCategory, deleteHymn, deleteHymns, deleteProgram, deleteService, getAdminSettings, getCategories, getDailyQuoteSettings, getDashboardStats, getHymn, getHymns, getHymnListRows, getDraftHymns, getProgram, getPrograms, getRecentlyUpdatedHymns, getServicePlan, getServicePlans, getStorageMode, initializeAdminData, moveAllPublishedHymnsToDrafts, publishHymn, saveHymnAsDraft, setHymnsStatus, updateAdminSettings, updateCategory, updateDailyQuoteSettings, updateHymn, updateProgram, updateService } from "./admin-data.js?v=45";
 
 import { adminHymnNumberLabel, adminHymnTitle, filterAdminHymnsByLanguage, hasAdminHymnTitle } from "./admin-hymn-display.js?v=2";
-import { handleLiveAudioAdminAction, handleLiveAudioAdminSubmit, renderLiveAudioAdmin, stopAdminAudioMicTest } from "./live-audio-admin.js?v=11";
+import { handleLiveAudioAdminAction, handleLiveAudioAdminSubmit, renderLiveAudioAdmin, stopAdminAudioMicTest } from "./live-audio-admin.js?v=12";
 import { getCloudinarySettings, renderCloudinarySettingsPanel, removeCloudinarySettings, saveCloudinarySettings } from "./cloudinary-settings.js?v=4";
 import { getProgrammeInteractions } from "../../js/programme-interactions.js";
 import { applyAvailableUpdate, initializeUpdates } from "../../js/updates.js";
@@ -209,7 +209,7 @@ function renderDashboard() {
     });
     actionsBody.append(list, make("p", "demo-caption", "Changes in this workspace are saved to Supabase and are not published to the member hymnal yet.")); actionsPanel.append(actionsBody);
     lower.append(recentPanel, actionsPanel); content.append(lower);
-  }).catch(function () { content.append(make("section", "list-empty", "Admin data could not be loaded. Check the backend setup and connection.")); });
+  }).catch(function (error) { content.append(make("section", "list-empty", "Admin data could not be loaded: " + (error && error.message ? error.message : "Check the backend setup and connection."))); });
 }
 function renderPlaceholder(view) {
   const content = document.getElementById("admin-content"); content.replaceChildren();
@@ -1317,8 +1317,13 @@ async function setHymnStatus(id, status) {
 
 root.addEventListener("click", async function (event) {
   const button = event.target.closest("[data-action], [data-library-action]"); if (!button) return;
-  if (state.activeView === "library" && button.dataset.libraryAction) { const handled = await handleLibraryAdminActionBridge(button, document.getElementById("admin-content")); if (handled) return; }
-  if (state.activeView === "live-audio" && await handleLiveAudioAdminAction(button)) return;
+  try {
+    if (state.activeView === "library" && button.dataset.libraryAction) { const handled = await handleLibraryAdminActionBridge(button, document.getElementById("admin-content")); if (handled) return; }
+    if (state.activeView === "live-audio" && await handleLiveAudioAdminAction(button)) return;
+  } catch (error) {
+    showToast(error && error.message ? error.message : "The requested admin change could not be saved.");
+    return;
+  }
   const action = button.dataset.action;
   if (action === "remove-cloudinary-settings") {
     await disconnectCloudinarySettings();

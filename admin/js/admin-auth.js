@@ -1,4 +1,7 @@
-import { clearSession, clearActiveSession, getActiveSession, isSupabaseConfigured, setActiveSession, supabaseRequest } from "./supabase-client.js?v=31";
+import { clearSession, clearActiveSession, getActiveSession, isSupabaseConfigured, requireAdminAuthorization, setActiveSession, setPublicRequestPaths, supabaseRequest } from "./supabase-client.js?v=32";
+
+requireAdminAuthorization();
+setPublicRequestPaths(["auth/v1/token?grant_type=password"]);
 
 export const ADMIN_AUTH_CONFIGURED = isSupabaseConfigured();
 
@@ -65,7 +68,7 @@ export async function loginAdmin(email, password) {
 }
 
 export async function logoutAdmin() {
-  const session = getActiveSession() || getStoredSession();
+  const session = getActiveSession();
   currentAdmin = null;
   try {
     if (session) {

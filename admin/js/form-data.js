@@ -1,5 +1,5 @@
-import { requireAdmin } from "./admin-auth.js?v=31";
-import { supabaseRequest } from "./supabase-client.js?v=31";
+import { requireAdmin } from "./admin-auth.js?v=32";
+import { supabaseRequest } from "./supabase-client.js?v=32";
 const esc = encodeURIComponent;
 async function admin(path, options) { await requireAdmin(); return supabaseRequest(path, options); }
 export async function getForms() { return admin("rest/v1/forms?select=*&deleted_at=is.null&order=updated_at.desc"); }

@@ -1,4 +1,4 @@
-import { supabaseRequest } from "./supabase-client.js?v=33";
+import { supabaseRequest } from "./supabase-client.js?v=32";
 
 function escapeHtml(value) {
   return String(value == null ? "" : value).replace(/[&<>"']/g, character => ({

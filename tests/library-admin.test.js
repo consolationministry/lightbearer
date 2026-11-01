@@ -1,7 +1,22 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildBookPageRows, replaceBookPages } from "../admin/js/library-admin.js?v=34";
+import { buildBookPageRows, buildBookPublishPatch, replaceBookPages, saveBookPublishState } from "../admin/js/library-admin.js?v=32";
 
+test("book publish writes the published flag used by the member catalog and requires a matching server receipt", async () => {
+  const publicBook = { id: "book-1", is_public: true };
+  assert.deepEqual(buildBookPublishPatch(publicBook, true), { published: true });
+  const calls = [];
+  const receipt = await saveBookPublishState(publicBook, true, async (path, options) => {
+    calls.push({ path, options });
+    return [{ id: "book-1", published: true }];
+  });
+  assert.deepEqual(receipt, { id: "book-1", published: true });
+  assert.match(calls[0].path, /select=id,published/);
+  assert.deepEqual(JSON.parse(calls[0].options.body), { published: true });
+  assert.equal(calls[0].options.headers.Prefer, "return=representation");
+  await assert.rejects(saveBookPublishState(publicBook, true, async () => []), /not confirmed by the server/);
+  assert.throws(() => buildBookPublishPatch({ id: "private-1", is_public: false }, true), /Only public books/);
+});
 test("library page payload uses the exact fields consumed by the member app", () => {
   const rows = buildBookPageRows("book-1", [
     { title: "Ignored title", content: "reader text", image_url: "https://example.org/page.png", background_color: "#eef" },

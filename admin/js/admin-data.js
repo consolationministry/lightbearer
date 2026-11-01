@@ -2,8 +2,8 @@ import repositoryHymns from "../../data/uploaded-hymns.js";
 import repositoryYorubaHymns from "../../data/uploaded-yoruba-hymns.js";
 import { findMissingHymnsByNumber } from "./hymn-catalog-sync.js";
 import { isManagedHymnSource } from "../../js/hymnal-selection.js";
-import { requireAdmin } from "./admin-auth.js?v=31";
-import { supabaseRequest } from "./supabase-client.js?v=31";
+import { requireAdmin } from "./admin-auth.js?v=32";
+import { supabaseRequest } from "./supabase-client.js?v=32";
 
 const GLOBAL_ROW_ID = "global";
 const DAILY_QUOTE_BOOKS = ["Psalms", "Proverbs"];
