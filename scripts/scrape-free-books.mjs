@@ -5,17 +5,43 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const MAX_BOOK_BYTES = 20 * 1024 * 1024;
 const PAGE_CHARS = 9000;
 
-// Public-domain titles with full text served by Project Gutenberg.
+// Public-domain English full texts; every entry is verified against its Project Gutenberg record.
 export const SOURCES = [{
   name: "Project Gutenberg",
   entries: [
-    { title: "The Imitation of Christ", author: "Thomas à Kempis", url: "https://www.gutenberg.org/ebooks/1653", textUrl: "https://www.gutenberg.org/cache/epub/1653/pg1653.txt", cover: "https://www.gutenberg.org/cache/epub/1653/pg1653.cover.medium.jpg", category: "Christian Living", rights: "public domain" },
-    { title: "Power Through Prayer", author: "Edward M. Bounds", url: "https://www.gutenberg.org/ebooks/65115", textUrl: "https://www.gutenberg.org/cache/epub/65115/pg65115.txt", cover: "https://www.gutenberg.org/cache/epub/65115/pg65115.cover.medium.jpg", category: "Prayer", rights: "public domain" },
-    { title: "Practical Religion", author: "J. C. Ryle", url: "https://www.gutenberg.org/ebooks/38162", textUrl: "https://www.gutenberg.org/cache/epub/38162/pg38162.txt", cover: "https://www.gutenberg.org/cache/epub/38162/pg38162.cover.medium.jpg", category: "Christian Living", rights: "public domain" },
-    { title: "The Christian's Secret of a Happy Life", author: "Hannah Whitall Smith", url: "https://www.gutenberg.org/ebooks/165", textUrl: "https://www.gutenberg.org/cache/epub/165/pg165.txt", cover: "https://www.gutenberg.org/cache/epub/165/pg165.cover.medium.jpg", category: "Christian Living", rights: "public domain" },
-    { title: "Jesus Himself", author: "Andrew Murray", url: "https://www.gutenberg.org/ebooks/26003", textUrl: "https://www.gutenberg.org/cache/epub/26003/pg26003.txt", cover: "https://www.gutenberg.org/cache/epub/26003/pg26003.cover.medium.jpg", category: "Faith", rights: "public domain" },
-    { title: "Gleanings among the Sheaves", author: "C. H. Spurgeon", url: "https://www.gutenberg.org/ebooks/42657", textUrl: "https://www.gutenberg.org/cache/epub/42657/pg42657.txt", cover: "https://www.gutenberg.org/cache/epub/42657/pg42657.cover.medium.jpg", category: "Christian Living", rights: "public domain" }
-  ]
+    { title: "The Imitation of Christ", author: "Thomas à Kempis", id: 1653, category: "Christian Living" },
+    { title: "Power Through Prayer", author: "Edward M. Bounds", id: 65115, category: "Prayer" },
+    { title: "Practical Religion", author: "J. C. Ryle", id: 38162, category: "Christian Living" },
+    { title: "Jesus Himself", author: "Andrew Murray", id: 26003, category: "Faith" },
+    { title: "Gleanings among the Sheaves", author: "C. H. Spurgeon", id: 42657, category: "Christian Living" },
+    { title: "Holy in Christ", author: "Andrew Murray", id: 26990, category: "Holy Spirit" },
+    { title: "Humility: The Beauty of Holiness", author: "Andrew Murray", id: 57121, category: "Christian Living" },
+    { title: "Lord, Teach Us To Pray", author: "Andrew Murray", id: 26709, category: "Prayer" },
+    { title: "The Ministry of Intercession: A Plea for More Prayer", author: "Andrew Murray", id: 29296, category: "Prayer" },
+    { title: "The Master's Indwelling", author: "Andrew Murray", id: 12854, category: "Holy Spirit" },
+    { title: "Money: Thoughts for God's Stewards", author: "Andrew Murray", id: 41994, category: "Christian Living" },
+    { title: "The Spirit-Filled Life", author: "John MacNeil", id: 33247, category: "Holy Spirit" },
+    { title: "Around the Wicket Gate", author: "C. H. Spurgeon", id: 60669, category: "Salvation" },
+    { title: "Talks to Farmers", author: "C. H. Spurgeon", id: 42518, category: "Christian Living" },
+    { title: "The Art of Illustration", author: "C. H. Spurgeon", id: 42558, category: "Christian Living" },
+    { title: "The Cross: A Tract for the Times", author: "J. C. Ryle", id: 62001, category: "Salvation" },
+    { title: "The Life of Trust: Being a Narrative of the Lord's Dealings With George Müller", author: "George Müller", id: 27288, category: "Faith" },
+    { title: "Answers to Prayer, from George Müller's Narratives", author: "George Müller", id: 25891, category: "Prayer" },
+    { title: "A Narrative of Some of the Lord's Dealings with George Müller, Part 1", author: "George Müller", id: 20379, category: "Faith" },
+    { title: "A Narrative of Some of the Lord's Dealings with George Müller, Part 2", author: "George Müller", id: 22034, category: "Faith" },
+    { title: "A Narrative of Some of the Lord's Dealings with George Müller, Part 3", author: "George Müller", id: 22148, category: "Faith" },
+    { title: "A Narrative of Some of the Lord's Dealings with George Müller, Part 4", author: "George Müller", id: 20245, category: "Faith" },
+    { title: "The Preaching Tours and Missionary Labours of George Müller", author: "George Müller", id: 34377, category: "Evangelism" },
+    { title: "The Pilgrim's Progress from this world to that which is to come", author: "John Bunyan", id: 131, category: "Salvation" },
+    { title: "The Pilgrim's Progress by John Bunyan Every Child Can Read", author: "John Bunyan", id: 39452, category: "Salvation" },
+    { title: "Works of John Bunyan, Volume 03", author: "John Bunyan", id: 6048, category: "Salvation" },
+    { title: "Prevailing Prayer: What Hinders It?", author: "Dwight Lyman Moody", id: 61883, category: "Prayer" },
+    { title: "Evening Incense", author: "John R. Macduff", id: 50916, category: "Prayer" },
+    { title: "My Daily Meditation for the Circling Year", author: "John Henry Jowett", id: 23241, category: "Christian Living" },
+    { title: "Martin Luther's Large Catechism", author: "Martin Luther", id: 1722, category: "Faith" },
+    { title: "The Confessions of St. Augustine", author: "Saint Augustine", id: 3296, category: "Salvation" },
+    { title: "The Model Prayer: A Series of Expositions on the Lord's Prayer", author: "J. D. Jones", id: 70953, category: "Prayer" }
+  ].map(book => ({ ...book, url: `https://www.gutenberg.org/ebooks/${book.id}`, textUrl: `https://www.gutenberg.org/cache/epub/${book.id}/pg${book.id}.txt`, cover: `https://www.gutenberg.org/cache/epub/${book.id}/pg${book.id}.cover.medium.jpg`, rights: "public domain" }))
 }];
 
 const CATEGORY_HINTS = [
@@ -91,8 +117,8 @@ async function insertBook(book, fullText) {
   const id = stableBookUuid(book.url);
   const existing = await rest("books?id=eq." + id + "&select=id");
   const row = {
-    id, title: book.title, author: book.author, description: "Full text offered as public domain by Project Gutenberg.", page_count: 0,
-    file_type: "pdf", file_url: book.url,
+    id, title: book.title, author: book.author, page_count: 0,
+    file_type: "epub", file_url: book.textUrl, description: "Public-domain full text offered by Project Gutenberg.",
     source_name: "Project Gutenberg", source_url: book.url, cover_url: book.cover || "", front_cover_url: book.cover || "",
     category: categoryFor(book, fullText), is_public: true, published: false, status: "published", scraped_at: new Date().toISOString()
   };
