@@ -115,7 +115,7 @@ async function refreshSession(session) {
     clearSession();
     return null;
   }
-  setActiveSession(refreshed);
+  saveSession(refreshed);
   return refreshed;
 }
 

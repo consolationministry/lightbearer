@@ -5,13 +5,13 @@ import {
   getStoredSession,
   isSupabaseConfigured,
   supabaseRequest
-} from "../admin/js/supabase-client.js?v=32";
+} from "../admin/js/supabase-client.js?v=33";
 import {
   initializeAdminAuth,
   isAdminAuthenticated,
   loginAdmin,
   logoutAdmin
-} from "../admin/js/admin-auth.js?v=32";
+} from "../admin/js/admin-auth.js?v=33";
 
 function installStorage() {
   const values = new Map();
@@ -33,7 +33,7 @@ function response(body, status = 200) {
   };
 }
 
-test("configured admin sign-in verifies membership and never stores a session", async () => {
+test("configured admin sign-in stores a session only after server membership is confirmed", async () => {
   installStorage();
   clearSession();
   const seen = [];
@@ -61,8 +61,7 @@ test("configured admin sign-in verifies membership and never stores a session", 
   const admin = await loginAdmin(" admin@example.org ", "test-password");
   assert.deepEqual(admin, { id: "admin-uuid", email: "admin@example.org", role: "admin" });
   assert.equal(isAdminAuthenticated(), true);
-  // owner rule: no persisted session, so the next app open always asks for credentials
-  assert.equal(getStoredSession(), null);
+  assert.equal(getStoredSession().refresh_token, "refresh-test");
   assert.equal(seen.length, 3);
   assert.equal(seen[0].init.headers.get("authorization").startsWith("Bearer sb_publishable_"), true);
   assert.equal(seen[1].init.headers.get("authorization"), "Bearer access-test");
@@ -75,8 +74,9 @@ test("configured admin sign-in verifies membership and never stores a session", 
   const storedValues = installStorage();
   storedValues.set("cns-lightbearer-admin-session-v1", JSON.stringify({ access_token: "persisted-access", refresh_token: "persisted-refresh" }));
   const initialized = await initializeAdminAuth();
-  assert.equal(initialized.authenticated, false);
-  assert.equal(getStoredSession(), null);
+  assert.equal(initialized.authenticated, true);
+  assert.equal(initialized.admin.id, "admin-uuid");
+  assert.equal(getStoredSession().refresh_token, "persisted-refresh");
 });
 
 test("a signed-in non-admin is rejected and its session is removed", async () => {
@@ -98,7 +98,7 @@ test("a signed-in non-admin is rejected and its session is removed", async () =>
   assert.equal(isAdminAuthenticated(), false);
 });
 
-test("a stored session never auto-restores: every open starts at login", async () => {
+test("an existing authorized session is revalidated before admin access", async () => {
   installStorage();
   clearSession();
   globalThis.fetch = async function (url) {
@@ -114,8 +114,9 @@ test("a stored session never auto-restores: every open starts at login", async (
   };
   await loginAdmin("admin@example.org", "test-password");
   const result = await initializeAdminAuth();
-  assert.equal(result.authenticated, false);
-  assert.equal(getStoredSession(), null);
+  assert.equal(result.authenticated, true);
+  assert.equal(result.admin.id, "admin-uuid");
+  assert.equal(getStoredSession().refresh_token, "refresh-test");
   await logoutAdmin();
   assert.equal(getStoredSession(), null);
 });

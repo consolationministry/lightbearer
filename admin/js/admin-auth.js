@@ -1,4 +1,4 @@
-import { clearSession, clearActiveSession, getActiveSession, isSupabaseConfigured, requireAdminAuthorization, setActiveSession, setPublicRequestPaths, supabaseRequest } from "./supabase-client.js?v=32";
+import { clearSession, clearActiveSession, getActiveSession, getStoredSession, isSupabaseConfigured, requireAdminAuthorization, saveSession, setActiveSession, setPublicRequestPaths, supabaseRequest } from "./supabase-client.js?v=33";
 
 requireAdminAuthorization();
 setPublicRequestPaths(["auth/v1/token?grant_type=password"]);
@@ -54,6 +54,7 @@ export async function loginAdmin(email, password) {
     });
     currentAdmin = await getVerifiedAdmin(session);
     setActiveSession(session);
+    saveSession(session);
     return currentAdmin;
   } catch (error) {
     currentAdmin = null;
@@ -108,7 +109,20 @@ export async function initializeAdminAuth() {
     currentAdmin = null;
     return { configured: false, authenticated: false, admin: null };
   }
-  currentAdmin = null;
-  clearSession();
-  return { configured: true, authenticated: false, admin: null };
+  const session = getStoredSession();
+  if (!session) {
+    currentAdmin = null;
+    clearActiveSession();
+    return { configured: true, authenticated: false, admin: null };
+  }
+  setActiveSession(session);
+  try {
+    currentAdmin = await getVerifiedAdmin(session);
+    return { configured: true, authenticated: true, admin: currentAdmin };
+  } catch (error) {
+    currentAdmin = null;
+    clearActiveSession();
+    if (error && error.code !== "ADMIN_REQUIRED") clearSession();
+    return { configured: true, authenticated: false, admin: null, error: asAdminError(error) };
+  }
 }
