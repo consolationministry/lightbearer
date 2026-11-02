@@ -7,8 +7,21 @@ import {
   getLiveAudioReconnectDelay,
   readLiveAudioPeerStats,
   getLiveAudioListenerStatus,
+  getLiveAudioMeshListenerLimit,
+  LIVE_AUDIO_MESH_LISTENER_LIMIT,
   startLiveAudioListener
 } from "../js/live-audio-webrtc.js";
+
+test("mesh listener test ceiling defaults to fifty and cannot exceed it", () => {
+  assert.equal(LIVE_AUDIO_MESH_LISTENER_LIMIT, 50);
+  assert.equal(getLiveAudioMeshListenerLimit(), 50);
+  assert.equal(getLiveAudioMeshListenerLimit(50), 50);
+  assert.equal(getLiveAudioMeshListenerLimit(500), 50);
+  assert.equal(getLiveAudioMeshListenerLimit(4), 4);
+  assert.equal(getLiveAudioMeshListenerLimit(0), 50);
+  assert.equal(getLiveAudioMeshListenerLimit(-10), 1);
+  assert.equal(getLiveAudioMeshListenerLimit("not-a-number"), 50);
+});
 
 test("listener reconnect backoff starts quickly and caps at three seconds", () => {
   assert.equal(getLiveAudioReconnectDelay(0), 250);
