@@ -293,6 +293,7 @@ function renderProgramRows(data) {
         (program.status === "draft"
           ? '<button class="button button-secondary" type="button" data-action="audio-admin-publish" data-id="' + escapeHtml(program.id) + '">Publish</button>'
           : "") +
+        (program.recording_path ? '<a class="button button-secondary" href="' + escapeHtml(program.recording_path) + '" download aria-label="Download ' + escapeHtml(program.title) + ' audio">Download audio</a>' : "") +
         '<button class="button button-secondary audio-admin-delete" type="button" data-action="audio-admin-delete" data-id="' +
         escapeHtml(program.id) + '" aria-label="Delete ' + escapeHtml(program.title) + '">' + icon("trash") + "</button>" +
         "</div></td></tr>";

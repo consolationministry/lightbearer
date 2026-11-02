@@ -2,7 +2,7 @@ import { readLocal, writeLocal } from "./local-store.js";
 
 const SETTINGS_KEY = "cerc-hymnal-settings-v1";
 export const DEFAULT_SETTINGS = Object.freeze({ language: "all", theme: "light", accent: "blue", fontSize: 21 });
-export const ACCENT_THEMES = Object.freeze(["blue"]);
+export const ACCENT_THEMES = Object.freeze(["blue", "green", "purple", "rose", "teal"]);
 
 export function getSettings() {
   const stored = readLocal(SETTINGS_KEY, {});

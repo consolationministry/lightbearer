@@ -669,3 +669,7 @@ html[data-theme="dark"] .reader-heading {
 .about-body h2:first-child{margin-top:.2rem}
 .about-body p{color:#334155;margin:.35rem 0 .8rem;line-height:1.65}
 .about-body a{color:#1d4ed8;font-weight:600;text-decoration:underline}
+
+/* Keep the primary navigation in one horizontal row, allowing compact labels on phones. */
+.bottom-nav, .app-nav, nav[aria-label="Primary"] { display:flex; flex-wrap:nowrap; overflow-x:auto; }
+.bottom-nav .nav-item, .app-nav .nav-item { flex:1 0 auto; white-space:nowrap; }

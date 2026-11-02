@@ -102,12 +102,28 @@ function escapeHtml(value) {
   });
 }
 
+const ACCENT_PALETTES = {
+  blue: { accent: "#1d4ed8", soft: "#dbeafe", deep: "#1e40af" },
+  green: { accent: "#15803d", soft: "#dcfce7", deep: "#166534" },
+  purple: { accent: "#7c3aed", soft: "#ede9fe", deep: "#5b21b6" },
+  rose: { accent: "#be123c", soft: "#ffe4e6", deep: "#9f1239" },
+  teal: { accent: "#0f766e", soft: "#ccfbf1", deep: "#115e59" }
+};
+
 function applyPreferences() {
   const preference = state.settings.theme;
   const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
   const theme = preference === "system" ? (prefersDark ? "dark" : "light") : preference;
+  const colors = ACCENT_PALETTES[state.settings.accent] || ACCENT_PALETTES.blue;
   document.documentElement.dataset.theme = theme;
   document.documentElement.dataset.accent = state.settings.accent;
+  document.documentElement.style.setProperty("--accent", colors.accent);
+  document.documentElement.style.setProperty("--accent-light", colors.accent);
+  document.documentElement.style.setProperty("--accent-dark", colors.deep);
+  document.documentElement.style.setProperty("--accent-deep", colors.deep);
+  document.documentElement.style.setProperty("--accent-soft", colors.soft);
+  document.documentElement.style.setProperty("--purple", colors.accent);
+  document.documentElement.style.setProperty("--purple-soft", colors.soft);
   document.documentElement.style.setProperty("--hymn-size", state.settings.fontSize + "px");
   document.documentElement.style.fontSize = (state.settings.fontSize * 16 / 21) + "px";
 }
