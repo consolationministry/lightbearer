@@ -1044,11 +1044,28 @@ function saveCurrentSettings() {
 }
 
 window.addEventListener("popstate", function () {
+  if (state.view === "listen" && state.selectedLiveAudioProgramId) {
+    leaveLiveAudioProgram();
+    return;
+  }
   if (state.view !== "reader") return;
   state.view = state.readerReturnView;
   render();
   window.scrollTo(0, 0);
 });
+
+function leaveLiveAudioProgram() {
+  state.liveAudioOpenToken += 1;
+  main.querySelectorAll("[data-audio-player]").forEach(stopAudioPlayer);
+  stopLiveAudioConnection();
+  stopLiveAudioTimer();
+  clearSavedAudioPlayback();
+  state.selectedLiveAudioProgramId = null;
+  state.liveAudioOpening = false;
+  state.liveAudioLoading = false;
+  render();
+  if (navigator.onLine !== false) void refreshLiveAudioData();
+}
 
 function openHymn(number) {
   const hymn = state.hymns.find(function (item) { return item.hymn_number === Number(number); });
@@ -1064,7 +1081,7 @@ function openHymn(number) {
   if (!persisted) showToast("Opened hymn. Browser storage is unavailable, so recent history may not persist.");
 }
 
-function navigate(view) {
+function navigate(view, category) {
   if (!["home", "listen", "programs", "services", "recent", "settings", "library", "book"].includes(view)) return;
   if (state.view === "listen" && (view !== "listen" || state.selectedLiveAudioProgramId)) {
     state.liveAudioOpenToken += 1;
@@ -1073,9 +1090,13 @@ function navigate(view) {
     clearSavedAudioPlayback();
     if (view !== "listen") stopLiveAudioRefresh();
   }
+  if (state.view === "listen" && state.selectedLiveAudioProgramId && view === "listen") {
+    leaveLiveAudioProgram();
+  }
   state.view = view;
   state.searchOpen = false;
   if (view === "listen") {
+    if (typeof category === "string") state.liveAudioCategory = category;
     state.selectedLiveAudioProgramId = null;
     state.liveAudioLoading = navigator.onLine !== false;
     state.liveAudioError = "";
@@ -1753,7 +1774,8 @@ document.addEventListener("click", function (event) {
   if (action === "dismiss-update") updateDialog.close();
   else if (action === "install-update") installAvailableUpdate();
   else if (action === "save-settings") saveCurrentSettings();
-  else if (action === "navigate") navigate(target.dataset.view);
+  else if (action === "navigate") navigate(target.dataset.view, target.dataset.category);
+  else if (action === "back-to-live-audio") navigate("listen", state.liveAudioCategory);
   else if (action === "open-book") openBook(target.dataset.book);
   else if (action === "book-back") navigate("library");
   else if (action === "book-prev") turnBookPage(-1);
@@ -1796,14 +1818,7 @@ document.addEventListener("click", function (event) {
     state.liveAudioConnectionStatus = "Listening stopped.";
     render();
   } else if (action === "back-to-live-audio") {
-    state.liveAudioOpenToken += 1;
-    main.querySelectorAll("[data-audio-player]").forEach(stopAudioPlayer);
-    stopLiveAudioConnection();
-    stopLiveAudioTimer();
-    clearSavedAudioPlayback();
-    state.selectedLiveAudioProgramId = null;
-    render();
-    if (navigator.onLine !== false) void refreshLiveAudioData();
+    leaveLiveAudioProgram();
   } else if (action === "share-live-audio") {
     void shareLiveAudioProgram(target.dataset.programId);
   } else if (action === "toggle-audio-playback") {

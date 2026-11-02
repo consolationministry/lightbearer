@@ -123,7 +123,15 @@ test("public audio loads published Supabase programmes and shared listener inter
     { p_program_ids: [PROGRAM_ID], p_visitor_id: VISITOR_ID }
   );
 
-  assert.match(renderLiveAudioPage(data, "", ""), /Listen now/);
+  const listenPage = renderLiveAudioPage(data, "", "");
+  assert.doesNotMatch(listenPage, /aria-label="Live now"/);
+  assert.match(listenPage, /audio-library-nav-listen is-active/);
+  assert.match(listenPage, /audio-library-nav-live" type/);
+  const livePage = renderLiveAudioPage(data, "", "__live__");
+  assert.doesNotMatch(livePage, /aria-label="Live now"/);
+  assert.match(livePage, /audio-library-nav-live is-active/);
+  assert.match(livePage, /audio-library-nav-listen" type/);
+  assert.match(livePage, /data-testid="audio-program-/);
   const listener = renderLiveAudioListener(data, PROGRAM_ID);
   assert.match(listener, /<audio[^>]*autoplay playsinline[^>]*data-live-audio-player/);
   assert.doesNotMatch(listener, /<audio[^>]*\scontrols(?:\s|>|=)/);
