@@ -124,10 +124,12 @@ test("public audio loads published Supabase programmes and shared listener inter
   );
 
   const listenPage = renderLiveAudioPage(data, "", "");
+  assert.match(listenPage, /<h2 id="audio-library-heading">Past recordings<\/h2>/);
   assert.doesNotMatch(listenPage, /aria-label="Live now"/);
   assert.match(listenPage, /audio-library-nav-listen is-active/);
   assert.match(listenPage, /audio-library-nav-live" type/);
   const livePage = renderLiveAudioPage(data, "", "__live__");
+  assert.match(livePage, /<h2 id="audio-library-heading">Live and upcoming<\/h2>/);
   assert.doesNotMatch(livePage, /aria-label="Live now"/);
   assert.match(livePage, /audio-library-nav-live is-active/);
   assert.match(livePage, /audio-library-nav-listen" type/);

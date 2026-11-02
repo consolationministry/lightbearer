@@ -12,7 +12,7 @@ import { APP_VERSION } from "./version.js";
 import { remainingSplashMs } from "./splash-timing.js";
 import { quoteBannerHtml, startQuoteBanner, stopQuoteBanner } from "./quote-banner.js";
 import { displayHymnalName } from "./hymnal-labels.js";
-import { seraphMediaHymn, UPLOADED_HYMN_SOURCE, UPLOADED_YORUBA_HYMN_SOURCE } from "./hymnal-selection.js";
+import { UPLOADED_HYMN_SOURCE, UPLOADED_YORUBA_HYMN_SOURCE } from "./hymnal-selection.js";
 import {
   emptyLiveAudioData,
   loadPublicLiveAudioSegment,
@@ -145,11 +145,19 @@ function renderNav() {
     ["library", "Library", "book"],
     ["recent", "Recent", "history"],
     ["settings", "Settings", "settings"],
-    ["listen", "Live", "radio"]
+    ["listen-live", "Live", "radio"],
+    ["listen-recorded", "Listen", "radio"]
   ];
   nav.innerHTML = items.map(function (item) {
     if (item[0] === "forms") return '<a class="nav-item" href="./forms.html" data-testid="nav-forms">' + icon(item[2]) + '<span>Forms</span></a>';
-    return '<button class="nav-item" type="button" data-action="navigate" data-view="' + item[0] + '" aria-current="' + (activeView === item[0] ? "page" : "false") + '" data-testid="nav-' + item[0] + '">' + icon(item[2]) + '<span>' + item[1] + '</span></button>';
+    const isLiveAudio = item[0] === "listen-live" || item[0] === "listen-recorded";
+    const category = item[0] === "listen-live" ? "__live__" : "";
+    const selected = isLiveAudio && state.view === "listen" && (state.liveAudioCategory || "") === category;
+    const view = isLiveAudio ? "listen" : item[0];
+    if (isLiveAudio) {
+      return '<button class="nav-item" type="button" data-action="navigate" data-view="listen" data-category="' + category + '" aria-current="' + (selected ? "page" : "false") + '" data-testid="nav-' + item[0] + '">' + icon(item[2]) + '<span>' + item[1] + '</span></button>';
+    }
+    return '<button class="nav-item" type="button" data-action="navigate" data-view="' + view + '" aria-current="' + (activeView === view ? "page" : "false") + '" data-testid="nav-' + item[0] + '">' + icon(item[2]) + '<span>' + item[1] + '</span></button>';
   }).join("");
 }
 
@@ -766,13 +774,11 @@ function renderReader() {
   const number = displayHymnNumber(hymn);
   const hasEnglish = state.settings.language !== "yoruba" && (hymn.language || "english") !== "yoruba" && hasEnglishText(hymn);
   const sourceHymnal = String(hymn.source_hymnal || "");
-  const embedLanguage = hasEnglish ? "english" : "yoruba";
   const isUploadedEnglish = sourceHymnal === UPLOADED_HYMN_SOURCE;
   const isUploadedYoruba = sourceHymnal === UPLOADED_YORUBA_HYMN_SOURCE;
   const sourcePrintedLabel = String(hymn.source_number_label || "").trim();
   const hasVerifiedPrintedNumber = (isUploadedEnglish || isUploadedYoruba) && (/^\d{1,5}$/.test(sourcePrintedLabel) || Number.isInteger(Number(hymn.source_hymn_number)) && Number(hymn.source_hymn_number) > 0);
   const printedNumber = !hasVerifiedPrintedNumber ? null : /^\d{1,5}$/.test(sourcePrintedLabel) ? sourcePrintedLabel : String(hymn.source_hymn_number);
-  const seraphEmbed = seraphMediaHymn(embedLanguage, printedNumber);
   const showEnglishGospelMeterHeading = sourceHymnal.toLowerCase().includes("ghb") || sourceHymnal.toLowerCase().includes("gospel hymn book");
   const title = hasEnglish
     ? '<span lang="en">' + escapeHtml(hymn.title_en) + '</span>'
@@ -793,7 +799,7 @@ function renderReader() {
     : poemSection("Yorùbá", hymn.verses_yoruba, hymn.chorus_yoruba, "yo", false, hymn.hymnal_note, hymn));
   const translationNote = "";
   const lyricText = [number + " " + titleText, descriptionText || "", hymn.first_line_en || hymn.first_line_yoruba || "", (hasEnglish ? hymn.verses_en : hymn.verses_yoruba || []).join("\n\n"), hasEnglish ? hymn.chorus_en || "" : hymn.chorus_yoruba || ""].filter(Boolean).join("\n\n");
-  return '<section class="page reader-page"><div class="reader-topbar"><button class="reader-back" type="button" data-action="back" data-testid="button-reader-back">' + icon("arrow") + ' Back</button><div class="reader-actions">' + favoriteButton(hymn) + '<button class="icon-button" type="button" data-action="copy-lyrics" data-text="' + escapeHtml(lyricText) + '" aria-label="Copy lyrics">Copy</button></div></div><header class="reader-heading"><div class="reader-edition"><span class="hymn-number">' + number + '</span><span>' + escapeHtml(displayHymnalName(hymn)) + '</span></div><h1>' + title + '</h1><p class="reader-first-line">' + firstLine + '</p></header>' + (seraphEmbed ? '<section class="seraph-media-embed" aria-label="Seraph Media hymn audio"><iframe src="' + seraphEmbed.url + '" title="Seraph Media audio for hymn ' + escapeHtml(number) + '" width="100%" height="460" loading="lazy" allow="autoplay; encrypted-media" allowfullscreen></iframe><p><a href="' + seraphEmbed.url + '" target="_blank" rel="noopener noreferrer">Listen on Seraphmedia</a></p></section>' : '') + '<div class="reader-meta"><div class="reading-size" role="group" aria-label="Change hymn text size"><button type="button" data-action="font-decrease" aria-label="Decrease hymn text size" data-testid="button-font-decrease">A−</button><output id="reader-font-size">' + state.settings.fontSize + ' px</output><button type="button" data-action="font-increase" aria-label="Increase hymn text size" data-testid="button-font-increase">A+</button></div></div><div class="hymn-reading">' + translationNote + sections + '</div><footer class="reader-footer"><button class="button-secondary" type="button" data-action="save-text" data-filename="hymn-' + number + '.txt" data-text="' + escapeHtml(lyricText) + '">Save as text</button><button class="button-secondary" type="button" data-action="save-pdf" data-text="' + escapeHtml(lyricText) + '">Save as PDF</button><button class="button-secondary" type="button" data-action="embed-hymn" data-number="' + hymn.hymn_number + '">Embed hymn</button></footer><nav class="reader-pagination" aria-label="Hymn navigation">' + (previousHymn ? '<button class="button-secondary" type="button" data-action="open-hymn" data-number="' + previousHymn.hymn_number + '">Previous</button>' : '<span></span>') + (nextHymn ? '<button class="button-primary" type="button" data-action="open-hymn" data-number="' + nextHymn.hymn_number + '">Next</button>' : '<span></span>') + '</nav></section>';
+  return '<section class="page reader-page"><div class="reader-topbar"><button class="reader-back" type="button" data-action="back" data-testid="button-reader-back">' + icon("arrow") + ' Back</button><div class="reader-actions">' + favoriteButton(hymn) + '<button class="icon-button" type="button" data-action="copy-lyrics" data-text="' + escapeHtml(lyricText) + '" aria-label="Copy lyrics">Copy</button></div></div><header class="reader-heading"><div class="reader-edition"><span class="hymn-number">' + number + '</span><span>' + escapeHtml(displayHymnalName(hymn)) + '</span></div><h1>' + title + '</h1><p class="reader-first-line">' + firstLine + '</p></header>' + '<div class="reader-meta"><div class="reading-size" role="group" aria-label="Change hymn text size"><button type="button" data-action="font-decrease" aria-label="Decrease hymn text size" data-testid="button-font-decrease">A−</button><output id="reader-font-size">' + state.settings.fontSize + ' px</output><button type="button" data-action="font-increase" aria-label="Increase hymn text size" data-testid="button-font-increase">A+</button></div></div><div class="hymn-reading">' + translationNote + sections + '</div><footer class="reader-footer"><button class="button-secondary" type="button" data-action="save-text" data-filename="hymn-' + number + '.txt" data-text="' + escapeHtml(lyricText) + '">Save as text</button><button class="button-secondary" type="button" data-action="save-pdf" data-text="' + escapeHtml(lyricText) + '">Save as PDF</button></footer><nav class="reader-pagination" aria-label="Hymn navigation">' + (previousHymn ? '<button class="button-secondary" type="button" data-action="open-hymn" data-number="' + previousHymn.hymn_number + '">Previous</button>' : '<span></span>') + (nextHymn ? '<button class="button-primary" type="button" data-action="open-hymn" data-number="' + nextHymn.hymn_number + '">Next</button>' : '<span></span>') + '</nav></section>';
 }
 
 function themeChoice(theme, label, iconName) {
@@ -1887,7 +1893,6 @@ document.addEventListener("click", function (event) {
   }
   else if (action === "save-text") downloadText(target.dataset.text || "", target.dataset.filename || "hymn.txt");
   else if (action === "save-pdf") { window.print(); }
-  else if (action === "embed-hymn") { const code = '<iframe src="' + window.location.origin + window.location.pathname + '?hymn=' + encodeURIComponent(target.dataset.number) + '" title="Lightbearer hymn" loading="lazy"></iframe>'; void copyText(code); window.prompt("Copy this hymn embed code:", code); }
   else if (action === "toggle-theme") setSettings({ theme: state.settings.theme === "dark" ? "light" : "dark" });
 });
 

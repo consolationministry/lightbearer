@@ -4,8 +4,7 @@ import { readFileSync } from "node:fs";
 import uploadedHymns from "../data/uploaded-hymns.js";
 import { getAllHymns, getHymnByNumber } from "../js/hymn-service.js";
 import { writeLocal } from "../js/local-store.js";
-import { seraphMediaHymn } from "../js/hymnal-selection.js";
-
+import { UPLOADED_HYMN_SOURCE, UPLOADED_YORUBA_HYMN_SOURCE } from "../js/hymnal-selection.js";
 const PUBLISHED_CACHE_KEY = "cerc-published-hymns-unified-v15";
 function installStorage() {
   const values = new Map();
@@ -28,16 +27,6 @@ function response(body, status = 200) {
     async json() { return body; }
   };
 }
-
-test("Seraph Media embed URLs use the official language and printed hymn number format", () => {
-  assert.equal(seraphMediaHymn("english", "002").url, "https://www.seraphmedia.com.ng/embed/hymn/english/002");
-  assert.equal(seraphMediaHymn("yoruba", "002").url, "https://www.seraphmedia.com.ng/embed/hymn/yoruba/002");
-  assert.equal(seraphMediaHymn("english", "063").url, "https://www.seraphmedia.com.ng/embed/hymn/english/063");
-  assert.equal(seraphMediaHymn("english", "063V"), null);
-  assert.equal(seraphMediaHymn("french", "2"), null);
-  assert.equal(seraphMediaHymn("yoruba", "0"), null);
-  assert.equal(seraphMediaHymn("english", 63).height, 460);
-});
 
 
 test("the bundled catalog contains only the 128 uploaded hymns", () => {
