@@ -7,20 +7,107 @@ import {
   getLiveAudioReconnectDelay,
   readLiveAudioPeerStats,
   getLiveAudioListenerStatus,
+  DEFAULT_LIVE_AUDIO_MESH_LISTENER_LIMIT,
   getLiveAudioMeshListenerLimit,
   LIVE_AUDIO_MESH_LISTENER_LIMIT,
-  startLiveAudioListener
+  startLiveAudioListener,
+  startLiveAudioPublisher
 } from "../js/live-audio-webrtc.js";
 
-test("mesh listener test ceiling defaults to fifty and cannot exceed it", () => {
+test("publisher listener limit defaults to sixteen and supports an explicit fifty-peer test ceiling", () => {
   assert.equal(LIVE_AUDIO_MESH_LISTENER_LIMIT, 50);
-  assert.equal(getLiveAudioMeshListenerLimit(), 50);
+  assert.equal(DEFAULT_LIVE_AUDIO_MESH_LISTENER_LIMIT, 16);
+  assert.equal(getLiveAudioMeshListenerLimit(), 16);
   assert.equal(getLiveAudioMeshListenerLimit(50), 50);
   assert.equal(getLiveAudioMeshListenerLimit(500), 50);
   assert.equal(getLiveAudioMeshListenerLimit(4), 4);
-  assert.equal(getLiveAudioMeshListenerLimit(0), 50);
+  assert.equal(getLiveAudioMeshListenerLimit(0), 16);
   assert.equal(getLiveAudioMeshListenerLimit(-10), 1);
-  assert.equal(getLiveAudioMeshListenerLimit("not-a-number"), 50);
+  assert.equal(getLiveAudioMeshListenerLimit("not-a-number"), 16);
+});
+
+test("publisher answers fifty concurrent listener offers, rejects the fifty-first, and frees capacity on leave", async () => {
+  let channelCallbacks;
+  const sentMessages = [];
+  const peers = [];
+  const connectedCounts = [];
+  const channel = {
+    connected: true,
+    send(message) {
+      sentMessages.push(message);
+      return true;
+    },
+    close() {}
+  };
+  const testProgramId = "00000000-0000-4000-8000-000000000001";
+  const testSessionId = "00000000-0000-4000-8000-000000000002";
+  const stream = { getAudioTracks: () => [{ id: "broadcast-track" }] };
+  const publisher = await startLiveAudioPublisher({
+    programId: testProgramId,
+    sessionId: testSessionId,
+    stream,
+    maxListeners: 50,
+    connectChannel: async (programId, sessionId, callbacks) => {
+      channelCallbacks = callbacks;
+      return channel;
+    },
+    createPeerConnection: async () => {
+      const peer = {
+        connectionState: "new",
+        signalingState: "stable",
+        addTrack(track, mediaStream) { this.track = track; this.stream = mediaStream; },
+        async setRemoteDescription(description) { this.remoteDescription = description; },
+        async createAnswer() { return { type: "answer", sdp: "fake-answer" }; },
+        async setLocalDescription(description) {
+          this.localDescription = description;
+          this.signalingState = "stable";
+        },
+        close() { this.closed = true; }
+      };
+      peers.push(peer);
+      return peer;
+    },
+    onListenerCount(count) { connectedCounts.push(count); }
+  });
+  const offer = index => ({
+    type: "offer",
+    sessionId: testSessionId,
+    from: `listener-${index}`,
+    to: `host-${testSessionId}`,
+    description: { type: "offer", sdp: `fake-offer-${index}` }
+  });
+
+  for (let index = 0; index < 50; index += 1) channelCallbacks.onSignal(offer(index));
+  for (let turn = 0; turn < 100 && sentMessages.filter(message => message.type === "answer").length < 50; turn += 1) {
+    await new Promise(resolve => setImmediate(resolve));
+  }
+
+  assert.equal(peers.length, 50);
+  assert.equal(peers.filter(peer => peer.track?.id === "broadcast-track" && peer.stream === stream).length, 50);
+  assert.equal(sentMessages.filter(message => message.type === "answer").length, 50);
+  assert.equal(publisher.listenerCount, 50);
+  assert.equal(Math.max(...connectedCounts), 50);
+
+  channelCallbacks.onSignal(offer(50));
+  assert.equal(sentMessages.filter(message => message.type === "full").length, 1);
+  assert.equal(peers.length, 50);
+
+  channelCallbacks.onSignal({
+    type: "leave",
+    sessionId: testSessionId,
+    from: "listener-0",
+    to: `host-${testSessionId}`
+  });
+  assert.equal(publisher.listenerCount, 49);
+  channelCallbacks.onSignal(offer(50));
+  for (let turn = 0; turn < 100 && sentMessages.filter(message => message.type === "answer").length < 51; turn += 1) {
+    await new Promise(resolve => setImmediate(resolve));
+  }
+  assert.equal(peers.length, 51);
+  assert.equal(sentMessages.filter(message => message.type === "answer").length, 51);
+  assert.equal(publisher.listenerCount, 50);
+  await publisher.stop();
+  assert.equal(peers.filter(peer => peer.closed).length, 51);
 });
 
 test("listener reconnect backoff starts quickly and caps at three seconds", () => {
