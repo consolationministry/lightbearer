@@ -1,4 +1,4 @@
-const CACHE_NAME = "cns-lightbearer-1.16.8";
+const CACHE_NAME = "cns-lightbearer-1.16.9";
 const PRECACHE_URLS = [
   "./",
   "./index.html",
