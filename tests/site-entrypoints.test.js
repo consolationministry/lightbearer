@@ -68,7 +68,7 @@ test("offline app worker caches the reader and the Vite build emits both pages",
   assert.ok(viteConfig.includes("hymnal.html"));
 });
 
-test("public forms show church branding and bottom navigation, and gate form access on a saved device email", async () => {
+test("public forms show church branding and bottom navigation, and gate form access on a verified account", async () => {
   const [page, script, css] = await Promise.all([read("forms.html"), read("js/forms-public.js"), read("css/forms.css")]);
   assert.ok(page.includes("C&amp;S Bible Church"));
   const navStart = page.indexOf('<nav class="forms-bottom-nav"');
@@ -87,7 +87,7 @@ test("public forms show church branding and bottom navigation, and gate form acc
   assert.ok(css.includes("font-size:clamp(.48rem,2.1vw,.7rem)"));
   assert.ok(css.includes("flex-direction:column"));
   assert.ok(css.includes(".forms-bottom-nav a>svg"));
-  assert.ok(script.includes("Start with your email"));
+  assert.ok(script.includes("Verified account required"));
   assert.ok(script.includes("lightbearer-user-email"));
   assert.ok(script.includes("if(!emailGate())return"));
   assert.ok(script.includes("data-query-for"));
