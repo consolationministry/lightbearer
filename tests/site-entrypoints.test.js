@@ -81,6 +81,13 @@ test("public forms show church branding and bottom navigation, and gate form acc
   assert.ok(css.includes(".forms-bottom-nav"));
 });
 
+test("admin response cards preserve historical answers and render answer values safely", async () => {
+  const [script, helper] = await Promise.all([read("admin/js/forms-admin.js"), read("admin/js/response-data.js")]);
+  assert.ok(script.includes("getResponseAnswers(fields,r.data)"));
+  assert.ok(helper.includes("Previous answer (field changed)"));
+  assert.ok(helper.includes("consumedKeys"));
+});
+
 test("admin response cards provide prominent registration IDs, copy actions, labeled answers, and narrow-screen styles", async () => {
   const [script, css] = await Promise.all([read("admin/js/forms-admin.js"), read("admin/css/forms-admin.css")]);
   assert.ok(script.includes("response-registration"));
