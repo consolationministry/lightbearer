@@ -304,7 +304,7 @@ function renderLibraryPage() {
   const books = state.libraryBooks || [];
   if (!state.libraryLoaded) {
     fetchLibraryBooks().then(function (rows) { state.libraryBooks = rows || []; state.libraryLoaded = true; render(); }).catch(function () { state.libraryBooks = []; state.libraryLoaded = true; render(); });
-    return '<section class="page library-page">' + pageHeading("Library", "Church books and reading resources.") + '<p class="results-meta">Loading books…</p></section>';
+    return '<section class="page library-page">' + pageHeading("Church Library", "Church books and reading resources.") + '<p class="results-meta">Loading books…</p></section>';
   }
   const selected = books.filter(function (book) { return book.is_public !== true; });
   const categories = Array.from(new Set(selected.map(function (book) { return book.category || "Christian Living"; }))).sort();
@@ -315,7 +315,7 @@ function renderLibraryPage() {
     return '<article class="library-book-card"><button class="library-book-open" type="button" data-action="open-book" data-book="' + escapeHtml(book.id) + '">' +
       (cover ? '<img src="' + escapeHtml(cover) + '" alt="" loading="lazy">' : '<span class="library-book-placeholder">' + escapeHtml(String(book.title || "Book").slice(0, 1)) + '</span>') +
       '<strong>' + escapeHtml(book.title || "Untitled") + '</strong></button><span class="library-book-author">' + escapeHtml(book.author || book.source_name || "") + '</span></article>';
-  }).join("") : '<p class="results-meta">No books in this section yet.</p>';
+  }).join("") : '<p class="results-meta">No church books yet.</p>';
   const chips = '<div class="library-category-filter"><button data-action="library-category" data-category="All categories" class="' + (category === "All categories" ? "selected" : "") + '">All</button>' + categories.map(function (item) { return '<button data-action="library-category" data-category="' + escapeHtml(item) + '" class="' + (category === item ? "selected" : "") + '">' + escapeHtml(item) + '</button>'; }).join("") + '</div>';
   return '<section class="page library-page">' + pageHeading("Church Library", "Church books and reading resources.") + chips + '<div class="library-grid">' + grid + '</div></section>';
 }
