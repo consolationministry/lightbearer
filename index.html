@@ -18,5 +18,19 @@
 <section class="social-strip"><div><p class="eyebrow light">STAY CONNECTED</p><h2>Keep the light close.</h2></div><div class="social-links" aria-label="Social media"><a aria-label="YouTube" hidden>YT</a><a aria-label="Facebook" hidden>f</a><a aria-label="TikTok" hidden>♪</a><a aria-label="X / Twitter" hidden>𝕏</a><a aria-label="Instagram" hidden>ig</a><a aria-label="Telegram" hidden>➤</a></div><p class="social-note">Official account links will appear here when added by an administrator.</p></section>
 </main>
 <footer class="site-footer"><div class="footer-main"><a class="brand footer-brand" href="#top"><img src="./assets/lightbearer-icon-512.png" alt=""><span><b>LIGHTBEARER</b><small>C&S BIBLE CHURCH</small></span></a><p>Shining the light of Christ through the Word, prayer, and worship.</p><div class="footer-contact"><a href="https://wa.me/2349134873684">WhatsApp +234 913 487 3684</a><a href="mailto:olaosebikanelijah936@gmail.com">olaosebikanelijah936@gmail.com</a></div></div><div class="footer-bottom"><span>© <span id="year"></span> Lightbearer · C&S Bible Church</span><span>Hymn source and copyright attribution: <a href="https://seraphmedia.com.ng/" target="_blank" rel="noopener">Seraph Media</a>.</span><span>Built with care by <a href="https://darapet.name.ng" target="_blank" rel="noopener">Darapet Technology</a> · <a href="mailto:dev@darapet.name.ng">dev@darapet.name.ng</a></span></div></footer>
-<script type="module" src="./js/homepage.js"></script><script type="module" src="./js/prayer-form.js"></script>
+<dialog class="update-dialog" id="update-dialog" aria-labelledby="update-title" aria-describedby="update-message">
+    <div class="update-dialog-content">
+      <span class="update-dialog-icon" aria-hidden="true">↻</span>
+      <p class="update-kicker">APP UPDATE</p>
+      <h2 id="update-title">A new update is available</h2>
+      <p id="update-message">Download the latest version to keep your app up to date.</p>
+      <p class="update-version" id="update-version"></p>
+      <p class="update-status" id="update-status" role="status" aria-live="polite" hidden></p>
+      <div class="update-dialog-actions">
+        <button class="button-secondary" type="button" data-action="dismiss-update">Later</button>
+        <button class="button-primary" type="button" data-action="install-update" id="update-install">Install update</button>
+      </div>
+    </div>
+  </dialog>
+  <script type="module" src="./js/homepage.js"></script><script type="module" src="./js/homepage-updates.js"></script><script type="module" src="./js/prayer-form.js"></script>
 </body></html>
