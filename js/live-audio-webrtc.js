@@ -39,10 +39,10 @@ export const AUDIO_PRESETS = Object.freeze({
   bright: { label: "Bright", values: { treble: 5, eq4000: 3, eq5600: 2, eq8000: 4 } }
 });
 
-// The mesh can technically create up to 50 outbound peer connections, but this
-// remains an opt-in ceiling. Real-device CPU, bandwidth, and network limits vary.
+// The mesh can technically create up to 50 outbound peer connections; this is the
+// production default, but real-device CPU, bandwidth, and network limits vary.
 export const LIVE_AUDIO_MESH_LISTENER_LIMIT = 50;
-export const DEFAULT_LIVE_AUDIO_MESH_LISTENER_LIMIT = 16;
+export const DEFAULT_LIVE_AUDIO_MESH_LISTENER_LIMIT = 50;
 
 export function getLiveAudioMeshListenerLimit(requestedLimit) {
   const requested = Number(requestedLimit);
