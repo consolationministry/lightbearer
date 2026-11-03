@@ -47,7 +47,14 @@ test("the compact homepage keeps its accessible church welcome free of stale car
   }
 });
 
-test("the church homepage is the default web, PWA, and native Android launch page, with the hymnal linked from it", async () => {
+test("the public root starts at the church homepage and provides a button to the existing hymn app", async () => {
+  const [home, reader] = await Promise.all([read("index.html"), read("hymnal.html")]);
+  assert.ok(home.includes('<main id="top">'));
+  assert.match(home, /<a class="button button-glass" href="\.\/hymnal\.html">Continue to web app/);
+  assert.ok(reader.includes("./js/app.js"));
+});
+
+test("the church homepage is the default web, PWA, and native Android launch page", async () => {
   const [reader, manifestText, capacitorText] = await Promise.all([
     read("hymnal.html"),
     read("manifest.webmanifest"),
@@ -67,16 +74,22 @@ test("the church homepage is the default web, PWA, and native Android launch pag
   assert.ok(reader.includes("./js/app.js"));
 });
 
-test("admin settings keep social URL controls but do not expose a homepage design editor", async () => {
-  const [admin, settings] = await Promise.all([read("admin/js/admin-app.js"), read("admin/js/cms-settings.js")]);
+test("admin entry opens login first and keeps the Homepage Design editor after authentication", async () => {
+  const [entry, admin, settings] = await Promise.all([
+    read("admin/index.html"),
+    read("admin/js/admin-app.js"),
+    read("admin/js/cms-settings.js")
+  ]);
+  assert.ok(entry.includes('<div id="admin-root">'));
+  assert.ok(entry.includes('src="./js/admin-app.js'));
+  assert.ok(admin.indexOf("renderLogin();") < admin.indexOf("initializeAdminAuth().then"));
   assert.ok(admin.includes('id: "settings", label: "Settings"'));
-  assert.ok(settings.includes("Social media links"));
-  assert.ok(settings.includes("cms-social-form"));
-  assert.ok(!settings.includes("data-cms-section"));
-  assert.ok(!settings.includes("data-cms-save"));
-  assert.ok(!settings.includes("Homepage Content"));
-  assert.ok(!settings.includes("Homepage Design"));
-  assert.ok(!admin.includes("renderCmsSettingsPanel" ) || !admin.includes("cms-section"));
+  assert.ok(admin.includes("renderCmsSettingsPanel"));
+  assert.ok(admin.includes("renderSettingsWorkspace"));
+  assert.ok(settings.includes("Homepage Content"));
+  assert.ok(settings.includes("data-cms-section"));
+  assert.ok(settings.includes("data-cms-save"));
+  assert.ok(settings.includes("saveCmsContent(key, value)"));
 });
 
 test("offline app worker caches the reader and the Vite build emits both pages", async () => {

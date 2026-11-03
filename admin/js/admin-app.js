@@ -1,6 +1,6 @@
 import { parseHymnText, splitHymnText } from "./hymn-upload-parser.js?v=3";
 import { ADMIN_AUTH_CONFIGURED, initializeAdminAuth, loginAdmin, logoutAdmin } from "./admin-auth.js?v=33";
-import { renderCmsSettingsPanel, saveCmsSocialLinks, getCmsSocialLinks, wireCmsSettings } from "./cms-settings.js?v=2";
+import { renderCmsSettingsPanel, saveCmsContent, saveCmsSocialLinks, uploadCmsImage, getCmsContent, getCmsSocialLinks, wireCmsSettings } from "./cms-settings.js?v=1";
 import { createCategory, createHymn, createProgram, createService, deleteCategory, deleteHymn, deleteHymns, deleteProgram, deleteService, getAdminSettings, getCategories, getDailyQuoteSettings, getDashboardStats, getHymn, getHymns, getHymnListRows, getDraftHymns, getProgram, getPrograms, getRecentlyUpdatedHymns, getServicePlan, getServicePlans, getStorageMode, initializeAdminData, moveAllPublishedHymnsToDrafts, publishHymn, saveHymnAsDraft, setHymnsStatus, updateAdminSettings, updateCategory, updateDailyQuoteSettings, updateHymn, updateProgram, updateService } from "./admin-data.js?v=45";
 
 import { adminHymnNumberLabel, adminHymnTitle, filterAdminHymnsByLanguage, hasAdminHymnTitle } from "./admin-hymn-display.js?v=2";
@@ -739,9 +739,9 @@ async function renderSettingsWorkspace() {
     const modules = make("div", "settings-modules-grid");
     modules.append(programSettings, quotePanel, cloudinaryPanel.firstElementChild);
     content.append(modules);
-    const socialPanel = document.createElement("div");
-    socialPanel.innerHTML = await renderCmsSettingsPanel();
-    content.append(socialPanel.firstElementChild);
+    const cmsPanel = document.createElement("div");
+    cmsPanel.innerHTML = await renderCmsSettingsPanel();
+    content.append(cmsPanel.firstElementChild);
     wireCmsSettings(content);
     state.settingsFormStart = "";
     state.quoteSettingsFormStart = quoteSettingsFormSignature();
