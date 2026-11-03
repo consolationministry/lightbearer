@@ -9,6 +9,7 @@ import { getProgrammeInteractions } from "../../js/programme-interactions.js";
 import { applyAvailableUpdate, initializeUpdates } from "../../js/updates.js";
 import { repairMojibake } from "../../js/programme-feed-utils.js";
 import { handleLibraryAdminAction as handleLibraryAdminActionBridge } from "./library-admin.js";
+import { beginAdminSave } from "./admin-save-state.js";
 
 const root = document.getElementById("admin-root");
 const state = { view: "login", activeView: "dashboard", menuOpen: false, authStatus: null, hymnMode: "list", editingHymnId: null, hymnSaving: false, search: "", statusFilter: "", categoryFilter: "", formStart: null, categoryMode: "list", editingCategoryName: null, categoryFormStart: null, serviceMode: "list", editingServiceId: null, serviceFormStart: null, programMode: "list", editingProgramId: null, programFlyerUrl: "", programFormStart: null, settingsFormStart: null, quoteSettingsFormStart: null, toastTimer: null,   hymnRowsCache: { hymns: null, drafts: null }, hymnRowsLoading: { hymns: null, drafts: null }, hymnRowsVersion: { hymns: 0, drafts: 0 }, selectedHymnIds: new Set(), hymnLanguage: "english", hymnUploadRows: [], hymnUploadLanguage: "english" };
@@ -1442,9 +1443,25 @@ root.addEventListener("click", async function (event) {
 });
 
 root.addEventListener("submit", async function (event) {
-  if (await handleLiveAudioAdminSubmit(event)) {
+  const form = event.target;
+  const saveFormIds = new Set(["category-form", "daily-quote-form", "cloudinary-settings-form", "service-form", "program-form", "hymn-form", "live-audio-program-form", "audio-categories-form"]);
+  if (saveFormIds.has(form.id)) {
+    event.preventDefault();
+    const release = beginAdminSave(form, event.submitter);
+    if (!release) return;
+    try {
+      if (await handleLiveAudioAdminSubmit(event)) return;
+      if (form.id === "category-form") await saveCategoryForm(event.submitter);
+      else if (form.id === "daily-quote-form") await saveDailyQuoteSettings();
+      else if (form.id === "cloudinary-settings-form") await saveCloudinarySettingsForm();
+      else if (form.id === "service-form") await saveServiceForm(event.submitter);
+      else if (form.id === "program-form") await saveProgramForm(event.submitter);
+      else if (form.id === "hymn-form") await saveHymnForm(event.submitter?.dataset.saveStatus === "published" ? "published" : "draft", event.submitter);
+    } finally { release(); }
     return;
-  } else if (event.target.id === "admin-login-form") {
+  }
+  if (await handleLiveAudioAdminSubmit(event)) return;
+  if (event.target.id === "admin-login-form") {
     event.preventDefault(); const email = document.getElementById("admin-email"); const password = document.getElementById("admin-password");
     const feedback = document.getElementById("login-error"); const submit = document.getElementById("login-submit"); const label = submit.querySelector(".login-button-label");
     feedback.textContent = "";
