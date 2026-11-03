@@ -47,7 +47,7 @@ test("the compact homepage keeps its accessible church welcome free of stale car
   }
 });
 
-test("the hymn reader remains the web, PWA, and native Android launch page", async () => {
+test("the church homepage is the default web, PWA, and native Android launch page, with the hymnal linked from it", async () => {
   const [reader, manifestText, capacitorText] = await Promise.all([
     read("hymnal.html"),
     read("manifest.webmanifest"),
@@ -57,10 +57,26 @@ test("the hymn reader remains the web, PWA, and native Android launch page", asy
   const PACKAGE_VERSION = JSON.parse(await readFile("package.json", "utf8")).version;
   const capacitor = JSON.parse(capacitorText);
   assert.ok(reader.includes("./js/app.js"));
-  assert.equal(manifest.start_url, "./hymnal.html");
+  assert.equal(manifest.start_url, "./");
   assert.equal(manifest.version, PACKAGE_VERSION);
   assert.equal(manifest.theme_color, "#f4f7ff");
-  assert.equal(capacitor.server.appStartPath, "/hymnal.html");
+  assert.equal(capacitor.server.appStartPath, "/");
+  const home = await read("index.html");
+  assert.ok(home.includes('<main id="top">'));
+  assert.match(home, /href="\.\/hymnal\.html"[^>]*>Continue to web app/);
+  assert.ok(reader.includes("./js/app.js"));
+});
+
+test("admin settings keep social URL controls but do not expose a homepage design editor", async () => {
+  const [admin, settings] = await Promise.all([read("admin/js/admin-app.js"), read("admin/js/cms-settings.js")]);
+  assert.ok(admin.includes('id: "settings", label: "Settings"'));
+  assert.ok(settings.includes("Social media links"));
+  assert.ok(settings.includes("cms-social-form"));
+  assert.ok(!settings.includes("data-cms-section"));
+  assert.ok(!settings.includes("data-cms-save"));
+  assert.ok(!settings.includes("Homepage Content"));
+  assert.ok(!settings.includes("Homepage Design"));
+  assert.ok(!admin.includes("renderCmsSettingsPanel" ) || !admin.includes("cms-section"));
 });
 
 test("offline app worker caches the reader and the Vite build emits both pages", async () => {

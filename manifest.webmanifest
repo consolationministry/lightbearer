@@ -2,7 +2,7 @@
   "name": "Lightbearer",
   "short_name": "Lightbearer",
   "version": "1.16.20",
-  "start_url": "./hymnal.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f4f7ff",
