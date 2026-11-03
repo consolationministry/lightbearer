@@ -74,13 +74,19 @@ test("public forms show church branding and bottom navigation, and gate form acc
   const navStart = page.indexOf('<nav class="forms-bottom-nav"');
   const navEnd = page.indexOf("</nav>", navStart) + "</nav>".length;
   const nav = page.slice(navStart, navEnd);
-  assert.equal(nav.split("<a ").length - 1, 8, "all eight destinations should be in the bottom nav");
-  assert.equal((nav.match(/aria-label="(?!Main navigation)[^"]+"/g) || []).length, 8, "each icon has an accessible destination name");
-  assert.ok(nav.includes('aria-current="page"') && nav.includes('aria-label="Forms"'), "Forms should remain active and aligned as a normal nav item");
+  const links = [...nav.matchAll(/<a\b[^>]*>([\s\S]*?)<\/a>/g)];
+  assert.equal(links.length, 8, "all eight destinations should be in the bottom nav");
+  assert.equal((nav.match(/aria-label="(?!Main navigation)[^"]+"/g) || []).length, 8, "each destination should have an accessible name");
+  for (const [, item] of links) {
+    assert.match(item, /<svg\b[^>]*aria-hidden="true"[^>]*>[\s\S]*?<\/svg>/, "each destination should have a decorative SVG icon");
+    assert.match(item, /<span>[^<]+<\/span>/, "each destination should show a label");
+  }
+  const formsNav = links.find(([, item]) => item.includes(">Forms</span>"))?.[0] || "";
+  assert.ok(formsNav.includes('aria-current="page"') && /<svg\b/.test(formsNav), "Forms should remain active and have its own icon");
   assert.ok(css.includes("grid-template-columns:repeat(8,minmax(0,1fr))"));
   assert.ok(css.includes("font-size:clamp(.48rem,2.1vw,.7rem)"));
-  assert.ok(css.includes("letter-spacing:-.04em"));
   assert.ok(css.includes("flex-direction:column"));
+  assert.ok(css.includes(".forms-bottom-nav a>svg"));
   assert.ok(script.includes("Start with your email"));
   assert.ok(script.includes("lightbearer-user-email"));
   assert.ok(script.includes("if(!emailGate())return"));
