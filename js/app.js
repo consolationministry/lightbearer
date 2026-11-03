@@ -306,9 +306,7 @@ function renderLibraryPage() {
     fetchLibraryBooks().then(function (rows) { state.libraryBooks = rows || []; state.libraryLoaded = true; render(); }).catch(function () { state.libraryBooks = []; state.libraryLoaded = true; render(); });
     return '<section class="page library-page">' + pageHeading("Library", "Church books and reading resources.") + '<p class="results-meta">Loading books…</p></section>';
   }
-  const isPublic = function (book) { return book.is_public === true; };
-  const filter = state.librarySection || "church";
-  const selected = books.filter(function (book) { return isPublic(book) === (filter === "public"); });
+  const selected = books.filter(function (book) { return book.is_public !== true; });
   const categories = Array.from(new Set(selected.map(function (book) { return book.category || "Christian Living"; }))).sort();
   const category = state.libraryCategory || "All categories";
   const filtered = selected.filter(function (book) { return category === "All categories" || (book.category || "Christian Living") === category; });
@@ -318,8 +316,8 @@ function renderLibraryPage() {
       (cover ? '<img src="' + escapeHtml(cover) + '" alt="" loading="lazy">' : '<span class="library-book-placeholder">' + escapeHtml(String(book.title || "Book").slice(0, 1)) + '</span>') +
       '<strong>' + escapeHtml(book.title || "Untitled") + '</strong></button><span class="library-book-author">' + escapeHtml(book.author || book.source_name || "") + '</span></article>';
   }).join("") : '<p class="results-meta">No books in this section yet.</p>';
-  const chips = filter === "public" ? '<div class="library-category-filter"><button data-action="library-category" data-category="All categories" class="' + (category === "All categories" ? "selected" : "") + '">All</button>' + categories.map(function (item) { return '<button data-action="library-category" data-category="' + escapeHtml(item) + '" class="' + (category === item ? "selected" : "") + '">' + escapeHtml(item) + '</button>'; }).join("") + '</div>' : '';
-  return '<section class="page library-page">' + pageHeading("Library", "Church books and reading resources.") + '<nav class="library-section-tabs"><button data-action="library-section" data-section="church" class="' + (filter === "church" ? "selected" : "") + '">Church Books</button><button data-action="library-section" data-section="public" class="' + (filter === "public" ? "selected" : "") + '">Public Books</button></nav>' + chips + '<div class="library-grid">' + grid + '</div></section>';
+  const chips = '<div class="library-category-filter"><button data-action="library-category" data-category="All categories" class="' + (category === "All categories" ? "selected" : "") + '">All</button>' + categories.map(function (item) { return '<button data-action="library-category" data-category="' + escapeHtml(item) + '" class="' + (category === item ? "selected" : "") + '">' + escapeHtml(item) + '</button>'; }).join("") + '</div>';
+  return '<section class="page library-page">' + pageHeading("Church Library", "Church books and reading resources.") + chips + '<div class="library-grid">' + grid + '</div></section>';
 }
 
 
@@ -925,7 +923,7 @@ function clearSavedAudioPlayback() {
 }
 
 function renderInfoPage(view) {
-  const pages={books:["Books","Church books and reading resources."],blog:["Blog","Updates and reflections from C&S Bible Church."],history:["Our history","The story and heritage of C&S Bible Church."],about:["About Lightbearer","A free church hymnal for C&S Bible Church members."],community:["Community","A community feed for church encouragement and updates."],};
+  const pages={books:["Books",""],blog:["Blog","Updates and reflections from C&S Bible Church."],history:["Our history","The story and heritage of C&S Bible Church."],about:["About Lightbearer","A free church hymnal for C&S Bible Church members."],community:["Community","A community feed for church encouragement and updates."],};
   const entry=pages[view]||pages.about;
   const rows=state.hymns.slice(0,8).map(function(h){return '<label class="set-hymn"><input type="checkbox" value="'+escapeHtml(h.hymn_number)+'"> '+escapeHtml(displayHymnNumber(h)+' · '+currentHymnTitle(h))+'</label>';}).join('');
   const body=view==='set'?'<input id="service-set-name" placeholder="Service set name" maxlength="80"><div>'+rows+'</div><button class="button-primary" data-action="save-service-set">Save set</button>':(view==='about'?aboutBody():'<p>'+escapeHtml(entry[1])+'</p>');

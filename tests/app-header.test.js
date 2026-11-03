@@ -19,7 +19,9 @@ test("main app header keeps the hymnal controls without public duplicate-section
   const readerSource = appSource.match(/function renderReader\(\) \{([\s\S]*?)\n\}/)?.[1] || "";
   assert.match(readerSource, /data-action="copy-lyrics"/);
   assert.match(readerSource, /favoriteButton\(hymn\)/);
-  assert.doesNotMatch(readerSource, /seraph-media-embed|Listen on Seraphmedia|data-action="embed-hymn"/);
+  assert.doesNotMatch(appSource, /data-section="public"|Public Books/);
+  assert.match(appSource, /Church Library/);
+  assert.doesNotMatch(appSource, /seraph-media-embed|Listen on Seraphmedia|data-action="embed-hymn"/);
   assert.doesNotMatch(appSource, /toggle-menu|button-header-menu|header-nav|menuOpen/);
   const navSource = appSource.match(/function renderNav\(\) \{([\s\S]*?)\n\}/)?.[1] || "";
   assert.ok(navSource, "public navigation renderer should be present");
