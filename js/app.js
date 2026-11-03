@@ -1858,6 +1858,8 @@ document.addEventListener("click", function (event) {
     const nextButton = descriptionButtons.find(function (button) { return button.dataset.programId === programId; });
     if (nextButton) nextButton.focus();
   }
+  else if (action === "open-service-plan") openServicePlan(target.dataset.planId);
+  else if (action === "close-service-plan") closeServicePlan();
   else if (action === "open-service-aim") openServiceAim(target.dataset.planId, target.dataset.hymnId);
   else if (action === "close-service-aim") closeServiceAim();
   else if (action === "open-programme") openProgrammePost(target.dataset.programId);

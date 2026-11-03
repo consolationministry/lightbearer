@@ -36,6 +36,14 @@ test("Upcoming Programmes renders centered social-feed cards with flyers and vot
   assert.match(memberStyles, /\.public-program-list\s*\{[^}]*width:\s*min\(100%, 720px\);[^}]*max-width:\s*100%;/);
 });
 
+test("service plan cards dispatch navigation to their matching detail and back actions", () => {
+  assert.match(memberApp, /data-action="open-service-plan" data-plan-id=/);
+  assert.match(memberApp, /else if \(action === "open-service-plan"\) openServicePlan\(target\.dataset\.planId\);/);
+  assert.match(memberApp, /function openServicePlan\(planId\) \{[\s\S]*?state\.serviceSelectedId = String\(planId\);[\s\S]*?render\(\);/);
+  assert.match(memberApp, /else if \(action === "close-service-plan"\) closeServicePlan\(\);/);
+  assert.match(memberApp, /function renderServicePlanDetail\(plan\)/);
+});
+
 test("programme posts keep admin-configured anonymous attendance votes and remove comments", () => {
   assert.match(memberApp, /renderProgrammeInteractions\(program\)/);
   assert.match(memberApp, /data-action="cast-programme-vote"/);
