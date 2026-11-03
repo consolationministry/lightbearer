@@ -1,4 +1,5 @@
 import {getForm,getFields,getResponses,saveForm} from "./form-data.js";
+import {getResponseAnswers,responseValueText} from "./response-data.js";
 import {buildResponseTable,responseWorkbookBlob,responseDocumentBlob,downloadResponseFile} from "./response-export.js";
 const root=document.getElementById("admin-content");
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -18,7 +19,7 @@ export async function renderFormResponses(id){
  fields.sort((a,b)=>Number(a.position||0)-Number(b.position||0));
  const valueText=value=>Array.isArray(value)?value.map(x=>String(x??"")).join(", "):value&&typeof value==="object"?JSON.stringify(value):String(value??"");
  const details=rows.map(r=>{
-  const answers=fields.map(field=>{const key="f_"+String(field.id),value=r.data?.[key];if(value===undefined)return "";let options=field.options||{};if(typeof options==="string"){try{options=JSON.parse(options)}catch{options={}}}const bg=options.background||"#ffffff",color=options.text||"#172b4d";return `<div class="response-answer" style="--response-field-bg:${esc(bg)};--response-field-text:${esc(color)}"><dt>${esc(field.label||"Untitled field")}</dt><dd>${esc(valueText(value))}</dd></div>`}).join("");
+  const answers=getResponseAnswers(fields,r.data).map(answer=>`<div class="response-answer"><dt>${esc(answer.label)}</dt><dd>${esc(responseValueText(answer.value))}</dd></div>`).join("");
   return `<details class="response-card"><summary><span class="response-summary-main"><strong>${esc(r.respondent_name||r.respondent_email||"Respondent")}</strong><small>${esc(r.respondent_email||"No email")}</small></span><span class="response-summary-date">${r.created_at?esc(new Date(r.created_at).toLocaleString()):"Date unavailable"}</span></summary><div class="response-card-body">${r.registration_code?`<div class="response-registration"><span>Registration ID</span><strong>${esc(r.registration_code)}</strong><button type="button" class="button button-secondary" data-copy="${esc(r.registration_code)}">Copy</button></div>`:""}<div class="response-contact"><span><b>Email</b><a href="mailto:${esc(r.respondent_email)}">${esc(r.respondent_email||"Not provided")}</a></span><span><b>Phone</b>${esc(r.respondent_phone||"Not provided")}</span></div><dl>${answers||'<p class="response-empty">No field answers were submitted.</p>'}</dl></div></details>`
  }).join("");
  const safeFile=(form?.name||form?.title||"form-responses").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"form-responses";

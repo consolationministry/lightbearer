@@ -14,16 +14,17 @@ import {
   startLiveAudioPublisher
 } from "../js/live-audio-webrtc.js";
 
-test("publisher listener limit defaults to sixteen and supports an explicit fifty-peer test ceiling", () => {
+test("publisher listener limit defaults to fifty and clamps explicit requests to the supported ceiling", () => {
   assert.equal(LIVE_AUDIO_MESH_LISTENER_LIMIT, 50);
-  assert.equal(DEFAULT_LIVE_AUDIO_MESH_LISTENER_LIMIT, 16);
-  assert.equal(getLiveAudioMeshListenerLimit(), 16);
+  assert.equal(DEFAULT_LIVE_AUDIO_MESH_LISTENER_LIMIT, 50);
+  assert.equal(getLiveAudioMeshListenerLimit(), 50);
+  assert.equal(getLiveAudioMeshListenerLimit(16), 16);
   assert.equal(getLiveAudioMeshListenerLimit(50), 50);
   assert.equal(getLiveAudioMeshListenerLimit(500), 50);
   assert.equal(getLiveAudioMeshListenerLimit(4), 4);
-  assert.equal(getLiveAudioMeshListenerLimit(0), 16);
+  assert.equal(getLiveAudioMeshListenerLimit(0), 50);
   assert.equal(getLiveAudioMeshListenerLimit(-10), 1);
-  assert.equal(getLiveAudioMeshListenerLimit("not-a-number"), 16);
+  assert.equal(getLiveAudioMeshListenerLimit("not-a-number"), 50);
 });
 
 test("publisher answers fifty concurrent listener offers, rejects the fifty-first, and frees capacity on leave", async () => {
