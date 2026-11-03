@@ -11,8 +11,10 @@ test("admin response answers show every submitted field and preserve historical 
     "f_field-a": "Ada",
     "f_field-b": "Kenya",
     "f_old_field": "Earlier question answer",
+    "f_custom-historical": "Old custom answer",
     "f_field-b_country": "KE",
     "f_field-b_state": "Nairobi",
+    "f_field-b_lga": "Westlands",
     respondent_email: "ada@example.com"
   };
   assert.deepEqual(getResponseAnswers(fields, data), [
@@ -20,7 +22,9 @@ test("admin response answers show every submitted field and preserve historical 
     { label: "Location", value: "Kenya" },
     { label: "Location (Country)", value: "KE" },
     { label: "Location (State / region)", value: "Nairobi" },
-    { label: "Previous answer (field changed)", value: "Earlier question answer" }
+    { label: "Location (Local government / district)", value: "Westlands" },
+    { label: "Previous answer (field changed): old field", value: "Earlier question answer" },
+    { label: "Previous answer (field changed): custom historical", value: "Old custom answer" }
   ]);
 });
 
