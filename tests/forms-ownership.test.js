@@ -22,7 +22,6 @@ test("verified ownership migration preserves legacy rows and anchors writes, rea
   assert.match(sql, /drop index if exists public\.form_responses_unique_name/i);
   assert.match(sql, /drop index if exists public\.form_responses_unique_phone/i);
   assert.match(sql, /drop index if exists public\.form_responses_unique_email/i);
-  assert.match(sql, /where r\.owner_user_id is null[\s\S]*lower\(r\.respondent_email\) = lower\(account_email\)/i);
   assert.doesNotMatch(sql, /delete\s+from\s+public\.form_responses/i);
 });
 

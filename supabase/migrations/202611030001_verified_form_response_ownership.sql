@@ -9,7 +9,6 @@ alter table public.form_responses
 alter table public.registration_codes
   add column if not exists owner_user_id uuid references auth.users(id) on delete set null;
 
--- Legacy history is claimed only when Supabase confirms the signed-in email via OTP.
 create index if not exists form_responses_owner_created
   on public.form_responses(owner_user_id, created_at desc)
   where deleted_at is null;
@@ -17,10 +16,12 @@ create index if not exists registration_codes_owner
   on public.registration_codes(owner_user_id)
   where owner_user_id is not null;
 
--- respondent_email is form data, not account identity; auth.uid() owns the row.
+-- Form respondent_email is not an account identifier. Remove its unique index so
+-- distinct authenticated users may submit the same form email without conflict.
 drop index if exists public.form_responses_unique_name;
 drop index if exists public.form_responses_unique_email;
 drop index if exists public.form_responses_unique_phone;
+
 create or replace function public.submit_form_response(
   p_form_id uuid,
   p_data jsonb,
@@ -103,17 +104,8 @@ begin
     raise exception 'Sign in with your confirmed email first.';
   end if;
 
-  -- Claim legacy history only after email ownership has been verified by OTP.
-  update public.form_responses r
-  set owner_user_id = account_id
-  where r.owner_user_id is null
-    and r.deleted_at is null
-    and lower(r.respondent_email) = lower(account_email);
-  update public.registration_codes c
-  set owner_user_id = account_id
-  from public.form_responses r
-  where c.response_id = r.id and r.owner_user_id = account_id and c.owner_user_id is null;
-
+  -- Historic respondent_email is caller-entered form data, not proof of ownership.
+  -- Legacy rows remain unclaimed until a separate secure claim process is built.
   select coalesce(jsonb_agg(
     jsonb_build_object(
       'id', r.id,
