@@ -19,10 +19,10 @@ test("the public homepage presents Lightbearer and C&S Bible Church branding wit
   assert.ok(home.includes("C&S Bible Church"));
   assert.ok(home.includes("Continue to web app"));
   assert.ok(home.includes('href="./hymnal.html"'));
-  assert.ok(home.includes('href="./download.html"'));
+  assert.ok(home.includes('href="./hymnal.html?view=listen"'));
   assert.ok(!home.includes('href="./admin/"'));
   assert.ok(!home.includes('href="./forms.html"'));
-  for (const removedEntry of ["Support", "Listen", "Sign in", "Sign up", "Register"]) {
+  for (const removedEntry of ["Support", "Sign in", "Sign up", "Register"]) {
     assert.ok(!new RegExp("\\b" + removedEntry + "\\b", "i").test(home), `public homepage should not expose ${removedEntry}`);
   }
 });
@@ -32,7 +32,7 @@ test("the compact homepage keeps its accessible church welcome free of stale car
   assert.ok(home.includes("C&S Bible Church"));
   assert.ok(home.includes('aria-label="Social media"'));
   assert.ok(home.includes('href="./hymnal.html"'));
-  assert.ok(home.includes('href="./download.html"'));
+  assert.ok(home.includes('href="./hymnal.html?view=listen"'));
   assert.ok(home.includes('id="worship"'));
   assert.ok(!home.includes('href="./admin/"'));
   assert.ok(!home.includes('href="./forms.html"'));
