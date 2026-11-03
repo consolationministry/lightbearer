@@ -39,6 +39,17 @@ export const AUDIO_PRESETS = Object.freeze({
   bright: { label: "Bright", values: { treble: 5, eq4000: 3, eq5600: 2, eq8000: 4 } }
 });
 
+// The mesh can technically create up to 50 outbound peer connections, but this
+// remains an opt-in ceiling. Real-device CPU, bandwidth, and network limits vary.
+export const LIVE_AUDIO_MESH_LISTENER_LIMIT = 50;
+export const DEFAULT_LIVE_AUDIO_MESH_LISTENER_LIMIT = 16;
+
+export function getLiveAudioMeshListenerLimit(requestedLimit) {
+  const requested = Number(requestedLimit);
+  if (!requested || !Number.isFinite(requested)) return DEFAULT_LIVE_AUDIO_MESH_LISTENER_LIMIT;
+  return Math.max(1, Math.min(LIVE_AUDIO_MESH_LISTENER_LIMIT, Math.floor(requested)));
+}
+
 export function getLiveAudioReconnectDelay(attempt) {
   const count = Math.max(0, Math.floor(Number(attempt) || 0));
   return Math.min(3000, 250 * Math.pow(2, count));
@@ -375,7 +386,8 @@ export async function startLiveAudioPublisher(options) {
   let statsTimer = null;
   let statsPolling = false;
   let handleSignal = null;
-  channel = await connectLiveAudioChannel(opts.programId, opts.sessionId, {
+  const createPeerConnection = opts.createPeerConnection || makeAudioPeerConnection;
+  channel = await (opts.connectChannel || connectLiveAudioChannel)(opts.programId, opts.sessionId, {
     onStatus: status => {
       if (opts.onStatus) opts.onStatus(status);
     },
@@ -535,7 +547,7 @@ export async function startLiveAudioPublisher(options) {
     }
     if (message.type !== "offer" || message.to !== localClientId ||
         peers.has(message.from) || pendingPeerConnections.has(message.from)) return;
-    const limit = Math.max(1, Number(opts.maxListeners) || 16);
+    const limit = getLiveAudioMeshListenerLimit(opts.maxListeners);
     if (peers.size + pendingPeerConnections.size >= limit) {
       channel.send({ type: "full", sessionId: opts.sessionId, from: localClientId, to: message.from });
       return;
@@ -543,7 +555,7 @@ export async function startLiveAudioPublisher(options) {
     const pending = { cancelled: false };
     pendingPeerConnections.set(message.from, pending);
     try {
-      const peer = await makeAudioPeerConnection({
+      const peer = await createPeerConnection({
         programId: opts.programId,
         sessionId: opts.sessionId
       });
