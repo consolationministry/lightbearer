@@ -104,8 +104,18 @@ begin
     raise exception 'Sign in with your confirmed email first.';
   end if;
 
-  -- Historic respondent_email is caller-entered form data, not proof of ownership.
-  -- Legacy rows remain unclaimed until a separate secure claim process is built.
+  -- The account email was confirmed by Supabase OTP/magic-link before this RPC.
+  -- Match it to old form data only after authentication; typed email alone cannot
+  -- call this function because execution is granted to authenticated users only.
+  update public.form_responses r
+  set owner_user_id = account_id
+  where r.owner_user_id is null and r.deleted_at is null
+    and lower(r.respondent_email) = lower(account_email);
+  update public.registration_codes c
+  set owner_user_id = account_id
+  from public.form_responses r
+  where c.response_id = r.id and r.owner_user_id = account_id and c.owner_user_id is null;
+
   select coalesce(jsonb_agg(
     jsonb_build_object(
       'id', r.id,
