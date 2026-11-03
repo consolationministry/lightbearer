@@ -129,8 +129,9 @@ export async function supabaseRequest(path, options) {
   }
   const headers = new Headers(opts.headers || {});
   const blobBody = typeof Blob !== "undefined" && opts.body instanceof Blob;
+  const fileBody = typeof File !== "undefined" && opts.body instanceof File;
   headers.set("apikey", SUPABASE_PUBLISHABLE_KEY);
-  if (!headers.has("content-type") && opts.body !== undefined && !blobBody) headers.set("content-type", "application/json");
+  if (!headers.has("content-type") && opts.body !== undefined && !blobBody && !fileBody) headers.set("content-type", "application/json");
   if (!headers.has("accept")) headers.set("accept", "application/json");
   if (session && session.access_token) headers.set("authorization", "Bearer " + session.access_token);
   else if (!adminAuthorizationRequired || isExplicitlyPublic) headers.set("authorization", "Bearer " + SUPABASE_PUBLISHABLE_KEY);

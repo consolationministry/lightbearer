@@ -1,5 +1,6 @@
 import { parseHymnText, splitHymnText } from "./hymn-upload-parser.js?v=3";
 import { ADMIN_AUTH_CONFIGURED, initializeAdminAuth, loginAdmin, logoutAdmin } from "./admin-auth.js?v=33";
+import { renderCmsSettingsPanel, saveCmsContent, saveCmsSocialLinks, uploadCmsImage, getCmsContent, getCmsSocialLinks, wireCmsSettings } from "./cms-settings.js?v=1";
 import { createCategory, createHymn, createProgram, createService, deleteCategory, deleteHymn, deleteHymns, deleteProgram, deleteService, getAdminSettings, getCategories, getDailyQuoteSettings, getDashboardStats, getHymn, getHymns, getHymnListRows, getDraftHymns, getProgram, getPrograms, getRecentlyUpdatedHymns, getServicePlan, getServicePlans, getStorageMode, initializeAdminData, moveAllPublishedHymnsToDrafts, publishHymn, saveHymnAsDraft, setHymnsStatus, updateAdminSettings, updateCategory, updateDailyQuoteSettings, updateHymn, updateProgram, updateService } from "./admin-data.js?v=45";
 
 import { adminHymnNumberLabel, adminHymnTitle, filterAdminHymnsByLanguage, hasAdminHymnTitle } from "./admin-hymn-display.js?v=2";
@@ -708,7 +709,7 @@ async function renderSettingsWorkspace() {
       getCategories(),
       getAdminSettings(),
       getDailyQuoteSettings(),
-      getCloudinarySettings().catch(() => ({ available: false, configured: false, cloudName: "" }))
+      getCloudinarySettings().catch(() => ({ available: false, configured: false, cloudName: "" })),
     ]);
     const categories = results[0]; const settings = results[1]; const quoteSettings = results[2];
     const cloudinarySettings = results[3];
@@ -738,6 +739,10 @@ async function renderSettingsWorkspace() {
     const modules = make("div", "settings-modules-grid");
     modules.append(programSettings, quotePanel, cloudinaryPanel.firstElementChild);
     content.append(modules);
+    const cmsPanel = document.createElement("div");
+    cmsPanel.innerHTML = await renderCmsSettingsPanel();
+    content.append(cmsPanel.firstElementChild);
+    wireCmsSettings(content);
     state.settingsFormStart = "";
     state.quoteSettingsFormStart = quoteSettingsFormSignature();
   } catch (error) {
@@ -814,7 +819,7 @@ async function disconnectCloudinarySettings() {
       : "Cloudinary could not be disconnected.";
   }
 }
-function renderCurrentView() {
+async function renderCurrentView() {
   root.querySelectorAll(".nav-item[data-view]").forEach(function (button) { button.setAttribute("aria-current", button.dataset.view === state.activeView ? "page" : "false"); });
   if (state.activeView !== "live-audio") stopAdminAudioMicTest();
   if (state.activeView === "forms") { import("./forms-dashboard.js").then(module => module.renderFormsDashboard()); }

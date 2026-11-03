@@ -1,0 +1,52 @@
+import { setTimeout as delay } from "node:timers/promises";
+import { loginAdmin, requireAdmin } from "../admin/js/admin-auth.js";
+
+const PUBLIC_KEY = "sb_publishable_Yu8zP8uGooNm1egNwwnWtg_qYqdE7d5";
+const PROJECT_URL = "https://onxqehhfzkuuyarxhcsz.supabase.co";
+let session = null;
+let adminOk = false;
+let paths = new Set();
+const sessionStore = { getItem() { return session ? JSON.stringify(session) : null; }, setItem(_key, value) { session = JSON.parse(value); }, removeItem() { session = null; } };
+const originalWindow = globalThis.window, originalFetch = globalThis.fetch, originalHeaders = globalThis.Headers, originalFile = globalThis.File;
+globalThis.window = { localStorage: sessionStore };
+globalThis.Headers = Headers;
+globalThis.File = Blob;
+const requests = [];
+globalThis.fetch = async (url, init) => {
+  requests.push({ url: String(url), init });
+  if (String(url).includes("auth/v1/user")) return new Response(JSON.stringify({ id: "admin-user", email: "admin@example.test" }), { status: 200 });
+  if (String(url).includes("auth/v1/token?grant_type=password")) return new Response(JSON.stringify({ access_token: "test-access", refresh_token: "test-refresh", user: { id: "admin-user" } }), { status: 200 });
+  if (String(url).includes("admin_users?")) return new Response(adminOk ? JSON.stringify([{ user_id: "admin-user" }]) : JSON.stringify([]), { status: 200 });
+  if (String(url).includes("site_content") && (!init || init.method === "GET")) return new Response(JSON.stringify([{ key: "social_links", value: { youtube: "https://youtube.com/@cns", facebook: "", tiktok: "", x: "", twitter: "", instagram: "", telegram: "" } }, { key: "about", value: { mode: "text", text: "About text" } }]), { status: 200 });
+  return new Response(JSON.stringify([{ ok: true }]), { status: 200 });
+};
+const { supabaseRequest, setPublicRequestPaths, requireAdminAuthorization } = await import("../admin/js/supabase-client.js");
+const { saveCmsContent, saveCmsSocialLinks, uploadCmsImage } = await import("../admin/js/cms-settings.js");
+setPublicRequestPaths(["auth/v1/token?grant_type=password"]);
+requireAdminAuthorization();
+adminOk = false;
+await assertRejects(() => loginAdmin("admin@example.test", "password"), /approved administrator list/i);
+adminOk = true;
+await loginAdmin("admin@example.test", "password");
+await requireAdmin();
+
+try {
+  await assertRejects(() => saveCmsContent("unknown", { mode: "text", text: "x" }), /Unsupported homepage section/);
+  await assertRejects(() => saveCmsContent("about", { mode: "image", image_url: "https://example.com/not-uploaded.jpg" }), /Choose an image using the file picker/);
+  await assertRejects(() => saveCmsSocialLinks({ youtube: "http://youtube.com", facebook: "", tiktok: "", x: "", twitter: "", instagram: "", telegram: "" }), /secure URL/);
+  await assertRejects(() => saveCmsSocialLinks({ youtube: "https://facebook.com/pretend", facebook: "", tiktok: "", x: "", twitter: "", instagram: "", telegram: "" }), /selected social platform/);
+  const social = { youtube: "https://youtube.com/@cns", facebook: "https://facebook.com/cns", tiktok: "", x: "https://x.com/cns", twitter: "https://twitter.com/cns", instagram: "", telegram: "https://t.me/cns" };
+  await saveCmsSocialLinks(social);
+  await saveCmsContent("about", { mode: "text", text: "Updated church text" });
+  const file = new Blob(["image"], { type: "image/png" }); file.name = "church.png";
+  const imageUrl = await uploadCmsImage(file);
+  await assertRejects(() => uploadCmsImage(Object.assign(new Blob(["text"], { type: "text/plain" }), { name: "x.txt" })), /Choose an image file/);
+  const authRequests = requests.filter(({ url }) => /storage\/v1\/object|rest\/v1\/site_content/.test(url) && !url.includes("select=key"));
+  if (authRequests.some(({ init }) => !new Headers(init.headers).get("authorization")?.startsWith("Bearer test-access"))) throw new Error("CMS writes did not carry verified admin session");
+  const puts = requests.filter(({ url, init }) => init.method === "POST" && /storage\/v1\/object/.test(url));
+  if (puts.length !== 1 || !(puts[0].init.body instanceof Blob)) throw new Error("Image upload was not sent as a binary file body");
+  console.log(JSON.stringify({ social_write: true, text_write: true, upload_url_shape: imageUrl.startsWith(PROJECT_URL + "/storage/v1/object/public/homepage-media/homepage/"), writes_authenticated: true, invalid_inputs_rejected: true, request_count: requests.length }));
+} finally {
+  globalThis.window = originalWindow; globalThis.fetch = originalFetch; globalThis.Headers = originalHeaders; globalThis.File = originalFile;
+}
+async function assertRejects(fn, pattern) { try { await fn(); } catch (e) { if (!pattern.test(e.message)) throw e; return; } throw new Error("Expected rejection matching " + pattern); }
