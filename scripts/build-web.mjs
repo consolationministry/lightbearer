@@ -16,6 +16,7 @@ await mkdir(path.join(dist, "assets"), { recursive: true });
 await copyFile(path.join(root, "assets/church-logo-placeholder.png"), path.join(dist, "assets/church-logo-placeholder.png"));
 await copyFile(path.join(root, "assets/church-logo-placeholder.png"), path.join(dist, "assets/church-logo-placeholder.png"));
 await copyFile(path.join(root, "assets/demo-church-mark.png"), path.join(dist, "assets/demo-church-mark.png"));
+await cp(path.join(root, "assets/church"), path.join(dist, "assets/church"), { recursive: true });
 
 // GitHub Pages must include the separate static admin app and the source modules it imports.
 await cp(path.join(root, "admin"), path.join(dist, "admin"), { recursive: true });

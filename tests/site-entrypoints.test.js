@@ -11,28 +11,29 @@ const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 
 test("the public homepage presents Lightbearer and C&S Bible Church branding with direct app navigation", async () => {
   const home = await read("index.html");
-  assert.ok(home.includes('<main class="card">'));
-  assert.ok(home.includes('theme-color" content="#f4f7ff"'));
-  assert.ok(home.includes("Noto+Serif"));
+  assert.ok(home.includes('<main id="top">'));
+  assert.ok(home.includes('theme-color" content="#21103c"'));
+  assert.ok(home.includes("Playfair+Display"));
   assert.ok(home.includes("DM+Sans"));
   assert.ok(home.includes('src="./assets/lightbearer-icon-512.png"'));
-  assert.ok(home.includes('alt="C&S Bible Church logo placeholder"'));
   assert.ok(home.includes("C&S Bible Church"));
-  assert.ok(home.includes("English and Yorùbá hymns for worship and reflection."));
-  assert.ok(home.includes('<nav class="actions" aria-label="App links">'));
-  assert.ok(home.includes('href="./hymnal.html">Open hymnal</a>'));
+  assert.ok(home.includes("Continue to web app"));
+  assert.ok(home.includes('href="./hymnal.html"'));
+  assert.ok(home.includes('href="./download.html"'));
   assert.ok(!home.includes('href="./admin/"'));
   assert.ok(!home.includes('href="./forms.html"'));
-  for (const removedEntry of ["Support", "Community", "Live", "Listen", "Read", "Sign in", "Sign up", "Register"]) {
+  for (const removedEntry of ["Support", "Listen", "Sign in", "Sign up", "Register"]) {
     assert.ok(!new RegExp("\\b" + removedEntry + "\\b", "i").test(home), `public homepage should not expose ${removedEntry}`);
   }
 });
 test("the compact homepage keeps its accessible church welcome free of stale carousel controls", async () => {
   const home = await read("index.html");
-  assert.ok(home.includes('<main class="card">'));
+  assert.ok(home.includes('<main id="top">'));
   assert.ok(home.includes("C&S Bible Church"));
-  assert.ok(home.includes('aria-label="App links"'));
+  assert.ok(home.includes('aria-label="Social media"'));
   assert.ok(home.includes('href="./hymnal.html"'));
+  assert.ok(home.includes('href="./download.html"'));
+  assert.ok(home.includes('id="worship"'));
   assert.ok(!home.includes('href="./admin/"'));
   assert.ok(!home.includes('href="./forms.html"'));
   for (const staleCarouselMarkup of [
