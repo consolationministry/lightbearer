@@ -11,7 +11,7 @@ export function buildResponseTable(fields, responses) {
   return { headers: headers.map(formulaSafe), rows };
 }
 function crc32(bytes) { let crc = -1; for (const byte of bytes) { crc ^= byte; for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0); } return (crc ^ -1) >>> 0; }
-function zipStore(files) {
+function zipStore(files, type = "application/zip") {
   const enc = new TextEncoder(), local = [], central = []; let offset = 0;
   for (const [path, content] of files) {
     const name = enc.encode(path), data = typeof content === "string" ? enc.encode(content) : content, crc = crc32(data);
@@ -23,7 +23,7 @@ function zipStore(files) {
   }
   const centralSize = central.reduce((sum, part) => sum + part.length, 0), end = new Uint8Array(22), ev = new DataView(end.buffer);
   ev.setUint32(0, 0x06054b50, true); ev.setUint16(8, central.length, true); ev.setUint16(10, central.length, true); ev.setUint32(12, centralSize, true); ev.setUint32(16, offset, true);
-  return new Blob([...local, ...central, end], { type: "application/zip" });
+  return new Blob([...local, ...central, end], { type });
 }
 const xmlCell = (value, ref) => `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${escXml(value)}</t></is></c>`;
 export function responseWorkbookBlob(table) {
@@ -37,7 +37,7 @@ export function responseWorkbookBlob(table) {
     ["xl/_rels/workbook.xml.rels", '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>'],
     ["xl/worksheets/sheet1.xml", `<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${last}${all.length}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="18"/><sheetData>${sheetRows}</sheetData><autoFilter ref="A1:${last}${all.length}"/></worksheet>`]
   ];
-  return zipStore(files);
+  return zipStore(files, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 }
 function xmlText(value) { return escXml(value).replace(/\n/g, "<w:br/>"); }
 export function responseDocumentBlob(table, title = "Form responses") {
@@ -48,8 +48,35 @@ export function responseDocumentBlob(table, title = "Form responses") {
     ["[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'],
     ["_rels/.rels", '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'],
     ["word/document.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>${xmlText(title)}</w:t></w:r></w:p>${tableXml}<w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720"/></w:sectPr></w:body></w:document>`]
-  ]);
+  ], "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
 }
-export function downloadResponseFile(blob, filename) {
+export function responseCsv(table) {
+  const quote = value => '"' + String(value ?? "").replaceAll('"', '""') + '"';
+  return [table.headers, ...table.rows].map(row => row.map(quote).join(",")).join("\r\n");
+}
+export function responseText(table) {
+  return [table.headers, ...table.rows].map(row => row.map(value => String(value ?? "").replace(/[\t\r\n]+/g, " ")).join("\t")).join("\r\n");
+}
+export async function downloadResponseFile(blob, filename) {
+  const pickerMime = {
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+    "text/csv": [".csv"],
+    "text/plain": [".txt"]
+  };
+  if (typeof window !== "undefined" && typeof window.showSaveFilePicker === "function") {
+    try {
+      const mime = Object.keys(pickerMime).find(type => (blob.type || "").startsWith(type)) || "application/octet-stream";
+      const extensions = pickerMime[mime] || ["." + filename.split(".").pop()];
+      const handle = await window.showSaveFilePicker({suggestedName: filename, types: [{description: "Form responses", accept: {[mime]: extensions}}]});
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return;
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+      // A browser may expose the picker but reject a file type; fall through to download.
+    }
+  }
   const url = URL.createObjectURL(blob), link = document.createElement("a"); link.href = url; link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

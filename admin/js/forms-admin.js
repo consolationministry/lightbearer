@@ -1,7 +1,7 @@
 import {getForm,getFields,getResponses,saveForm} from "./form-data.js";
 import {beginAdminSave} from "./admin-save-state.js";
 import {getResponseAnswers,responseValueText} from "./response-data.js";
-import {buildResponseTable,responseWorkbookBlob,responseDocumentBlob,downloadResponseFile} from "./response-export.js";
+import {buildResponseTable,responseWorkbookBlob,responseDocumentBlob,responseCsv,responseText,downloadResponseFile} from "./response-export.js";
 const root=document.getElementById("admin-content");
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let editing=null, fields=[], current=null, newType=null;
@@ -23,11 +23,10 @@ export async function renderFormResponses(id){
   const answers=getResponseAnswers(fields,r.data).map(answer=>`<div class="response-answer"><dt>${esc(answer.label)}</dt><dd>${esc(responseValueText(answer.value))}</dd></div>`).join("");
   return `<details class="response-card"><summary><span class="response-summary-main"><strong>${esc(r.respondent_name||r.respondent_email||"Respondent")}</strong><small>${esc(r.respondent_email||"No email")}</small></span><span class="response-summary-date">${r.created_at?esc(new Date(r.created_at).toLocaleString()):"Date unavailable"}</span></summary><div class="response-card-body">${r.registration_code?`<div class="response-registration"><span>Registration ID</span><strong>${esc(r.registration_code)}</strong><button type="button" class="button button-secondary" data-copy="${esc(r.registration_code)}">Copy</button></div>`:""}<div class="response-contact"><span><b>Email</b><a href="mailto:${esc(r.respondent_email)}">${esc(r.respondent_email||"Not provided")}</a></span><span><b>Phone</b>${esc(r.respondent_phone||"Not provided")}</span></div><dl>${answers||'<p class="response-empty">No field answers were submitted.</p>'}</dl></div></details>`
  }).join("");
- const safeFile=(form?.name||form?.title||"form-responses").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"form-responses";
- root.innerHTML=`<div class="page-heading"><h1>${esc(form?.title||"Form responses")}</h1><button class="button button-secondary" data-back>Back to forms dashboard</button></div><p class="response-count">${rows.length} submission${rows.length===1?"":"s"}</p><div class="response-list">${details||"<p>No responses yet.</p>"}</div><div class="response-export"><button class="button button-secondary" data-export="xlsx">Download Excel (.xlsx)</button><button class="button button-secondary" data-export="docx">Download Word (.docx)</button></div>`;
+ const safeFile=(form?.title||form?.name||"form-responses").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"form-responses";
+ root.innerHTML=`<div class="page-heading"><h1>${esc(form?.title||"Form responses")}</h1><button class="button button-secondary" data-back>Back to forms dashboard</button></div><p class="response-count">${rows.length} submission${rows.length===1?"":"s"}</p><div class="response-list">${details||"<p>No responses yet.</p>"}</div><div class="response-export"><label class="field">Export format<select id="response-export-format"><option value="xlsx">Excel (.xlsx)</option><option value="docx">Word (.docx)</option><option value="csv">CSV (.csv)</option><option value="txt">Text (.txt)</option></select></label><button class="button button-secondary" data-export>Download responses</button></div>`;
  root.querySelector("[data-back]").onclick=()=>window.renderFormsDashboard();
  root.querySelectorAll("[data-copy]").forEach(button=>button.onclick=async()=>{try{await navigator.clipboard.writeText(button.dataset.copy);button.textContent="Copied";setTimeout(()=>button.textContent="Copy",1400)}catch{button.textContent=button.dataset.copy}});
  const table=buildResponseTable(fields,rows);
- root.querySelector("[data-export=xlsx]").onclick=()=>downloadResponseFile(responseWorkbookBlob(table),safeFile+"-responses.xlsx");
- root.querySelector("[data-export=docx]").onclick=()=>downloadResponseFile(responseDocumentBlob(table,form?.title||"Form responses"),safeFile+"-responses.docx");
+ root.querySelector("[data-export]").onclick=async()=>{const format=root.querySelector("#response-export-format").value;const options={xlsx:[responseWorkbookBlob(table),"xlsx"],docx:[responseDocumentBlob(table,form?.title||"Form responses"),"docx"],csv:[new Blob([responseCsv(table)],{type:"text/csv;charset=utf-8"}),"csv"],txt:[new Blob([responseText(table)],{type:"text/plain;charset=utf-8"}),"txt"]};const [blob,extension]=options[format]||options.xlsx;await downloadResponseFile(blob,safeFile+"-responses."+extension)};
 }
