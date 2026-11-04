@@ -23,8 +23,6 @@ for (const slideshow of document.querySelectorAll('[data-slideshow]')) {
 
   slideshow.querySelector('[data-slide-prev]')?.addEventListener('click', () => { show(current - 1); start(); });
   slideshow.querySelector('[data-slide-next]')?.addEventListener('click', () => { show(current + 1); start(); });
-  slideshow.addEventListener('mouseenter', () => clearInterval(timer));
-  slideshow.addEventListener('mouseleave', start);
   slideshow.addEventListener('focusin', () => clearInterval(timer));
   slideshow.addEventListener('focusout', start);
   prefersReducedMotion.addEventListener?.('change', start);
