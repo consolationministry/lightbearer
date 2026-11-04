@@ -75,6 +75,15 @@ test("the church homepage is the default web, PWA, and native Android launch pag
   assert.ok(reader.includes("./js/app.js"));
 });
 
+test("the app Settings About section visibly credits Seraph Media and links to its website", async () => {
+  const app = await read("js/app.js");
+  assert.ok(app.includes('<strong>Hymn text credit</strong>'));
+  assert.ok(app.includes('Hymn texts courtesy of Seraph Media C&amp;S Hymnary'));
+  assert.ok(app.includes('href="https://seraphmedia.com.ng/"'));
+  assert.ok(app.includes('The app remains free for worship and devotion'));
+  assert.ok(app.includes('the texts are kept exactly as supplied'));
+});
+
 test("admin entry opens login first and keeps the Homepage Design editor after authentication", async () => {
   const [entry, admin, settings] = await Promise.all([
     read("admin/index.html"),
