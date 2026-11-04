@@ -201,3 +201,22 @@
  .centre-card{min-height:0}
 }
 @media(prefers-reduced-motion:reduce){.centre-card,.intro#about .pastor-photo-grid img{transition:none}}
+
+/* Every homepage chapter reaches the viewport edges; readable content stays centered inside. */
+#top>section{width:100%;max-width:none;margin-inline:0;border-radius:0}
+#top>section>.section-heading,
+#top>section>.ministry-inner,
+#top>section>.prayer-invitation-inner,
+#top>section>.prayer-image-inner{width:min(100% - 36px,1240px);margin-inline:auto}
+#top>section.intro#about{width:100%;max-width:none;margin:0;padding:clamp(30px,5vw,64px) max(18px,calc((100vw - 1240px)/2));border-inline:0;border-radius:0}
+#top>section.worship-quote-section,
+#top>section.centres-section{max-width:none;margin-inline:0}
+#top>section.worship-quote-section{padding-inline:max(18px,calc((100vw - 1240px)/2))}
+@media(max-width:680px){
+ #top>section>.section-heading,
+ #top>section>.ministry-inner,
+ #top>section>.prayer-invitation-inner,
+ #top>section>.prayer-image-inner{width:100%}
+ #top>section.intro#about{margin:0;padding:28px 18px}
+ #top>section.worship-quote-section{padding-inline:18px}
+}
