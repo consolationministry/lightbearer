@@ -18,6 +18,7 @@ const navigation = [
   { id: "dashboard", label: "Dashboard", icon: "grid" },
   { id: "hymns", label: "Hymns", icon: "book" },
   { id: "forms", label: "Forms", icon: "layers" },
+  { id: "prayer-requests", label: "Prayer Requests", icon: "heart" },
   { id: "drafts", label: "Drafts", icon: "clock" },
   { id: "categories", label: "Categories", icon: "layers" },
   { id: "services", label: "Service Planner", icon: "calendar" },
@@ -28,7 +29,8 @@ const navigation = [
 ];
 const iconPaths = {
   grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
-  book: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 0 4 22z"/><path d="M4 5.5v14A2.5 2.5 0 0 1 6.5 17H20"/>',
+  book: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 0 4 22z"/><path d="M4 5.5v14A2.5 2.5 0 0 1 6.5 17H20"/>' ,
+  heart: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/>',
   layers: '<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/>',
   calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>',
   event: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/><path d="m12 13 .7 1.5 1.7.2-1.2 1.2.3 1.7-1.5-.8-1.5.8.3-1.7-1.2-1.2 1.7-.2.7-1.5Z"/>',
@@ -822,7 +824,8 @@ async function disconnectCloudinarySettings() {
 async function renderCurrentView() {
   root.querySelectorAll(".nav-item[data-view]").forEach(function (button) { button.setAttribute("aria-current", button.dataset.view === state.activeView ? "page" : "false"); });
   if (state.activeView !== "live-audio") stopAdminAudioMicTest();
-  if (state.activeView === "forms") { import("./forms-dashboard.js").then(module => module.renderFormsDashboard()); }
+  if (state.activeView === "forms") { import("./forms-dashboard.js?v=55").then(module => module.renderFormsDashboard()); }
+  else if (state.activeView === "prayer-requests") { import("./prayer-admin.js?v=55").then(module => module.renderPrayerRequests()); }
   else if (state.activeView === "dashboard") renderDashboard();
   else if (state.activeView === "hymns" || state.activeView === "drafts") renderHymnWorkspace();
   else if (state.activeView === "categories") renderCategoryWorkspace();

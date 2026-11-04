@@ -1,4 +1,4 @@
-import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "../config.js?v=32";
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "../config.js?v=33";
 
 const SESSION_KEY = "cns-lightbearer-admin-session-v1";
 let activeSession = null;
