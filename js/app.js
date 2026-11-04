@@ -935,7 +935,7 @@ function aboutBody() {
     + '<h2>The church</h2><p>C&S Bible Church is a Cherubim and Seraphim church. Lightbearer carries its worship life in English and Yorùbá, so members can reach the hymns of the church on any device, at any service or at home.</p>'
     + '<h2>The app</h2><p>Lightbearer is a free digital hymnal built for C&S Bible Church. It offers the full hymnary in English and Yorùbá, search by number, title or first line, favorites, recently viewed, service hymn sets, and live audio from church programmes. There are no accounts, no ads and no paid features, and your favorites stay on your own device.</p>'
     + '<h2>Forms</h2><p>Church forms and event registrations are available on the Forms page in the menu. Submitted forms receive a registration ID you can keep for reference.</p>'
-    + '<h2>Credits and rights</h2><p>Hymn texts courtesy of Seraph Media C&amp;S Hymnary. <a href="https://www.seraphmedia.com.ng" target="_blank" rel="noopener">seraphmedia.com.ng</a>. The app remains free for worship and devotion, and the texts are kept exactly as supplied.</p>'
+    + '<h2>Credits and rights</h2><p>Hymn texts courtesy of Seraph Media C&amp;S Hymnary, <a href="https://seraphmedia.com.ng/" target="_blank" rel="noopener">seraphmedia.com.ng</a>. The app remains free for worship and devotion, and the texts are kept exactly as supplied.</p>'
     + '<h2>Follow C&amp;S Bible Church</h2><p><a href="https://www.youtube.com/@consolationmandate2005" target="_blank" rel="noopener">YouTube</a> · <a href="https://www.facebook.com/share/19uL5pnf1Y/" target="_blank" rel="noopener">Facebook</a></p>'
     + '</div>';
 }
