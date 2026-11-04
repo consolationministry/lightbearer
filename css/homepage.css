@@ -142,5 +142,62 @@
 .sent-prayer{margin-top:24px;padding:19px 20px;border:1px solid #e4bf7760;border-radius:14px;background:linear-gradient(115deg,#e4bf7716,#ffffff08)}
 .sent-prayer-label{color:#f0d897;font-size:.62rem;font-weight:800;letter-spacing:.13em}
 .sent-prayer p{margin:9px 0 0;color:#fff;font:italic 1rem/1.7 var(--serif)}
-@media(max-width:680px){.sent-ministry-section{padding:48px 18px}.sent-ministry-section .ministry-inner{grid-template-columns:minmax(0,1fr);gap:24px}.sent-ministry-section .section-slideshow{aspect-ratio:1.2}.sent-ministry-section .sent-copy{padding:0 2px}.sent-ministry-section .ministry-copy h2{font-size:clamp(2rem,9vw,2.8rem)}.sent-ministry-section .ministry-copy .eyebrow{font-size:.59rem;letter-spacing:.09em}.sent-ministry-section .sent-copy>p:not(.eyebrow){font-size:.9rem;line-height:1.7}.sent-ministry-section .sent-copy blockquote{font-size:1.15rem;line-height:1.55;margin:20px 0 9px}.sent-ministry-section .sent-copy cite{font-size:.58rem;letter-spacing:.09em;margin-bottom:14px}.sent-guidance{gap:9px;margin:20px 0}.sent-guidance article{grid-template-columns:34px minmax(0,1fr);gap:11px;padding:13px}.sent-guidance-number{width:32px;height:32px}.sent-guidance p{font-size:.82rem}.sent-prayer{padding:17px}}
 @media(prefers-reduced-motion:reduce){.sent-ministry-section .section-slide{transition:none;transform:none!important}}
+@media(max-width:680px){.sent-ministry-section{padding:48px 18px}.sent-ministry-section .ministry-inner{grid-template-columns:minmax(0,1fr);gap:24px}.sent-ministry-section .section-slideshow{aspect-ratio:1.2}.sent-ministry-section .sent-copy{padding:0 2px}.sent-ministry-section .ministry-copy h2{font-size:clamp(2rem,9vw,2.8rem)}.sent-ministry-section .ministry-copy .eyebrow{font-size:.59rem;letter-spacing:.09em}.sent-ministry-section .sent-copy>p:not(.eyebrow){font-size:.9rem;line-height:1.7}.sent-ministry-section .sent-copy blockquote{font-size:1.15rem;line-height:1.55;margin:20px 0 9px}.sent-ministry-section .sent-copy cite{font-size:.58rem;letter-spacing:.09em;margin-bottom:14px}.sent-guidance{gap:9px;margin:20px 0}.sent-guidance article{grid-template-columns:34px minmax(0,1fr);gap:11px;padding:13px}.sent-guidance-number{width:32px;height:32px}.sent-guidance p{font-size:.82rem}.sent-prayer{padding:17px}}
+
+/* Editorial refresh: make the church story, ministries and centres read as distinct chapters. */
+.intro#about{
+  position:relative;isolation:isolate;overflow:hidden;align-items:center;
+  margin:clamp(28px,5vw,68px) auto;padding:clamp(30px,5vw,64px);
+  border:1px solid #e7dfed;border-radius:20px;
+  background:linear-gradient(120deg,#fff 0%,#fff 58%,#f7f2fa 100%);
+  box-shadow:0 24px 70px #21103c12
+}
+.intro#about::before{position:absolute;z-index:-1;top:0;left:0;width:6px;height:100%;background:linear-gradient(#e4bf77,#5a2f94);content:""}
+.intro#about .pastor-photo-grid{grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr);grid-template-rows:repeat(2,minmax(130px,1fr));gap:12px;align-self:stretch}
+.intro#about .pastor-photo-grid img{height:100%;min-height:0;max-height:none;border-radius:12px;box-shadow:0 12px 28px #21103c14}
+.intro#about .pastor-photo-grid img:first-child{grid-row:span 2;min-height:0;max-height:none}
+.intro#about .pastor-photo-grid img:nth-child(2){object-position:center 35%}
+.intro#about .pastor-photo-grid img:nth-child(3){object-position:center 40%}
+.intro#about .intro-copy h2{max-width:620px;font-size:clamp(2.35rem,4.6vw,4.1rem)}
+.intro#about .beliefs article{border-radius:12px;background:#fbf9fd}
+.intro#about .text-link{font-weight:750}
+
+/* The image-led chapters use deliberately different surfaces, not the same pale wash. */
+.praise-section{background:linear-gradient(180deg,#f8f4ee 0%,#f3eee6 100%)}
+.praise-section::before{background:linear-gradient(90deg,transparent,#d9c8a5,transparent)!important}
+.praise-section .section-slideshow{border:8px solid #fff;border-radius:18px;box-shadow:0 24px 64px #36280f20}
+.prayer-image-section{overflow:hidden;background:radial-gradient(ellipse at 86% 12%,#563678 0%,transparent 38%),linear-gradient(135deg,#211333,#302044 65%,#1c122c);color:#fff}
+.prayer-image-section::before{background:linear-gradient(90deg,transparent,#ffffff50,transparent)!important}
+.prayer-image-inner{padding-inline:clamp(18px,4vw,52px)}
+.prayer-image-section .prayer-image-title .eyebrow{color:#e8cb8e}
+.prayer-image-section .prayer-image-title h2{max-width:570px;color:#fff}
+.prayer-image-section .section-slideshow{border:1px solid #ffffff25;border-radius:18px;box-shadow:0 28px 75px #10091a66}
+.prayer-image-section .slideshow-controls button{background:#21103cd9}
+
+/* Give the branch directory a clear, welcoming destination on the page. */
+.centres-section{max-width:none;margin:clamp(26px,5vw,60px) 0;padding:clamp(58px,8vw,100px) max(18px,calc((100vw - 1240px)/2));border-radius:0;background:linear-gradient(180deg,#f2edf6 0%,#f8f5fa 100%)}
+.centres-section .section-heading{max-width:1240px;margin-inline:auto;margin-bottom:34px}
+.centres-section .section-heading h2{font-size:clamp(2.3rem,4.6vw,4rem)}
+.centres-grid{max-width:1240px;margin-inline:auto;border-color:#ded3e6;background:#fff}
+.centre-card{position:relative;overflow:hidden;min-height:235px;background:#fff;transition:transform .2s ease,box-shadow .2s ease,background .2s ease}
+.centre-card::before{position:absolute;inset:0 auto 0 0;width:3px;background:#d8c9e2;content:""}
+.centre-card:hover{z-index:1;transform:translateY(-3px);background:#fff;box-shadow:0 14px 34px #21103c14}
+.centre-card h3{font-size:clamp(1.25rem,2vw,1.55rem)}
+.centre-featured{background:#fffaf0}
+.centre-featured::before{background:#d4ad5b}
+.centre-number{color:#725390}
+.centre-card a{min-height:40px;align-items:center}
+@media(max-width:680px){
+ .intro#about{margin:18px 12px;padding:22px 18px;gap:20px;border-radius:16px}
+ .intro#about .pastor-photo-grid{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:1fr;gap:7px}
+ .intro#about .pastor-photo-grid img,.intro#about .pastor-photo-grid img:first-child{grid-row:auto;height:clamp(105px,34vw,155px);min-height:0;max-height:none;border-radius:9px}
+ .intro#about .intro-copy h2{font-size:clamp(2rem,8vw,2.7rem)}
+ .prayer-image-section{padding-block:54px}
+ .prayer-image-inner{padding-inline:0}
+ .prayer-image-section .section-slideshow{order:2}
+ .centres-section{padding:54px 18px}
+ .centres-section .section-heading{margin-bottom:24px}
+ .centre-card{min-height:0}
+}
+@media(prefers-reduced-motion:reduce){.centre-card,.intro#about .pastor-photo-grid img{transition:none}}
