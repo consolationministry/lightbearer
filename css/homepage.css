@@ -82,14 +82,65 @@
 @media(max-width:680px){.hero{min-height:min(520px,76svh);align-items:flex-start}.hero .hero-content{width:100%;max-width:none}.hero-shade{background:linear-gradient(180deg,#160d2588 0%,#160d253c 65%,#160d251e 100%)}.hero-foreground{right:2%;width:clamp(150px,43vw,210px);height:57%}.intro#about{grid-template-columns:minmax(0,1fr);gap:18px;margin:14px 12px;padding:22px 18px}.intro#about .pastor-photo-grid{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:1fr;gap:7px;height:auto;align-self:start}.intro#about .pastor-photo-grid img,.intro#about .pastor-photo-grid img:first-child{grid-row:auto;height:clamp(95px,32vw,145px);min-height:0;max-height:180px;border-radius:7px}.intro#about .intro-copy h2{font-size:clamp(1.9rem,8vw,2.7rem)}.intro#about .intro-copy .lead{font-size:.87rem;line-height:1.65}.intro#about .beliefs{grid-template-columns:1fr;gap:8px;margin:15px 0}.intro#about .beliefs article{padding:13px}.intro#about .beliefs article p{font-size:.77rem}.praise-section .ministry-inner,.prayer-image-inner{grid-template-columns:1fr}.praise-copy{padding:0 2px}.praise-copy h2,.prayer-image-title h2{font-size:2rem}.prayer-invitation .prayer-ministry-copy{grid-template-columns:1fr;gap:14px}.prayer-invitation .prayer-copy h2{font-size:2.5rem}.prayer-image-inner{gap:18px}}
 
 
-/* A Word from the SENT: keep the pastor's image and encouragement together on every screen. */
-.sent-ministry-section{background:linear-gradient(135deg,#281644,#4d2a70 55%,#321d4c);color:#fff}
-.sent-ministry-section .ministry-inner{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(12px,3vw,38px);align-items:center}
+/* A consistent editorial card treatment across the homepage ministry sections. */
+.ministry-section:not(.sent-ministry-section){position:relative;isolation:isolate;padding-block:clamp(64px,8vw,104px);}
+.ministry-section:not(.sent-ministry-section)::before{position:absolute;z-index:-1;top:0;left:clamp(18px,5vw,64px);right:clamp(18px,5vw,64px);height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent);content:""}
+.ministry-section:not(.sent-ministry-section) .ministry-inner{width:min(100%,1240px);gap:clamp(28px,5vw,72px)}
+.ministry-section:not(.sent-ministry-section) .section-slideshow{border:1px solid #21103c12;border-radius:14px;box-shadow:0 24px 60px #21103c20}
+.ministry-section:not(.sent-ministry-section) .ministry-copy .eyebrow{margin-bottom:12px;color:var(--p);font-size:.65rem;font-weight:800;letter-spacing:.16em}
+.ministry-section:not(.sent-ministry-section) .ministry-copy h2{max-width:640px;line-height:1.1;letter-spacing:-.035em}
+.ministry-section:not(.sent-ministry-section) .ministry-copy>p:not(.eyebrow){max-width:570px;font-size:.98rem;line-height:1.8}
+.praise-section{background:linear-gradient(180deg,#f7f3f9 0%,#f1ebf6 100%)}
+.praise-section .ministry-inner{grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr)}
+.praise-section .section-slideshow{aspect-ratio:1.18}
+.praise-copy blockquote{max-width:510px;margin:24px 0 18px;padding-left:19px;border-left:2px solid var(--gold);font-size:clamp(1.35rem,2.5vw,2rem);line-height:1.48}
+.prayer-invitation{position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 100% 0%,#f3edf7 0%,transparent 42%),#fff}
+.prayer-invitation::before{position:absolute;z-index:-1;top:36px;right:6vw;width:170px;height:170px;border:1px solid #5a2f9418;border-radius:50%;box-shadow:0 0 0 22px #5a2f9408,0 0 0 46px #5a2f9405;content:""}
+.prayer-invitation-inner{max-width:1180px}
+.prayer-invitation .prayer-ministry-copy{gap:clamp(26px,5vw,64px);align-items:center}
+.prayer-invitation .prayer-copy h2{line-height:1.08}
+.prayer-image-section{background:linear-gradient(180deg,#f2edf6,#faf8fb)}
+.prayer-image-inner{max-width:1240px}
+.prayer-image-section .section-slideshow{border-radius:14px;box-shadow:0 24px 60px #21103c1c}
+.worship-quote-gallery{border-radius:16px;box-shadow:0 24px 64px #21103c22}
+.centres-section{padding:clamp(64px,8vw,106px) clamp(18px,5vw,64px);border-radius:20px}
+.centres-section .section-heading h2{max-width:640px}
+.centres-grid{overflow:hidden;border:1px solid var(--line);border-radius:14px;grid-template-columns:repeat(2,minmax(0,1fr));box-shadow:0 18px 52px #21103c0c}
+.centre-card{min-height:245px;padding:clamp(22px,3vw,34px);transition:background .2s ease,transform .2s ease}
+.centre-card:hover{position:relative;z-index:1;transform:translateY(-2px);background:#fbf9fd}
+.centre-featured{background:linear-gradient(140deg,#f4eff8,#fff)}
+.centre-card h3{margin-top:30px;font-size:1.45rem}
+.centre-card p{min-height:0;max-width:420px;font-size:.84rem}
+.pastor-section{background:linear-gradient(180deg,#f7f3f9,#f1ebf6)}
+.word-ministry-section{background:radial-gradient(ellipse at 15% 90%,#67458b 0%,transparent 40%),linear-gradient(135deg,#24133d,#382153 58%,#211333)}
+.word-ministry-section .section-slideshow{border:1px solid #ffffff20;border-radius:15px;box-shadow:0 28px 70px #11091a66}
+.word-ministry-section .ministry-copy .eyebrow{color:#e8cb8e}
+@media(max-width:680px){.ministry-section:not(.sent-ministry-section){padding-block:48px}.ministry-section:not(.sent-ministry-section)::before{left:18px;right:18px}.ministry-section:not(.sent-ministry-section) .ministry-inner{gap:22px}.ministry-section:not(.sent-ministry-section) .ministry-copy h2{font-size:clamp(2rem,9vw,2.8rem)}.ministry-section:not(.sent-ministry-section) .ministry-copy>p:not(.eyebrow){font-size:.88rem;line-height:1.7}.praise-section .ministry-inner{grid-template-columns:1fr}.praise-section .section-slideshow{aspect-ratio:1.25}.prayer-invitation{padding-block:54px}.prayer-invitation .prayer-ministry-copy{grid-template-columns:1fr;gap:16px}.prayer-image-inner{gap:20px}.centres-section{padding:52px 18px}.centres-grid{grid-template-columns:1fr}.centre-card{min-height:0;padding:23px}.centre-card h3{margin-top:18px}.section-heading{align-items:flex-start;flex-direction:column;gap:10px;margin-bottom:22px}}
+
+/* The SENT section keeps the pastor's image and message together, with room for a fuller reflection. */
+.sent-ministry-section{padding-block:clamp(64px,8vw,116px);background:radial-gradient(ellipse at 78% 12%,#67458b 0%,transparent 42%),linear-gradient(135deg,#24133d,#382153 58%,#211333);color:#fff}
+.sent-ministry-section .ministry-inner{grid-template-columns:minmax(0,.88fr) minmax(0,1.12fr);gap:clamp(26px,5.5vw,74px);align-items:center}
 .sent-ministry-section .ministry-copy h2,.sent-ministry-section .sent-copy blockquote{color:#fff}
-.sent-ministry-section .section-slideshow{background:#10091c;aspect-ratio:1.12}
-.sent-ministry-section .sent-copy>p:not(.eyebrow){color:#fff;line-height:1.75}
-.sent-ministry-section .sent-copy blockquote{max-width:610px;margin:20px 0 10px;font:italic clamp(1rem,2vw,1.55rem)/1.55 var(--serif)}
+.sent-ministry-section .section-slideshow{aspect-ratio:1.04;border:1px solid #ffffff20;border-radius:18px;background:#10091c;box-shadow:0 30px 80px #11091a66}
+.sent-ministry-section .section-slide{transform:scale(1.025)}
+.sent-ministry-section .section-slide.is-active{transform:scale(1)}
+.sent-ministry-section .slideshow-controls{inset:auto 16px 16px}
+.sent-ministry-section .slideshow-controls button{width:42px;height:42px;border-color:#ffffff70;background:#21103cd9}
+.sent-ministry-section .sent-copy{max-width:620px;padding:clamp(8px,1.2vw,18px) 0}
+.sent-ministry-section .sent-copy .eyebrow{margin-bottom:12px;color:#e8cb8e;font-size:.67rem;letter-spacing:.15em}
+.sent-ministry-section .ministry-copy h2{max-width:600px;font-size:clamp(2.3rem,4.3vw,4rem);line-height:1.08}
+.sent-ministry-section .sent-copy>p:not(.eyebrow){max-width:590px;color:#f3eef8;line-height:1.8}
+.sent-ministry-section .sent-copy .sent-intro{margin-top:18px;font-size:1rem}
+.sent-ministry-section .sent-copy blockquote{max-width:610px;margin:24px 0 10px;padding-left:18px;border-left:2px solid #e4bf77;font:italic clamp(1.1rem,1.9vw,1.55rem)/1.6 var(--serif)}
 .sent-ministry-section .sent-copy cite{display:block;margin-bottom:18px;color:#e7c982;font-size:.64rem;font-style:normal;font-weight:800;letter-spacing:.14em}
-.sent-ministry-section .sent-copy .sent-closing{font-weight:700;color:#fff}
-@media(max-width:680px){.sent-ministry-section{padding:30px 10px}.sent-ministry-section .ministry-inner{grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr);gap:9px}.sent-ministry-section .section-slideshow{aspect-ratio:.78}.sent-ministry-section .ministry-copy h2{font-size:clamp(1.15rem,5vw,2rem);line-height:1.13}.sent-ministry-section .ministry-copy .eyebrow{font-size:.52rem;letter-spacing:.07em}.sent-ministry-section .sent-copy>p:not(.eyebrow){font-size:.72rem;line-height:1.5}.sent-ministry-section .sent-copy blockquote{font-size:.86rem;line-height:1.4;margin:10px 0 7px}.sent-ministry-section .sent-copy cite{font-size:.5rem;letter-spacing:.07em;margin-bottom:9px}.sent-ministry-section .slideshow-controls{inset:auto 4px 5px;gap:3px;font-size:.55rem}.sent-ministry-section .slideshow-controls button{width:25px;height:25px;font-size:1rem}.sent-ministry-section .slideshow-controls span{padding:3px}}
-@media(prefers-reduced-motion:reduce){.sent-ministry-section .section-slide{transition:none}}
+.sent-ministry-section .sent-copy .sent-closing{margin-bottom:20px;color:#fff;font-weight:700}
+.sent-guidance{display:grid;gap:10px;margin:24px 0}
+.sent-guidance article{display:grid;grid-template-columns:38px minmax(0,1fr);gap:13px;align-items:start;padding:14px 15px;border:1px solid #ffffff20;border-radius:12px;background:#ffffff0b}
+.sent-guidance-number{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#e4bf771f;color:#f1d99f;font-size:.68rem;font-weight:800;letter-spacing:.04em}
+.sent-guidance h3{margin:1px 0 3px;color:#fff;font:600 1rem var(--serif)}
+.sent-guidance p{margin:0;color:#e2dbea;font-size:.84rem;line-height:1.6}
+.sent-prayer{margin-top:24px;padding:19px 20px;border:1px solid #e4bf7760;border-radius:14px;background:linear-gradient(115deg,#e4bf7716,#ffffff08)}
+.sent-prayer-label{color:#f0d897;font-size:.62rem;font-weight:800;letter-spacing:.13em}
+.sent-prayer p{margin:9px 0 0;color:#fff;font:italic 1rem/1.7 var(--serif)}
+@media(max-width:680px){.sent-ministry-section{padding:48px 18px}.sent-ministry-section .ministry-inner{grid-template-columns:minmax(0,1fr);gap:24px}.sent-ministry-section .section-slideshow{aspect-ratio:1.2}.sent-ministry-section .sent-copy{padding:0 2px}.sent-ministry-section .ministry-copy h2{font-size:clamp(2rem,9vw,2.8rem)}.sent-ministry-section .ministry-copy .eyebrow{font-size:.59rem;letter-spacing:.09em}.sent-ministry-section .sent-copy>p:not(.eyebrow){font-size:.9rem;line-height:1.7}.sent-ministry-section .sent-copy blockquote{font-size:1.15rem;line-height:1.55;margin:20px 0 9px}.sent-ministry-section .sent-copy cite{font-size:.58rem;letter-spacing:.09em;margin-bottom:14px}.sent-guidance{gap:9px;margin:20px 0}.sent-guidance article{grid-template-columns:34px minmax(0,1fr);gap:11px;padding:13px}.sent-guidance-number{width:32px;height:32px}.sent-guidance p{font-size:.82rem}.sent-prayer{padding:17px}}
+@media(prefers-reduced-motion:reduce){.sent-ministry-section .section-slide{transition:none;transform:none!important}}

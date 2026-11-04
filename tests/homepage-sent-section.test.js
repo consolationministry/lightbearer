@@ -28,7 +28,16 @@ test('SENT message carries the requested encouragement and accurate KJV citation
   assert.match(section, /hope, love and transformation/);
 });
 
-test('image and text remain side by side at narrow widths', () => {
-  assert.match(css, /\.sent-ministry-section \.ministry-inner\{grid-template-columns:minmax\(0,\.9fr\) minmax\(0,1\.1fr\)/);
-  assert.match(css, /@media\(max-width:680px\)\{[\s\S]*?\.sent-ministry-section \.ministry-inner\{grid-template-columns:minmax\(0,\.78fr\) minmax\(0,1\.22fr\)/);
+test('SENT message includes practical guidance and a prayer', () => {
+  assert.match(section, /Stand in faith/);
+  assert.match(section, /Carry the light/);
+  assert.match(section, /Serve with love/);
+  assert.match(section, /A PRAYER TO CARRY WITH YOU/);
+  assert.match(section, /Lord, strengthen my faith/);
+});
+
+test('SENT layout is spacious on desktop and readable on mobile', () => {
+  assert.match(css, /\.sent-ministry-section \.ministry-inner\{grid-template-columns:minmax\(0,\.88fr\) minmax\(0,1\.12fr\)/);
+  assert.match(css, /@media\(max-width:680px\)\{[\s\S]*?\.sent-ministry-section \.ministry-inner\{grid-template-columns:minmax\(0,1fr\)/);
+  assert.match(css, /\.sent-guidance\{display:grid/);
 });
