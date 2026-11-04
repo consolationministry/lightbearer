@@ -36,8 +36,9 @@ test("the compact homepage keeps its accessible church welcome free of stale car
   assert.ok(home.includes('id="worship"'));
   assert.ok(!home.includes('href="./admin/"'));
   assert.ok(!home.includes('href="./forms.html"'));
+  assert.ok(home.includes('id="worship-quote-gallery"'));
+  assert.ok(home.includes('aria-roledescription="carousel"'));
   for (const staleCarouselMarkup of [
-    'aria-roledescription="carousel"',
     'id="hero-carousel-prev"',
     'id="hero-carousel-next"',
     'id="hero-carousel-toggle"',
