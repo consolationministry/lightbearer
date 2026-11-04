@@ -1,7 +1,7 @@
 {
   "name": "Lightbearer",
   "short_name": "Lightbearer",
-  "version": "1.16.34",
+  "version": "1.16.35",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
