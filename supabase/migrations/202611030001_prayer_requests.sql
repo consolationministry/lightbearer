@@ -1,5 +1,6 @@
 -- Prayer inbox, designed for anonymous submission with admin-only access.
--- Apply in Supabase SQL Editor after reviewing. Never put a service-role key in browser code.
+-- Safe to apply once: creates only this missing table and installs scoped grants and RLS policies.
+-- Never put a service-role key in browser code.
 create table if not exists public.prayer_requests (
   id uuid primary key default gen_random_uuid(),
   request text not null check (length(btrim(request)) between 5 and 2000),
