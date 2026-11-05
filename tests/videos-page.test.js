@@ -5,23 +5,41 @@ import { readFile } from 'node:fs/promises';
 const page = await readFile(new URL('../videos.html', import.meta.url), 'utf8');
 const home = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const vite = await readFile(new URL('../vite.config.js', import.meta.url), 'utf8');
+const buildScript = await readFile(new URL('../scripts/build-web.mjs', import.meta.url), 'utf8');
+const renderer = await readFile(new URL('../js/videos-page.js', import.meta.url), 'utf8');
 
-test('video page embeds the supplied YouTube live video with a direct fallback', () => {
-  assert.match(page, /youtube-nocookie\.com\/embed\/9DDk90eKN1U/);
-  assert.match(page, /https:\/\/www\.youtube\.com\/live\/9DDk90eKN1U\?si=DgLh_WqDqswQgl7L/);
-});
-
-test('video page attempts Facebook plugin embed and keeps the supplied share link', () => {
-  assert.match(page, /facebook\.com\/plugins\/video\.php\?href=/);
-  assert.match(page, /https:\/\/www\.facebook\.com\/share\/1G16sqApFC\//);
-});
-
-test('video page explains discovery limitation without claiming automatic feed access', () => {
-  assert.match(page, /Automatic discovery of every Facebook video or YouTube live programme is not connected yet/);
-  assert.match(page, /official Facebook Page and YouTube channel URLs/);
+test('video page uses the multi-link renderer rather than stale hard-coded cards', () => {
+  assert.match(page, /id="video-lists"/);
+  assert.match(page, /<script[^>]+src="\.\/js\/videos-page\.js"/);
+  assert.doesNotMatch(page, /youtube-nocookie\.com\/embed\/9DDk90eKN1U/);
+  assert.doesNotMatch(page, /facebook\.com\/plugins\/video\.php\?href=/);
 });
 
 test('video page is linked from home and included as a Vite entry point', () => {
   assert.match(home, /href="\.\/videos\.html"/);
   assert.match(vite, /videos: path\.resolve\(root, "videos\.html"\)/);
+});
+
+test('web build stages the public renderer and all its static module dependencies', () => {
+  assert.match(buildScript, /\["admin\/js",\s*\["cms-settings\.js",\s*"social-videos-admin\.js"\]\]/);
+  assert.match(buildScript, /"social-videos\.js",\s*"videos-page\.js"/);
+  assert.match(page, /id="video-lists"/);
+  assert.match(page, /<script[^>]+src="\.\/js\/videos-page\.js"/);
+});
+
+test('build output contains public watch page and renderer at the paths referenced by HTML', async () => {
+  const distPage = await readFile(new URL('../dist/videos.html', import.meta.url), 'utf8');
+  const distRenderer = await readFile(new URL('../dist/js/videos-page.js', import.meta.url), 'utf8');
+  const distSocial = await readFile(new URL('../dist/js/social-videos.js', import.meta.url), 'utf8');
+  assert.match(distPage, /id="video-lists"/);
+  assert.match(distPage, /src="\.\/js\/videos-page\.js"/);
+  assert.match(distRenderer, /cms-settings\.js\?v=1/);
+  assert.match(distSocial, /facebookEmbedUrl/);
+});
+
+test('video page renders its CMS-backed YouTube and Facebook lists', () => {
+  assert.match(renderer, /section\("youtube", content\.youtube_videos\?\.urls/);
+  assert.match(renderer, /section\("facebook", content\.facebook_videos\?\.urls/);
+  assert.match(renderer, /youtubeEmbedUrl/);
+  assert.match(renderer, /facebookEmbedUrl/);
 });
