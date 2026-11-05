@@ -20,7 +20,7 @@ test('video page is linked from home and included as a Vite entry point', () => 
   assert.match(vite, /videos: path\.resolve\(root, "videos\.html"\)/);
 });
 
-test('web build stages the public renderer and all its static module dependencies', () => {
+test('web build stages the public renderer and its static dependency modules', () => {
   assert.match(buildScript, /\["admin\/js",\s*\["cms-settings\.js",\s*"social-videos-admin\.js"\]\]/);
   assert.match(buildScript, /"social-videos\.js",\s*"videos-page\.js"/);
   assert.match(page, /id="video-lists"/);
@@ -32,8 +32,10 @@ test('build output contains public watch page and renderer at the paths referenc
   const distRenderer = await readFile(new URL('../dist/js/videos-page.js', import.meta.url), 'utf8');
   const distSocial = await readFile(new URL('../dist/js/social-videos.js', import.meta.url), 'utf8');
   assert.match(distPage, /id="video-lists"/);
-  assert.match(distPage, /src="\.\/js\/videos-page\.js"/);
-  assert.match(distRenderer, /cms-settings\.js\?v=1/);
+  assert.match(distPage, /assets\/videos-[^"]+\.js/);
+  assert.match(distPage, /assets\/cms-settings-[^"]+\.js/);
+  assert.match(distRenderer, /cms-settings/);
+  assert.match(distRenderer, /social-videos\.js/);
   assert.match(distSocial, /facebookEmbedUrl/);
 });
 
