@@ -2,15 +2,8 @@ export function prayerRequestListEntry(row) {
   return {
     id: String(row?.id ?? ""),
     contact: String(row?.contact ?? "Contact not provided"),
-    received: formatPrayerRequestDate(row?.created_at),
-    preview: prayerRequestPreview(row?.request)
+    received: formatPrayerRequestDate(row?.created_at)
   };
-}
-
-export function prayerRequestPreview(value, maxLength = 120) {
-  const text = String(value ?? "").replace(/\s+/g, " ").trim();
-  if (text.length <= maxLength) return text || "No request text";
-  return text.slice(0, Math.max(0, maxLength - 1)).trimEnd() + "…";
 }
 
 export function prayerRequestDetail(row) {

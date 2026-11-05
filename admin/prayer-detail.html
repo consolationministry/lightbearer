@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f8f6fa">
+  <meta name="description" content="Private prayer request detail for approved administrators.">
+  <meta name="color-scheme" content="light dark">
+  <title>Prayer Request · C&S Bible Church Admin</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/demo-church-mark.png">
+  <link rel="stylesheet" href="./css/admin.css?v=38">
+  <link rel="stylesheet" href="./css/live-audio-admin.css?v=7">
+  <link rel="stylesheet" href="./css/forms-admin.css?v=1">
+</head>
+<body>
+  <script>window.__LIGHTBEARER_ADMIN__=true;</script>
+  <main class="prayer-detail-page" id="prayer-detail-content">
+    <div class="page-heading"><div><h1>Prayer Request</h1><p>Private request. Only approved administrators can view it.</p></div><a class="button button-secondary" href="./index.html" data-prayer-back>Back to inbox</a></div>
+    <p id="prayer-detail-status" role="status" aria-live="polite">Checking administrator access…</p>
+    <section class="panel panel-body prayer-detail-card" id="prayer-detail" hidden>
+      <div class="prayer-detail-heading"><h2 id="prayer-contact"></h2><button class="button button-danger" type="button" data-prayer-delete>Delete request</button></div>
+      <time class="prayer-detail-date" id="prayer-date"></time>
+      <p class="prayer-detail-request" id="prayer-request-text"></p>
+    </section>
+  </main>
+  <script type="module" src="./js/prayer-detail.js?v=1"></script>
+</body>
+</html>

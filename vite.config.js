@@ -18,7 +18,9 @@ export default defineConfig({
         hymnal: path.resolve(root, "hymnal.html"),
         forms: path.resolve(root, "forms.html"),
         adminForms: path.resolve(root, "admin/forms.html"),
-        adminPrayerInbox: path.resolve(root, "admin/prayer-inbox.html")
+        adminPrayerInbox: path.resolve(root, "admin/prayer-inbox.html"),
+        adminIndex: path.resolve(root, "admin/index.html"),
+        adminPrayerDetail: path.resolve(root, "admin/prayer-detail.html")
       }
     }
   }
