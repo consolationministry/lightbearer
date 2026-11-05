@@ -14,6 +14,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: path.resolve(root, "index.html"),
+        gallery: path.resolve(root, "gallery.html"),
         hymnal: path.resolve(root, "hymnal.html"),
         forms: path.resolve(root, "forms.html"),
         adminForms: path.resolve(root, "admin/forms.html"),
