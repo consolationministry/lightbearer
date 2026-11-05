@@ -1,6 +1,6 @@
 -- Public homepage content with authenticated administrator writes only.
 create table if not exists public.site_content (
-  key text primary key check (key in ('about','hero','intro','retreat','social_links')),
+  key text primary key check (key in ('about','hero','intro','retreat','social_links','youtube_videos','facebook_videos')),
   value jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now()
 );

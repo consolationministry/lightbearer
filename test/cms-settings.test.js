@@ -17,11 +17,17 @@ globalThis.fetch = async (url, init) => {
   if (String(url).includes("auth/v1/user")) return new Response(JSON.stringify({ id: "admin-user", email: "admin@example.test" }), { status: 200 });
   if (String(url).includes("auth/v1/token?grant_type=password")) return new Response(JSON.stringify({ access_token: "test-access", refresh_token: "test-refresh", user: { id: "admin-user" } }), { status: 200 });
   if (String(url).includes("admin_users?")) return new Response(adminOk ? JSON.stringify([{ user_id: "admin-user" }]) : JSON.stringify([]), { status: 200 });
-  if (String(url).includes("site_content") && (!init || init.method === "GET")) return new Response(JSON.stringify([{ key: "social_links", value: { youtube: "https://youtube.com/@cns", facebook: "", tiktok: "", x: "", twitter: "", instagram: "", telegram: "" } }, { key: "about", value: { mode: "text", text: "About text" } }]), { status: 200 });
+  if (String(url).includes("site_content") && (!init || init.method === "GET")) return new Response(JSON.stringify([
+    { key: "social_links", value: { youtube: "https://youtube.com/@cns", facebook: "", tiktok: "", x: "", twitter: "", instagram: "", telegram: "" } },
+    { key: "about", value: { mode: "text", text: "About text" } },
+    { key: "youtube_videos", value: { urls: [] } },
+    { key: "facebook_videos", value: { urls: [] } }
+  ]), { status: 200 });
+
   return new Response(JSON.stringify([{ ok: true }]), { status: 200 });
 };
 const { supabaseRequest, setPublicRequestPaths, requireAdminAuthorization } = await import("../admin/js/supabase-client.js");
-const { saveCmsContent, saveCmsSocialLinks, uploadCmsImage } = await import("../admin/js/cms-settings.js");
+  const { saveCmsContent, saveCmsSocialLinks, uploadCmsImage, getCmsContent, saveSocialVideoList } = await import("../admin/js/cms-settings.js");
 setPublicRequestPaths(["auth/v1/token?grant_type=password"]);
 requireAdminAuthorization();
 adminOk = false;
@@ -45,7 +51,22 @@ try {
   if (authRequests.some(({ init }) => !new Headers(init.headers).get("authorization")?.startsWith("Bearer test-access"))) throw new Error("CMS writes did not carry verified admin session");
   const puts = requests.filter(({ url, init }) => init.method === "POST" && /storage\/v1\/object/.test(url));
   if (puts.length !== 1 || !(puts[0].init.body instanceof Blob)) throw new Error("Image upload was not sent as a binary file body");
-  console.log(JSON.stringify({ social_write: true, text_write: true, upload_url_shape: imageUrl.startsWith(PROJECT_URL + "/storage/v1/object/public/homepage-media/homepage/"), writes_authenticated: true, invalid_inputs_rejected: true, request_count: requests.length }));
+  const content = await getCmsContent();
+  if (!content.youtube_videos || !content.facebook_videos) throw new Error("Public CMS read omitted the separately stored video lists");
+  const publicRead = requests.filter(({ url }) => url.includes("site_content") && url.includes("key=in.(about,hero,intro,retreat,social_links,youtube_videos,facebook_videos)")).at(-1);
+  if (!publicRead?.url || publicRead.init?.method !== "GET" || !publicRead.init.headers.get("authorization")?.includes("sb_publishable_")) throw new Error("Social videos were not fetched with public credentials");
+  await saveSocialVideoList("youtube", ["https://youtu.be/AbCdEf12345"]);
+  const videoKeys = requests.filter(({ url, init }) => url.includes("site_content") && init?.method === "POST").map(({ init }) => JSON.parse(init.body)[0].key);
+  if (!videoKeys.includes("youtube_videos")) throw new Error("YouTube video list was not persisted");
+  await saveSocialVideoList("facebook", ["https://facebook.com/watch/?v=123456789012345"]);
+  const allVideoKeys = requests.filter(({ url, init }) => url.includes("site_content") && init?.method === "POST").map(({ init }) => JSON.parse(init.body)[0].key);
+  if (!allVideoKeys.includes("facebook_videos")) throw new Error("Facebook video list was not persisted separately");
+  await assertRejects(() => saveSocialVideoList("tiktok", []), /Choose YouTube or Facebook/);
+  const videosModule = await import("../js/videos-page.js");
+  const rendered = videosModule.renderSocialVideoLists({ youtube_videos: { urls: ["https://youtu.be/AbCdEf12345"] }, facebook_videos: { urls: ["https://facebook.com/watch/?v=123456789012345"] } });
+  if (!rendered.includes("youtube-nocookie.com/embed/AbCdEf12345") || !rendered.includes("Facebook Videos") || !rendered.includes("facebook.com/plugins/video.php") || rendered.indexOf("YouTube Videos") > rendered.indexOf("Facebook Videos")) throw new Error("Public page did not render distinct platform embeds");
+  console.log(JSON.stringify({ social_write: true, text_write: true, upload_url_shape: imageUrl.startsWith(PROJECT_URL + "/storage/v1/object/public/homepage-media/homepage/"), writes_authenticated: true, invalid_inputs_rejected: true, public_video_lists_read: true, video_list_admin_write: true, public_video_embeds: true, request_count: requests.length }));
+
 } finally {
   globalThis.window = originalWindow; globalThis.fetch = originalFetch; globalThis.Headers = originalHeaders; globalThis.File = originalFile;
 }

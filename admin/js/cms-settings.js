@@ -1,9 +1,11 @@
 import { requireAdmin } from "./admin-auth.js?v=32";
+import { normalizeSocialVideoList, SOCIAL_VIDEO_PLATFORMS } from "../../js/social-videos.js";
 import { supabaseRequest, getSupabaseUrl } from "./supabase-client.js?v=32";
 const SOCIAL = ["youtube", "facebook", "tiktok", "x", "twitter", "instagram", "telegram"];
 const SECTION = ["about", "hero", "intro", "retreat"];
 const BUCKET = "homepage-media";
 const endpoint = "rest/v1/site_content";
+const VIDEO_KEYS = { youtube: "youtube_videos", facebook: "facebook_videos" };
 const defaultSocial = Object.fromEntries(SOCIAL.map((key) => [key, ""]));
 const SOCIAL_HOSTS = { youtube: ["youtube.com", "youtu.be"], facebook: ["facebook.com", "fb.com"], tiktok: ["tiktok.com"], x: ["x.com", "twitter.com"], twitter: ["twitter.com", "x.com"], instagram: ["instagram.com"], telegram: ["t.me", "telegram.me", "telegram.org"] };
 
@@ -21,7 +23,7 @@ function validUrl(value, platform) {
 
 export async function getCmsContent() {
   try {
-    const rows = await supabaseRequest(endpoint + "?select=key,value&key=in.(about,hero,intro,retreat,social_links)", { publicOnly: true });
+    const rows = await supabaseRequest(endpoint + "?select=key,value&key=in.(about,hero,intro,retreat,social_links,youtube_videos,facebook_videos)", { publicOnly: true });
     return Object.fromEntries((rows || []).map((row) => [row.key, row.value || {}]));
   } catch (error) {
     if (error.status === 404 || error.code === "PGRST205") return {};
@@ -32,6 +34,20 @@ export async function getCmsContent() {
 export async function getCmsSocialLinks() {
   const content = await getCmsContent();
   return Object.assign({}, defaultSocial, content.social_links || {});
+}
+
+async function getVideoLists() {
+  const rows = await supabaseRequest(endpoint + "?select=key,value&key=in.(youtube_videos,facebook_videos)", { publicOnly: true });
+  const byKey = Object.fromEntries((rows || []).map((row) => [row.key, row.value || {}]));
+  return Object.fromEntries(SOCIAL_VIDEO_PLATFORMS.map((platform) => [platform, Array.isArray(byKey[VIDEO_KEYS[platform]]?.urls) ? byKey[VIDEO_KEYS[platform]].urls : []]));
+}
+
+export async function saveSocialVideoList(platform, urls) {
+  await requireAdmin();
+  if (!SOCIAL_VIDEO_PLATFORMS.includes(platform)) throw new Error("Choose YouTube or Facebook.");
+  const safeUrls = normalizeSocialVideoList(urls, platform);
+  await supabaseRequest(endpoint + "?on_conflict=key", { method: "POST", body: [{ key: VIDEO_KEYS[platform], value: { urls: safeUrls } }], prefer: "resolution=merge-duplicates,return=representation" });
+  return safeUrls;
 }
 
 export async function saveCmsContent(key, value) {

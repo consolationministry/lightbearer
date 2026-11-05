@@ -24,6 +24,8 @@ const navigation = [
   { id: "services", label: "Service Planner", icon: "calendar" },
   { id: "library", label: "Library", icon: "book" },
   { id: "programs", label: "Upcoming Programmes", icon: "event" },
+  { id: "youtube-videos", label: "YouTube Videos", icon: "radio" },
+  { id: "facebook-videos", label: "Facebook Videos", icon: "radio" },
   { id: "live-audio", label: "Live Audio", icon: "radio" },
   { id: "settings", label: "Settings", icon: "settings" }
 ];
@@ -831,6 +833,7 @@ async function renderCurrentView() {
   else if (state.activeView === "categories") renderCategoryWorkspace();
   else if (state.activeView === "services") renderServiceWorkspace();
   else if (state.activeView === "programs") renderProgramWorkspace();
+  else if (state.activeView === "youtube-videos" || state.activeView === "facebook-videos") { import("./social-videos-admin.js").then((module) => module.renderSocialVideosAdmin(document.getElementById("admin-content"), state.activeView.slice(0, state.activeView.indexOf("-videos")))); }
   else if (state.activeView === "library") { import("./library-admin.js").then(function (module) { module.renderLibraryAdmin(document.getElementById("admin-content")); }); }
   else if (state.activeView === "live-audio") {
     const content = document.getElementById("admin-content");
