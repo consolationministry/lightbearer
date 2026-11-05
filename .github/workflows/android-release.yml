@@ -127,8 +127,8 @@ jobs:
       - name: Install, test, and build shared web app
         run: |
           npm ci --registry=https://registry.npmjs.org --no-audit --no-fund
-          npm test
           npm run build
+          npm test
 
 
       - name: Package shared app for Android
