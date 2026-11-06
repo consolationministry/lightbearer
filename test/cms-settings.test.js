@@ -55,18 +55,29 @@ try {
   if (!content.youtube_videos || !content.facebook_videos) throw new Error("Public CMS read omitted the separately stored video lists");
   const publicRead = requests.filter(({ url }) => url.includes("site_content") && url.includes("key=in.(about,hero,intro,retreat,social_links,youtube_videos,facebook_videos)")).at(-1);
   if (!publicRead?.url || publicRead.init?.method !== "GET" || !publicRead.init.headers.get("authorization")?.includes("sb_publishable_")) throw new Error("Social videos were not fetched with public credentials");
+  await saveSocialVideoList("youtube", ["https://youtu.be/AbCdEf12345"], ["Programme title"], ["Short description"], { deletionCount: 2, trackingStartedAt: "2026-11-06" });
   await saveSocialVideoList("youtube", ["https://youtu.be/AbCdEf12345"], { deletionCount: 2, trackingStartedAt: "2026-11-06" });
+  const legacySave = requests.filter(({ url, init }) => url.includes("site_content") && init?.method === "POST" && JSON.parse(init.body)[0].key === "youtube_videos").at(-1);
+  const legacyValue = legacySave && JSON.parse(legacySave.init.body)[0].value;
+  if (!Array.isArray(legacyValue.titles) || !Array.isArray(legacyValue.descriptions) || legacyValue.titles[0] !== "" || legacyValue.descriptions[0] !== "") throw new Error("Legacy video save signature was not preserved");
   const videoKeys = requests.filter(({ url, init }) => url.includes("site_content") && init?.method === "POST").map(({ init }) => JSON.parse(init.body)[0].key);
   if (!videoKeys.includes("youtube_videos")) throw new Error("YouTube video list was not persisted");
-  const youtubeSave = requests.filter(({ url, init }) => url.includes("site_content") && init?.method === "POST" && JSON.parse(init.body)[0].key === "youtube_videos").at(-1);
-  if (!youtubeSave || JSON.parse(youtubeSave.init.body)[0].value.deletion_count !== 2 || JSON.parse(youtubeSave.init.body)[0].value.deletion_tracking_started_at !== "2026-11-06") throw new Error("Video deletion tracking was not persisted");
-  await saveSocialVideoList("facebook", ["https://facebook.com/watch/?v=123456789012345"]);
+  const youtubeWrites = requests.filter(({ url, init }) => url.includes("site_content") && init?.method === "POST" && JSON.parse(init.body)[0].key === "youtube_videos");
+  const youtubeSave = youtubeWrites.find(({ init }) => JSON.parse(init.body)[0].value.titles?.[0] === "Programme title");
+  const youtubeSavedValue = youtubeSave && JSON.parse(youtubeSave.init.body)[0].value;
+  if (!youtubeSave || youtubeSavedValue.deletion_count !== 2 || youtubeSavedValue.deletion_tracking_started_at !== "2026-11-06" || youtubeSavedValue.descriptions[0] !== "Short description") throw new Error("Video title, description, or deletion tracking was not persisted");
+  const compatibilitySave = youtubeWrites.find(({ init }) => JSON.parse(init.body)[0].value.deletion_count === 2 && JSON.parse(init.body)[0].value.titles?.[0] === "");
+  if (!compatibilitySave) throw new Error("Legacy video save signature was not preserved");
+  await saveSocialVideoList("facebook", ["https://facebook.com/watch/?v=123456789012345"], ["Facebook Programme"], ["Facebook description"]);
   const allVideoKeys = requests.filter(({ url, init }) => url.includes("site_content") && init?.method === "POST").map(({ init }) => JSON.parse(init.body)[0].key);
   if (!allVideoKeys.includes("facebook_videos")) throw new Error("Facebook video list was not persisted separately");
+  const facebookSave = requests.filter(({ url, init }) => url.includes("site_content") && init?.method === "POST" && JSON.parse(init.body)[0].key === "facebook_videos").at(-1);
+  const facebookValue = facebookSave && JSON.parse(facebookSave.init.body)[0].value;
+  if (facebookValue.titles[0] !== "Facebook Programme" || facebookValue.descriptions[0] !== "Facebook description") throw new Error("Facebook video metadata was not persisted");
   await assertRejects(() => saveSocialVideoList("tiktok", []), /Choose YouTube or Facebook/);
   const videosModule = await import("../js/videos-page.js");
-  const rendered = videosModule.renderSocialVideoLists({ youtube_videos: { urls: ["https://youtu.be/AbCdEf12345"] }, facebook_videos: { urls: ["https://facebook.com/watch/?v=123456789012345"] } });
-  if (!rendered.includes("youtube-nocookie.com/embed/AbCdEf12345") || !rendered.includes("Facebook Videos") || !rendered.includes("facebook.com/plugins/video.php") || rendered.indexOf("YouTube Videos") > rendered.indexOf("Facebook Videos")) throw new Error("Public page did not render distinct platform embeds");
+  const rendered = videosModule.renderSocialVideoLists({ youtube_videos: { urls: ["https://youtu.be/AbCdEf12345"], titles: ["Sunday Service"], descriptions: ["A message from the morning service"] }, facebook_videos: { urls: ["https://facebook.com/watch/?v=123456789012345"], titles: ["Youth Programme"], descriptions: ["Youth service highlights"] } });
+  if (!rendered.includes("Sunday Service") || !rendered.includes("Youth Programme") || !rendered.includes("A message from the morning service") || !rendered.includes("Youth service highlights") || !rendered.includes("youtube-nocookie.com/embed/AbCdEf12345") || !rendered.includes("Facebook Videos") || !rendered.includes("facebook.com/plugins/video.php") || rendered.indexOf("YouTube Videos") > rendered.indexOf("Facebook Videos")) throw new Error("Public page did not render separately titled platform embeds");
   console.log(JSON.stringify({ social_write: true, text_write: true, upload_url_shape: imageUrl.startsWith(PROJECT_URL + "/storage/v1/object/public/homepage-media/homepage/"), writes_authenticated: true, invalid_inputs_rejected: true, public_video_lists_read: true, video_list_admin_write: true, public_video_embeds: true, request_count: requests.length }));
 
 } finally {

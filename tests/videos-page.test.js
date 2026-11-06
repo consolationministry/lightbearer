@@ -40,8 +40,10 @@ test('build output contains public watch page and renderer at the paths referenc
 });
 
 test('video page renders its CMS-backed YouTube and Facebook lists', () => {
-  assert.match(renderer, /section\("youtube", content\.youtube_videos\?\.urls/);
-  assert.match(renderer, /section\("facebook", content\.facebook_videos\?\.urls/);
+  assert.match(renderer, /section\("youtube", content\.youtube_videos \|\| \{\}/);
+  assert.match(renderer, /section\("facebook", content\.facebook_videos \|\| \{\}/);
+  assert.match(renderer, /escapeHtml\(title\)/);
+  assert.match(renderer, /video-description/);
   assert.match(renderer, /youtubeEmbedUrl/);
   assert.match(renderer, /facebookEmbedUrl/);
 });
