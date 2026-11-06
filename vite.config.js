@@ -15,6 +15,8 @@ export default defineConfig({
       input: {
         index: path.resolve(root, "index.html"),
         videos: path.resolve(root, "videos.html"),
+        facebookVideos: path.resolve(root, "facebook-videos.html"),
+        youtubeVideos: path.resolve(root, "youtube-videos.html"),
         gallery: path.resolve(root, "gallery.html"),
         hymnal: path.resolve(root, "hymnal.html"),
         forms: path.resolve(root, "forms.html"),

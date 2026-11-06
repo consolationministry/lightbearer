@@ -17,12 +17,18 @@ function section(platform, links) {
 export function renderSocialVideoLists(content) {
   return section("youtube", content.youtube_videos?.urls || []) + section("facebook", content.facebook_videos?.urls || []);
 }
+export function renderSocialVideoPage(platform, content) {
+  if (!Object.hasOwn(settings, platform)) throw new Error("Choose YouTube or Facebook.");
+  const listKey = platform + "_videos";
+  return section(platform, content[listKey]?.urls || []);
+}
 async function init() {
   const root = document.getElementById("video-lists");
   if (!root) return;
   try {
     const content = await getCmsContent();
-    root.innerHTML = renderSocialVideoLists(content);
+    const platform = document.body.dataset.videoPlatform;
+    root.innerHTML = platform ? renderSocialVideoPage(platform, content) : renderSocialVideoLists(content);
   } catch (_) { root.textContent = "Videos could not be loaded right now. Please try again later."; }
 }
 if (hasDocument) init();
