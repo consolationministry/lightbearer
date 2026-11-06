@@ -55,9 +55,11 @@ try {
   if (!content.youtube_videos || !content.facebook_videos) throw new Error("Public CMS read omitted the separately stored video lists");
   const publicRead = requests.filter(({ url }) => url.includes("site_content") && url.includes("key=in.(about,hero,intro,retreat,social_links,youtube_videos,facebook_videos)")).at(-1);
   if (!publicRead?.url || publicRead.init?.method !== "GET" || !publicRead.init.headers.get("authorization")?.includes("sb_publishable_")) throw new Error("Social videos were not fetched with public credentials");
-  await saveSocialVideoList("youtube", ["https://youtu.be/AbCdEf12345"]);
+  await saveSocialVideoList("youtube", ["https://youtu.be/AbCdEf12345"], { deletionCount: 2, trackingStartedAt: "2026-11-06" });
   const videoKeys = requests.filter(({ url, init }) => url.includes("site_content") && init?.method === "POST").map(({ init }) => JSON.parse(init.body)[0].key);
   if (!videoKeys.includes("youtube_videos")) throw new Error("YouTube video list was not persisted");
+  const youtubeSave = requests.filter(({ url, init }) => url.includes("site_content") && init?.method === "POST" && JSON.parse(init.body)[0].key === "youtube_videos").at(-1);
+  if (!youtubeSave || JSON.parse(youtubeSave.init.body)[0].value.deletion_count !== 2 || JSON.parse(youtubeSave.init.body)[0].value.deletion_tracking_started_at !== "2026-11-06") throw new Error("Video deletion tracking was not persisted");
   await saveSocialVideoList("facebook", ["https://facebook.com/watch/?v=123456789012345"]);
   const allVideoKeys = requests.filter(({ url, init }) => url.includes("site_content") && init?.method === "POST").map(({ init }) => JSON.parse(init.body)[0].key);
   if (!allVideoKeys.includes("facebook_videos")) throw new Error("Facebook video list was not persisted separately");

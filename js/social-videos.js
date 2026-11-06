@@ -1,5 +1,5 @@
 export const SOCIAL_VIDEO_PLATFORMS = Object.freeze(["youtube", "facebook"]);
-export const MAX_SOCIAL_VIDEOS = 80;
+export const MAX_SOCIAL_VIDEOS = 10000;
 
 function getHost(url) {
   return url.hostname.toLowerCase().replace(/^www\./, "");
@@ -28,7 +28,7 @@ export function normalizeSocialVideoUrl(input, platform) {
 export function normalizeSocialVideoList(input, platform) {
   if (!Array.isArray(input)) throw new Error("Video links must be a list.");
   const values = input.map((value) => String(value || "").trim()).filter(Boolean);
-  if (values.length > MAX_SOCIAL_VIDEOS) throw new Error("Add no more than 80 video links per platform.");
+  if (values.length > MAX_SOCIAL_VIDEOS) throw new Error("Add no more than " + MAX_SOCIAL_VIDEOS + " video links per platform.");
   const normalized = values.map((value) => normalizeSocialVideoUrl(value, platform));
   const unique = new Set(normalized.map((item) => platform === "youtube" ? item.id : item.url));
   if (unique.size !== normalized.length) throw new Error("Remove duplicate video links before saving.");

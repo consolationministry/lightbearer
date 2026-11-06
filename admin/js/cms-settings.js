@@ -42,12 +42,18 @@ async function getVideoLists() {
   return Object.fromEntries(SOCIAL_VIDEO_PLATFORMS.map((platform) => [platform, Array.isArray(byKey[VIDEO_KEYS[platform]]?.urls) ? byKey[VIDEO_KEYS[platform]].urls : []]));
 }
 
-export async function saveSocialVideoList(platform, urls) {
+export async function saveSocialVideoList(platform, urls, tracking = {}) {
   await requireAdmin();
   if (!SOCIAL_VIDEO_PLATFORMS.includes(platform)) throw new Error("Choose YouTube or Facebook.");
   const safeUrls = normalizeSocialVideoList(urls, platform);
-  await supabaseRequest(endpoint + "?on_conflict=key", { method: "POST", body: [{ key: VIDEO_KEYS[platform], value: { urls: safeUrls } }], prefer: "resolution=merge-duplicates,return=representation" });
-  return safeUrls;
+  const value = { urls: safeUrls };
+  const wasTrackingMetadataProvided = Number.isSafeInteger(tracking.deletionCount) && tracking.deletionCount >= 0 && /^\d{4}-\d{2}-\d{2}$/.test(tracking.trackingStartedAt || "");
+  if (wasTrackingMetadataProvided) {
+    value.deletion_count = tracking.deletionCount;
+    value.deletion_tracking_started_at = tracking.trackingStartedAt;
+  } else if (Number.isSafeInteger(tracking.deletionCount) && tracking.deletionCount >= 0) value.deletion_count = tracking.deletionCount;
+  await supabaseRequest(endpoint + "?on_conflict=key", { method: "POST", body: [{ key: VIDEO_KEYS[platform], value }], prefer: "resolution=merge-duplicates,return=representation" });
+  return value;
 }
 
 export async function saveCmsContent(key, value) {

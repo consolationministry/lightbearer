@@ -11,9 +11,12 @@ test("admin exposes distinct Facebook and YouTube video menus and editors", asyn
   assert.match(admin, /id: "youtube-videos", label: "YouTube Videos"/);
   assert.match(admin, /id: "facebook-videos", label: "Facebook Videos"/);
   assert.match(admin, /renderSocialVideosAdmin\(document\.getElementById\("admin-content"\)/);
-  assert.match(editor, /textarea\.value = .*content\[platform \+ "_videos"\]/s);
-  assert.match(editor, /saveSocialVideoList\(platform, urls\)/);
-  assert.match(editor, /up to 80/i);
+  assert.match(editor, /input\.name = "video-link"/);
+  assert.match(editor, /saveSocialVideoList\(platform, normalized, \{ deletionCount: nextDeletedCount, trackingStartedAt \}\)/);
+  assert.match(editor, /edit\.dataset\.action = "edit"/);
+  assert.match(editor, /remove\.dataset\.action = "delete"/);
+  assert.match(editor, /deleted since/);
+  assert.match(await load("js/social-videos.js"), /MAX_SOCIAL_VIDEOS = 10000/);
 });
 
 test("public page embeds YouTube and Facebook lists separately and schema permits both keys", async () => {

@@ -584,4 +584,21 @@ a { color: inherit; }
 .library-upload-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #895af6, #7f3aee); transition: width 0.3s ease; }
 .library-upload-label { font-size: 0.85rem; color: #b9c6e4; }
 
+
 .admin-save-spinner{display:inline-block;width:1em;height:1em;margin-right:.5em;vertical-align:-.15em;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:admin-save-spin .7s linear infinite}@keyframes admin-save-spin{to{transform:rotate(360deg)}}
+
+.social-video-panel { overflow: hidden; }
+.social-video-panel > .panel-header { padding: 18px 22px 12px; }
+.social-video-panel > .panel-header h2 { margin: 0; }
+.social-video-count, .social-video-deletion-count { margin: 6px 0 0; color: var(--muted); font-size: .84rem; line-height: 1.5; }
+.social-video-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; padding-top: 12px; }
+.social-video-add .admin-field { margin: 0; }
+.social-video-add .form-actions { justify-content: flex-end; margin: 0; }
+.social-video-deletion-count { margin: 0; padding: 0 22px 14px; }
+.social-video-list { display: grid; gap: 8px; margin: 0; padding: 0 22px 22px; list-style: none; counter-reset: none; }
+.social-video-item { display: grid; grid-template-columns: 2.3rem minmax(0,1fr) auto; align-items: center; gap: 12px; min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); }
+.social-video-number { color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 750; }
+.social-video-url { min-width: 0; overflow-wrap: anywhere; font-size: .88rem; line-height: 1.45; }
+.social-video-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+.social-video-actions .button { min-height: 36px; padding: 7px 11px; }
+@media(max-width:640px) { .social-video-add { grid-template-columns: 1fr; } .social-video-add .form-actions { justify-content: space-between; } .social-video-item { grid-template-columns: 2rem minmax(0,1fr); gap: 8px; } .social-video-actions { grid-column: 2; } .social-video-panel > .panel-header { padding-right: 16px; padding-left: 16px; } .social-video-list { padding-right: 16px; padding-left: 16px; } .social-video-deletion-count { padding-right: 16px; padding-left: 16px; } }

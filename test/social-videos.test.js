@@ -36,10 +36,9 @@ test("rejects duplicates after trimming and canonical URL parsing", () => {
   assert.throws(() => normalizeSocialVideoList(["https://youtu.be/AbCdEf12345", yt], "youtube"), /duplicate/i);
 });
 
-test("accepts 80 distinct links and rejects an 81st", () => {
-  const links = Array.from({ length: MAX_SOCIAL_VIDEOS }, (_, i) => "https://youtu.be/" + String(i).padStart(11, "0"));
-  assert.equal(normalizeSocialVideoList(links, "youtube").length, 80);
-  assert.throws(() => normalizeSocialVideoList([...links, "https://youtu.be/99999999999"], "youtube"), /no more than 80/i);
+test("allows more than 80 distinct links for numbered admin lists", () => {
+  const links = Array.from({ length: 125 }, (_, i) => "https://youtu.be/" + String(i).padStart(11, "0"));
+  assert.equal(normalizeSocialVideoList(links, "youtube").length, 125);
 });
 
 test("creates platform-specific embed URLs", () => {
