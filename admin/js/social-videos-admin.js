@@ -85,8 +85,15 @@ export async function renderSocialVideosAdmin(root, platform) {
     const title = document.createElement("input"); title.type = "text"; title.name = "title"; title.required = true; title.maxLength = 160; title.value = editing ? titles[index] || "" : ""; title.placeholder = "Enter the programme title";
     titleLabel.append(title);
     const descriptionLabel = el("label", "admin-field", "Description");
-    const description = document.createElement("textarea"); description.name = "description"; description.rows = 4; description.maxLength = 2000; description.value = editing ? descriptions[index] || "" : ""; description.placeholder = "Optional programme description";
+    const description = document.createElement("textarea"); description.name = "description"; description.rows = 4; description.maxLength = 200; description.value = editing ? descriptions[index] || "" : ""; description.placeholder = "Optional programme description";
     descriptionLabel.append(description);
+    const descriptionCounter = el("span", "social-video-description-counter", description.value.length + "/200 characters");
+    descriptionCounter.setAttribute("aria-live", "polite");
+    descriptionCounter.setAttribute("aria-label", "Description character count");
+    descriptionLabel.append(descriptionCounter);
+    description.addEventListener("input", () => {
+      descriptionCounter.textContent = description.value.length + "/200 characters";
+    });
     const linkLabel = el("label", "admin-field", "Video link");
     const link = document.createElement("input"); link.type = "url"; link.name = "url"; link.required = true; link.placeholder = "https://..."; link.autocomplete = "url"; link.inputMode = "url"; link.value = editing ? urls[index] : "";
     linkLabel.append(link);
