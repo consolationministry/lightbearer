@@ -35,6 +35,20 @@ test('each dedicated public video page is independently navigable and platform-s
   }
 });
 
+test('long platform descriptions collapse after 120 characters and retain the full text for expansion', () => {
+  const longDescription = 'A'.repeat(120) + 'B'.repeat(45);
+  for (const platform of ['facebook', 'youtube']) {
+    const html = renderSocialVideoPage(platform, { [platform + '_videos']: { urls: [platform === 'youtube' ? 'https://youtu.be/AbCdEf12345' : 'https://www.facebook.com/watch/?v=1234567890'], descriptions: [longDescription] } });
+    assert.match(html, /video-description-short/);
+    assert.match(html, new RegExp('A{120}…'));
+    assert.match(html, new RegExp('A{120}B{45}'));
+    assert.match(html, /aria-expanded="false">Read more/);
+  }
+  const exactLimit = renderSocialVideoPage('youtube', { youtube_videos: { urls: ['https://youtu.be/AbCdEf12345'], descriptions: ['A'.repeat(120)] } });
+  assert.match(exactLimit, /A{120}/);
+  assert.doesNotMatch(exactLimit, /video-description-toggle/);
+});
+
 test('dedicated renderer emits only the selected platform and preserves its embed links', () => {
   const facebook = renderSocialVideoPage('facebook', content);
   assert.match(facebook, /Facebook Videos/);
@@ -82,6 +96,9 @@ test('programme titles and descriptions are escaped before appearing publicly', 
   assert.match(vite, /facebookVideos: path\.resolve\(root, "facebook-videos\.html"\)/);
   assert.match(vite, /youtubeVideos: path\.resolve\(root, "youtube-videos\.html"\)/);
   assert.match(buildScript, /"social-videos\.js",\s*"videos-page\.js"/);
+  const renderer = await read('js/videos-page.js');
+  assert.match(renderer, /addEventListener\("click"/);
+  assert.match(renderer, /toggle\.textContent = expanded \? "Read less" : "Read more"/);
 });
 
 test('dedicated public pages are emitted to the production build', async () => {

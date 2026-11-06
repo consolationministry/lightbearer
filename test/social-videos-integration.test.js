@@ -15,6 +15,9 @@ test("admin exposes distinct Facebook and YouTube video menus and editors", asyn
   assert.match(editor, /titles = urls\.map/);
   assert.match(editor, /descriptions = urls\.map/);
   assert.match(editor, /const title = document\.createElement\("input"\)/);
+  assert.match(editor, /description\.maxLength = 200/);
+  assert.match(editor, /descriptionCounter\.textContent/);
+  assert.match(editor, /description\.addEventListener\("input"/);
   assert.match(editor, /saveSocialVideoList\(platform, normalized, alignedTitles, alignedDescriptions, \{ deletionCount: nextDeletedCount, trackingStartedAt \}\)/);
   assert.match(editor, /edit\.dataset\.action = "edit"/);
   assert.match(editor, /remove\.dataset\.action = "delete"/);
