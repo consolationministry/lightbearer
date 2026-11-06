@@ -42,11 +42,22 @@ async function getVideoLists() {
   return Object.fromEntries(SOCIAL_VIDEO_PLATFORMS.map((platform) => [platform, Array.isArray(byKey[VIDEO_KEYS[platform]]?.urls) ? byKey[VIDEO_KEYS[platform]].urls : []]));
 }
 
-export async function saveSocialVideoList(platform, urls, tracking = {}) {
+export async function saveSocialVideoList(platform, urls, titles = [], descriptions = [], tracking = {}) {
   await requireAdmin();
   if (!SOCIAL_VIDEO_PLATFORMS.includes(platform)) throw new Error("Choose YouTube or Facebook.");
+  if (!Array.isArray(titles)) {
+    tracking = titles || {};
+    titles = [];
+    descriptions = [];
+  } else if (!Array.isArray(descriptions)) {
+    tracking = descriptions || {};
+    descriptions = [];
+  }
   const safeUrls = normalizeSocialVideoList(urls, platform);
-  const value = { urls: safeUrls };
+  if (!Array.isArray(titles) || !Array.isArray(descriptions)) throw new Error("Video details must be lists.");
+  const safeTitles = safeUrls.map((_, index) => String(titles[index] || "").trim());
+  const safeDescriptions = safeUrls.map((_, index) => String(descriptions[index] || "").trim());
+  const value = { urls: safeUrls, titles: safeTitles, descriptions: safeDescriptions };
   const wasTrackingMetadataProvided = Number.isSafeInteger(tracking.deletionCount) && tracking.deletionCount >= 0 && /^\d{4}-\d{2}-\d{2}$/.test(tracking.trackingStartedAt || "");
   if (wasTrackingMetadataProvided) {
     value.deletion_count = tracking.deletionCount;

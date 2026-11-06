@@ -7,8 +7,8 @@ const root = new URL('../', import.meta.url);
 const read = (file) => readFile(new URL(file, root), 'utf8');
 
 const content = {
-  youtube_videos: { urls: ['https://youtu.be/AbCdEf12345'] },
-  facebook_videos: { urls: ['https://www.facebook.com/watch/?v=1234567890'] }
+  youtube_videos: { urls: ['https://youtu.be/AbCdEf12345'], titles: ['Sunday Service'], descriptions: ['A message from the morning service'] },
+  facebook_videos: { urls: ['https://www.facebook.com/watch/?v=1234567890'], titles: ['Youth Programme'], descriptions: ['Highlights from the youth gathering'] }
 };
 
 test('existing combined videos page remains available and links both dedicated pages', async () => {
@@ -38,11 +38,15 @@ test('each dedicated public video page is independently navigable and platform-s
 test('dedicated renderer emits only the selected platform and preserves its embed links', () => {
   const facebook = renderSocialVideoPage('facebook', content);
   assert.match(facebook, /Facebook Videos/);
+  assert.match(facebook, /Youth Programme/);
+  assert.match(facebook, /Highlights from the youth gathering/);
   assert.match(facebook, /facebook\.com\/plugins\/video\.php/);
   assert.doesNotMatch(facebook, /youtube-nocookie\.com/);
 
   const youtube = renderSocialVideoPage('youtube', content);
   assert.match(youtube, /YouTube Videos/);
+  assert.match(youtube, /Sunday Service/);
+  assert.match(youtube, /A message from the morning service/);
   assert.match(youtube, /youtube-nocookie\.com\/embed\/AbCdEf12345/);
   assert.doesNotMatch(youtube, /facebook\.com\/plugins\/video\.php/);
   assert.throws(() => renderSocialVideoPage('instagram', content), /Choose YouTube or Facebook/);
@@ -56,7 +60,24 @@ test('combined renderer still displays both CMS-backed lists', () => {
   assert.match(html, /facebook\.com\/plugins\/video\.php/);
 });
 
-test('both dedicated pages are Vite build entries and use the shared public renderer', async () => {
+test('existing video entries without metadata keep their links and receive backwards-compatible headings', () => {
+  const oldData = { youtube_videos: { urls: ['https://youtu.be/AbCdEf12345'] }, facebook_videos: { urls: ['https://www.facebook.com/watch/?v=1234567890'] } };
+  const html = renderSocialVideoLists(oldData);
+  assert.match(html, /YouTube video 1/);
+  assert.match(html, /Facebook video 1/);
+  assert.match(html, /youtube-nocookie\.com\/embed\/AbCdEf12345/);
+  assert.match(html, /facebook\.com\/plugins\/video\.php/);
+});
+
+test('programme titles and descriptions are escaped before appearing publicly', () => {
+  const unsafe = { youtube_videos: { urls: ['https://youtu.be/AbCdEf12345'], titles: ['<script>bad</script>'], descriptions: ['<img src=x>'] } };
+  const html = renderSocialVideoPage('youtube', unsafe);
+  assert.match(html, /&lt;script&gt;bad&lt;\/script&gt;/);
+  assert.match(html, /&lt;img src=x&gt;/);
+  assert.doesNotMatch(html, /<script>bad<\/script>/);
+});
+
+ test('both dedicated pages are Vite build entries and use the shared public renderer', async () => {
   const [vite, buildScript] = await Promise.all([read('vite.config.js'), read('scripts/build-web.mjs')]);
   assert.match(vite, /facebookVideos: path\.resolve\(root, "facebook-videos\.html"\)/);
   assert.match(vite, /youtubeVideos: path\.resolve\(root, "youtube-videos\.html"\)/);

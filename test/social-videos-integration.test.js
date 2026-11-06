@@ -11,8 +11,11 @@ test("admin exposes distinct Facebook and YouTube video menus and editors", asyn
   assert.match(admin, /id: "youtube-videos", label: "YouTube Videos"/);
   assert.match(admin, /id: "facebook-videos", label: "Facebook Videos"/);
   assert.match(admin, /renderSocialVideosAdmin\(document\.getElementById\("admin-content"\)/);
-  assert.match(editor, /input\.name = "video-link"/);
-  assert.match(editor, /saveSocialVideoList\(platform, normalized, \{ deletionCount: nextDeletedCount, trackingStartedAt \}\)/);
+  assert.match(editor, /const add = el\("button", "button button-primary", "Add video link"\)/);
+  assert.match(editor, /titles = urls\.map/);
+  assert.match(editor, /descriptions = urls\.map/);
+  assert.match(editor, /const title = document\.createElement\("input"\)/);
+  assert.match(editor, /saveSocialVideoList\(platform, normalized, alignedTitles, alignedDescriptions, \{ deletionCount: nextDeletedCount, trackingStartedAt \}\)/);
   assert.match(editor, /edit\.dataset\.action = "edit"/);
   assert.match(editor, /remove\.dataset\.action = "delete"/);
   assert.match(editor, /deleted since/);
