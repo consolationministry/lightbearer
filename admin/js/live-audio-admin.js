@@ -20,6 +20,7 @@ import { createLiveAudioId, subscribeLiveAudioBursts } from "../../js/live-audio
 import { startLiveAudioRecording } from "../../js/live-audio-recording.js?v=2";
 import { AUDIO_CONTROL_SPECS, AUDIO_PRESETS, createLiveAudioMicEngine, DEFAULT_AUDIO_SETTINGS, startLiveAudioPublisher } from "../../js/live-audio-webrtc.js?v=4";
 import { buildWaveformBars, getWaveformDisplayGain, scaleWaveformBars } from "./live-audio-waveform.js";
+import { exportLiveAudioProgram, isExportableChurchRecording } from "./live-audio-export.js";
 
 let activeTab = "programs";
 let editingId = null;
@@ -293,7 +294,10 @@ function renderProgramRows(data) {
         (program.status === "draft"
           ? '<button class="button button-secondary" type="button" data-action="audio-admin-publish" data-id="' + escapeHtml(program.id) + '">Publish</button>'
           : "") +
-        (program.recording_path ? '<a class="button button-secondary" href="' + escapeHtml(program.recording_path) + '" download aria-label="Download ' + escapeHtml(program.title) + ' audio">Download audio</a>' : "") +
+        (program.status === "published" && isExportableChurchRecording(program)
+          ? '<button class="button button-secondary" type="button" data-action="audio-admin-export-programme" data-id="' +
+            escapeHtml(program.id) + '" aria-label="Export ' + escapeHtml(program.title) + ' audio">Export</button>'
+          : "") +
         '<button class="button button-secondary audio-admin-delete" type="button" data-action="audio-admin-delete" data-id="' +
         escapeHtml(program.id) + '" aria-label="Delete ' + escapeHtml(program.title) + '">' + icon("trash") + "</button>" +
         "</div></td></tr>";
@@ -1500,6 +1504,26 @@ export async function handleLiveAudioAdminAction(button) {
     const drafts = cachedData.programs.filter(program => program.status === "draft");
     if (!drafts.length) toast("There are no drafts to export.");
     else if (window.confirm("Download " + drafts.length + " draft broadcast(s) as JSON?")) downloadDrafts();
+    return true;
+  }
+  if (action === "audio-admin-export-programme") {
+    const program = cachedData.programs.find(item => item.id === button.dataset.id);
+    if (!program) return true;
+    if (button.disabled) return true;
+    button.disabled = true;
+    const originalText = button.textContent;
+    button.textContent = "Exporting…";
+    try {
+      const result = await exportLiveAudioProgram(program);
+      toast(result.fallback
+        ? "Export opened for download. Check your downloads folder."
+        : "Exported " + result.filename + ".");
+    } catch (error) {
+      toast(error.message || "The audio could not be exported.");
+    } finally {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
     return true;
   }
   if (action === "audio-admin-mic-test") {
