@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import {
-  buildExportMetadata,
   exportLiveAudioProgram,
   getExportFilename,
+  getExportFormat,
   isExportableChurchRecording
 } from "../admin/js/live-audio-export.js";
 
@@ -88,20 +88,10 @@ test("export filename keeps the title, date and original audio extension", () =>
     })),
     "sunday-worship-service-2026-11-15.mp3"
   );
+  assert.equal(getExportFormat("https://res.cloudinary.com/demo/video/upload/asset.webm"), "webm");
 });
 
-test("export metadata follows the church programme record", () => {
-  const metadata = buildExportMetadata(publishedCloudinaryProgram());
-  assert.equal(metadata.id, PROGRAM_ID);
-  assert.equal(metadata.title, "Sunday Worship Service");
-  assert.equal(metadata.speaker, "Pastor A");
-  assert.equal(metadata.category, "Sunday Service");
-  assert.equal(metadata.format, "webm");
-  assert.match(metadata.source, /church-owned/);
-  assert.ok(metadata.exportedAt);
-});
-
-test("export fetches the audio and saves it as a dated file", async () => {
+test("export returns only the audio file with no programme metadata or sidecar", async () => {
   const program = publishedCloudinaryProgram();
   const document = createFakeDocument();
   const blob = new Blob(["audio-data"], { type: "audio/webm" });
@@ -120,12 +110,16 @@ test("export fetches the audio and saves it as a dated file", async () => {
   assert.equal(document.links[0].href, "blob:fake-export");
   assert.equal(document.links[0].download, "sunday-worship-service-2026-11-15.webm");
   assert.equal(document.links[0].clicked, true);
+  // Exact keys: no metadata sidecar, only audio export result
+  assert.deepEqual(Object.keys(result).sort(), ["fallback", "filename", "format", "size"]);
   assert.equal(result.filename, "sunday-worship-service-2026-11-15.webm");
   assert.equal(result.size, 10);
   assert.equal(result.fallback, false);
+  assert.equal(result.format, "webm");
+  assert.equal("metadata" in result, false);
 });
 
-test("export falls back to a direct download link when fetch is blocked", async () => {
+test("export fallback is also audio-only with no metadata sidecar", async () => {
   const program = publishedCloudinaryProgram();
   const document = createFakeDocument();
   const result = await exportLiveAudioProgram(program, {
@@ -139,6 +133,7 @@ test("export falls back to a direct download link when fetch is blocked", async 
   assert.equal(document.links[0].download, "sunday-worship-service-2026-11-15.webm");
   assert.equal(document.links[0].target, "_blank");
   assert.equal(result.fallback, true);
+  assert.equal("metadata" in result, false);
 });
 
 test("export rejects embed-only Seraph Media and unpublished programmes", async () => {
@@ -175,4 +170,18 @@ test("admin rows show Export beside Edit and Delete only for published eligible 
   assert.match(source, /isExportableChurchRecording\(program\)/);
   assert.match(source, /button-secondary" type="button" data-action="audio-admin-export-programme"/);
   assert.doesNotMatch(source, /recording_path\? '<a class="button button-secondary" href=.*download audio/);
+  // Export must not emit metadata sidecar in admin handler
+  const exportHandlerStart = source.indexOf('data-action="audio-admin-export-programme"');
+  assert.ok(exportHandlerStart >= 0);
+  const handlerSnippet = source.slice(exportHandlerStart, exportHandlerStart + 800);
+  assert.doesNotMatch(handlerSnippet, /metadata|buildExportMetadata|\.json|sidecar/);
+});
+
+test("export helper exposes no metadata sidecar builder", async () => {
+  const source = await readFile(new URL("../admin/js/live-audio-export.js", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /buildExportMetadata/);
+  assert.doesNotMatch(source, /metadata/);
+  assert.doesNotMatch(source, /\.json/);
+  assert.match(source, /export async function exportLiveAudioProgram/);
+  assert.match(source, /createDownloadLink\(documentLike, objectUrl, filename\)/);
 });

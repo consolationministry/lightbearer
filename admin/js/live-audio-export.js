@@ -21,13 +21,9 @@ export function isExportableChurchRecording(program) {
   if (!program || program.status !== "published") return false;
   const url = recordingUrl(program);
   if (!url) return false;
-  if (containsBlockedSource(url) || containsBlockedSource(program.title) && containsBlockedSource(program.description)) {
-    // Title/description alone do not prove a blocked source; only guard on URL.
-    // Re-check URL only below, so do not return false here for text alone.
-  }
   if (containsBlockedSource(url)) return false;
   if (/^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be|vimeo\.com|soundcloud\.com)/i.test(url)) return false;
-  if (url.startsWith("cloudinary:")) return false; // authenticated reference needs a signed playback URL, not a direct file export
+  if (url.startsWith("cloudinary:")) return false;
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== "https:") return false;
@@ -78,23 +74,6 @@ export function getExportFilename(program) {
   return [slug, date].filter(Boolean).join("-") + "." + extension;
 }
 
-export function buildExportMetadata(program) {
-  return {
-    id: asString(program && program.id),
-    title: asString(program && program.title),
-    speaker: asString(program && program.speaker),
-    category: asString(program && program.category),
-    venue: asString(program && program.venue),
-    date: asString(program && program.date),
-    description: asString(program && program.description),
-    durationSeconds: Math.max(0, Number(program && program.recordingDurationSeconds) || 0),
-    status: asString(program && program.status),
-    format: getExportExtension(program),
-    exportedAt: new Date().toISOString(),
-    source: "Lightbearer admin export (church-owned recording)"
-  };
-}
-
 function createDownloadLink(documentLike, href, filename) {
   const link = documentLike.createElement("a");
   link.href = href;
@@ -130,7 +109,7 @@ export async function exportLiveAudioProgram(program, options) {
 
   const url = recordingUrl(program);
   const filename = getExportFilename(program);
-  const metadata = buildExportMetadata(program);
+  const format = getExportExtension(program);
   const fetcher = opts.fetcher || globalThis.fetch;
   const documentLike = opts.document || (typeof document !== "undefined" ? document : null);
   const urlObj = opts.urlObject || globalThis.URL;
@@ -147,10 +126,8 @@ export async function exportLiveAudioProgram(program, options) {
     if (!response || !response.ok) throw new Error("The recording could not be fetched.");
     blob = await response.blob();
   } catch (error) {
-    // Cross-origin / CORS / platform block: fall back to a direct download link.
-    // This still exports only the same validated church recording URL.
     fallbackDownload(documentLike, url, filename);
-    return { filename, metadata, fallback: true, size: 0, format: metadata.format, message: "Opened the recording for download. If it did not start, long-press or right-click and choose Save Audio." };
+    return { filename, fallback: true, size: 0, format, message: "Opened the recording for download. If it did not start, long-press or right-click and choose Save Audio." };
   }
 
   if (!blob || !blob.size) throw new Error("The recording file is empty and could not be exported.");
@@ -160,9 +137,8 @@ export async function exportLiveAudioProgram(program, options) {
     createDownloadLink(documentLike, objectUrl, filename);
   } finally {
     if (revokeObjectURL) {
-      // Small delay lets the browser read the blob before revoking.
       setTimeout(() => { try { revokeObjectURL(objectUrl); } catch (error) {} }, 1000);
     }
   }
-  return { filename, metadata, fallback: false, size: blob.size, format: metadata.format };
+  return { filename, fallback: false, size: blob.size, format };
 }
