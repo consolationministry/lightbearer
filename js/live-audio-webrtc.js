@@ -55,6 +55,15 @@ export function getLiveAudioReconnectDelay(attempt) {
   return Math.min(3000, 250 * Math.pow(2, count));
 }
 
+export function getLiveAudioPublisherAggregateStatus(peerStates, signalingStatus) {
+  if (signalingStatus && signalingStatus !== "connected") {
+    return signalingStatus === "disconnected" ? "disconnected" : "reconnecting";
+  }
+  if (peerStates.some(state => state === "connected")) return "connected";
+  if (peerStates.some(state => state === "disconnected" || state === "failed")) return "reconnecting";
+  return "connecting";
+}
+
 export function getLiveAudioListenerStatus(connectionState, playbackStatus) {
   if (playbackStatus === "blocked") return "tap-to-play";
   if (connectionState !== "connected") return "connecting";
@@ -390,10 +399,21 @@ export async function startLiveAudioPublisher(options) {
   let statsTimer = null;
   let statsPolling = false;
   let handleSignal = null;
+  let signalingStatus = "connected";
+  let lastPublisherStatus = "connecting";
   const createPeerConnection = opts.createPeerConnection || makeAudioPeerConnection;
+  const reportPublisherStatus = () => {
+    const status = getLiveAudioPublisherAggregateStatus(
+      Array.from(peers.values(), peer => peer.connectionState), signalingStatus);
+    if (status !== lastPublisherStatus) {
+      lastPublisherStatus = status;
+      if (opts.onStatus) opts.onStatus(status);
+    }
+  };
   channel = await (opts.connectChannel || connectLiveAudioChannel)(opts.programId, opts.sessionId, {
     onStatus: status => {
-      if (opts.onStatus) opts.onStatus(status);
+      signalingStatus = status;
+      reportPublisherStatus();
     },
     onSignal: message => { if (handleSignal) void handleSignal(message); }
   });
@@ -422,6 +442,7 @@ export async function startLiveAudioPublisher(options) {
     peer.onicecandidate = null;
     peer.close();
     if (opts.onListenerCount) opts.onListenerCount(peers.size);
+    reportPublisherStatus();
   };
 
   const schedulePeerRecovery = (clientId, peer, delayMs) => {
@@ -446,7 +467,9 @@ export async function startLiveAudioPublisher(options) {
       const iceQueue = peerIceQueues.get(clientId);
       if (!iceQueue) return;
       peerRecoveryAttempts.set(clientId, attempts + 1);
-      if (opts.onStatus) opts.onStatus("reconnecting");
+      // Per-peer recovery stays silent on the global status so one
+      // slow-joining listener cannot flip the whole broadcast to
+      // "reconnecting" while other listeners are still connected.
       iceQueue.beginRemoteDescription();
       if (!channel.send({ type: "restart-start", sessionId: opts.sessionId, from: localClientId, to: clientId })) {
         await iceQueue.restoreRemoteDescription();
@@ -465,7 +488,6 @@ export async function startLiveAudioPublisher(options) {
         })) {
           throw new Error("The live audio signaling channel is reconnecting.");
         }
-        if (opts.onStatus) opts.onStatus("reconnecting");
         schedulePeerRecovery(clientId, peer, Math.min(5000, 500 * Math.pow(2, attempts + 1)));
       } catch (error) {
         await iceQueue.restoreRemoteDescription();
@@ -576,7 +598,20 @@ export async function startLiveAudioPublisher(options) {
       queuedCandidates.forEach(candidate => {
         void iceQueue.addRemoteCandidate(candidate).catch(() => {});
       });
-      opts.stream.getAudioTracks().forEach(track => peer.addTrack(track, opts.stream));
+      opts.stream.getAudioTracks().forEach(track => {
+        const sender = peer.addTrack(track, opts.stream);
+        if (sender && typeof sender.setParameters === "function") {
+          try {
+            const parameters = sender.getParameters ? sender.getParameters() : {};
+            const next = parameters || {};
+            next.encodings = Array.isArray(next.encodings) && next.encodings.length
+              ? next.encodings.map(encoding => ({ ...encoding, maxBitrate: Math.min(Number(encoding.maxBitrate) || 64000, 64000) }))
+              : [{ maxBitrate: 64000 }];
+            const result = sender.setParameters(next);
+            if (result && typeof result.catch === "function") result.catch(() => {});
+          } catch (error) {}
+        }
+      });
       peer.onicecandidate = event => {
         if (!event.candidate) return;
         channel.send({
@@ -593,17 +628,14 @@ export async function startLiveAudioPublisher(options) {
           clearPeerTimer(peerDisconnectTimers, message.from);
           clearPeerTimer(peerRecoveryTimers, message.from);
           peerRecoveryAttempts.delete(message.from);
-          if (opts.onStatus) opts.onStatus("connected");
           void reportNetworkStats();
-        } else if (peer.connectionState === "disconnected") {
-          clearPeerTimer(peerDisconnectTimers, message.from);
-          schedulePeerRecovery(message.from, peer, Math.min(500, 500 * Math.pow(2, peerRecoveryAttempts.get(message.from) || 0)));
-        } else if (peer.connectionState === "failed") {
+        } else if (peer.connectionState === "disconnected" || peer.connectionState === "failed") {
           clearPeerTimer(peerDisconnectTimers, message.from);
           schedulePeerRecovery(message.from, peer, Math.min(500, 500 * Math.pow(2, peerRecoveryAttempts.get(message.from) || 0)));
         } else if (peer.connectionState === "closed") {
           closePeer(message.from);
         }
+        reportPublisherStatus();
         if (opts.onListenerCount) opts.onListenerCount(peers.size);
       };
       await iceQueue.setRemoteDescription(message.description);
@@ -628,7 +660,7 @@ export async function startLiveAudioPublisher(options) {
     }
   };
 
-  statsTimer = globalThis.setInterval(() => { void reportNetworkStats(); }, 3000);
+  statsTimer = globalThis.setInterval(() => { void reportNetworkStats(); }, 5000);
   void reportNetworkStats();
 
   return {

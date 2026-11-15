@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   classifyLiveAudioNetworkQuality,
   createLiveAudioIceCandidateQueue,
+  getLiveAudioPublisherAggregateStatus,
   getLiveAudioReconnectDelay,
   readLiveAudioPeerStats,
   getLiveAudioListenerStatus,
@@ -109,6 +110,73 @@ test("publisher answers fifty concurrent listener offers, rejects the fifty-firs
   assert.equal(publisher.listenerCount, 50);
   await publisher.stop();
   assert.equal(peers.filter(peer => peer.closed).length, 51);
+});
+
+test("publisher aggregate status stays connected while one joining listener is still working", () => {
+  assert.equal(getLiveAudioPublisherAggregateStatus(["connected", "connecting"], "connected"), "connected");
+  assert.equal(getLiveAudioPublisherAggregateStatus(["disconnected", "connected"], "connected"), "connected");
+  assert.equal(getLiveAudioPublisherAggregateStatus([], "connected"), "connecting");
+  assert.equal(getLiveAudioPublisherAggregateStatus(["connecting"], "connected"), "connecting");
+  assert.equal(getLiveAudioPublisherAggregateStatus(["failed"], "connected"), "reconnecting");
+  assert.equal(getLiveAudioPublisherAggregateStatus(["connected"], "reconnecting"), "reconnecting");
+  assert.equal(getLiveAudioPublisherAggregateStatus(["connected"], "disconnected"), "disconnected");
+});
+
+test("publisher stays connected when only one of two peers is mid-join", async () => {
+  const statuses = [];
+  const peers = [];
+  const channel = { connected: true, send() { return true; }, close() {} };
+  const stream = { getAudioTracks: () => [{ id: "broadcast-track" }] };
+  let callbacks;
+  const makePeer = () => {
+    const peer = {
+      connectionState: "new",
+      signalingState: "stable",
+      localDescription: null,
+      remoteDescription: null,
+      onicecandidate: null,
+      onconnectionstatechange: null,
+      iceGatheringState: "complete",
+      async createAnswer() { return { type: "answer", sdp: "answer" }; },
+      async setLocalDescription(d) { this.localDescription = d; this.signalingState = "stable"; },
+      async setRemoteDescription(d) { this.remoteDescription = d; },
+      async addIceCandidate() {},
+      getStats: null,
+      addTrack() { return { setParameters: async () => {}, getParameters: () => ({}) }; },
+      close() { this.connectionState = "closed"; }
+    };
+    peers.push(peer);
+    return peer;
+  };
+  const publisher = await startLiveAudioPublisher({
+    programId: "00000000-0000-4000-8000-000000000001",
+    sessionId: "00000000-0000-4000-8000-000000000002",
+    stream,
+    createPeerConnection: makePeer,
+    connectChannel: async (_p, _s, c) => { callbacks = c; return channel; },
+    onStats: () => {},
+    onStatus: s => statuses.push(s)
+  });
+  const offer = (from, to) => ({
+    type: "offer",
+    sessionId: "00000000-0000-4000-8000-000000000002",
+    from,
+    to: to || "host-00000000-0000-4000-8000-000000000002",
+    description: { type: "offer", sdp: "offer" }
+  });
+  await callbacks.onSignal(offer("client-one"));
+  await callbacks.onSignal(offer("client-two"));
+  for (let turn = 0; turn < 100 && peers.length < 2; turn += 1) {
+    await new Promise(resolve => setImmediate(resolve));
+  }
+  assert.equal(peers.length, 2);
+  peers[0].connectionState = "connected";
+  if (peers[0].onconnectionstatechange) peers[0].onconnectionstatechange();
+  assert.equal(getLiveAudioPublisherAggregateStatus(["connected", "connecting"], "connected"), "connected");
+  peers[1].connectionState = "connecting";
+  if (peers[1].onconnectionstatechange) peers[1].onconnectionstatechange();
+  assert.notEqual(statuses[statuses.length - 1], "reconnecting");
+  await publisher.stop();
 });
 
 test("listener reconnect backoff starts quickly and caps at three seconds", () => {
