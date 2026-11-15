@@ -211,8 +211,12 @@ export async function createLiveAudioMicEngine(options) {
   let rawStream;
   try {
     const audioConstraints = {
-      // Keep browser/device audio processing at its defaults to avoid extra cleanup buffering.
+      // Let the browser's own noise suppression and echo cancellation clean
+      // background voices before local audio processing. Auto gain stays off
+      // because the processing chain already runs a compressor.
       autoGainControl: false,
+      echoCancellation: true,
+      noiseSuppression: true,
       channelCount: 1
     };
     if (opts.deviceId) audioConstraints.deviceId = { exact: opts.deviceId };
