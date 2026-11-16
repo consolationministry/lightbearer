@@ -483,3 +483,78 @@ test("listener does not replace archive playback when a new live stream arrives"
   assert.equal(playbackCalls, 0);
   await listener.stop();
 });
+
+test("a listener joining mid-broadcast does not interrupt the live publisher or its recording", async () => {
+  const peers = [];
+  const sentMessages = [];
+  const channel = {
+    connected: true,
+    send(message) { sentMessages.push(message); return true; },
+    close() {}
+  };
+  const stream = { getAudioTracks: () => [{ id: "broadcast-track" }] };
+  let callbacks;
+  const makePeer = () => {
+    const peer = {
+      connectionState: "new",
+      signalingState: "stable",
+      localDescription: null,
+      remoteDescription: null,
+      onicecandidate: null,
+      onconnectionstatechange: null,
+      iceGatheringState: "complete",
+      async createAnswer() { return { type: "answer", sdp: "answer" }; },
+      async setLocalDescription(d) { this.localDescription = d; this.signalingState = "stable"; },
+      async setRemoteDescription(d) { this.remoteDescription = d; },
+      async addIceCandidate() {},
+      getStats: null,
+      addTrack(track, mediaStream) { this.track = track; this.stream = mediaStream; return { setParameters: async () => {}, getParameters: () => ({}) }; },
+      close() { this.connectionState = "closed"; }
+    };
+    peers.push(peer);
+    return peer;
+  };
+  const publisher = await startLiveAudioPublisher({
+    programId: "00000000-0000-4000-8000-000000000001",
+    sessionId: "00000000-0000-4000-8000-000000000002",
+    stream,
+    createPeerConnection: makePeer,
+    connectChannel: async (_p, _s, c) => { callbacks = c; return channel; },
+    onStats: () => {},
+    onStatus: () => {}
+  });
+  const offer = from => ({
+    type: "offer",
+    sessionId: "00000000-0000-4000-8000-000000000002",
+    from,
+    to: "host-00000000-0000-4000-8000-000000000002",
+    description: { type: "offer", sdp: "offer" }
+  });
+  await callbacks.onSignal(offer("listener-one"));
+  for (let turn = 0; turn < 100 && peers.length < 1; turn += 1) {
+    await new Promise(resolve => setImmediate(resolve));
+  }
+  assert.equal(peers.length, 1);
+  const firstPeer = peers[0];
+  firstPeer.connectionState = "connected";
+  if (firstPeer.onconnectionstatechange) firstPeer.onconnectionstatechange();
+  assert.equal(getLiveAudioPublisherAggregateStatus(["connected"], "connected"), "connected");
+  const streamBeforeJoin = firstPeer.stream;
+  // second listener joins while publisher is already connected and recording
+  await callbacks.onSignal(offer("listener-two"));
+  for (let turn = 0; turn < 100 && peers.length < 2; turn += 1) {
+    await new Promise(resolve => setImmediate(resolve));
+  }
+  assert.equal(peers.length, 2);
+  const secondPeer = peers[1];
+  assert.notEqual(secondPeer, firstPeer);
+  assert.equal(firstPeer.connectionState, "connected");
+  assert.equal(firstPeer.stream, streamBeforeJoin);
+  assert.equal(streamBeforeJoin, stream);
+  assert.equal(secondPeer.stream, stream);
+  assert.equal(firstPeer.closed, undefined);
+  assert.equal(firstPeer.connectionState, "connected");
+  await publisher.stop();
+  assert.equal(firstPeer.connectionState, "closed");
+  assert.equal(secondPeer.connectionState, "closed");
+});

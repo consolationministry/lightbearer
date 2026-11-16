@@ -30,6 +30,12 @@ let loadingPromise = null;
 let loadError = "";
 let activeMicEngine = null;
 let activeMicFrame = null;
+let offlineRecorder = null;
+let offlineRecordingStartedAt = null;
+let offlineRecordingPreviewUrl = "";
+let offlineRecordingBusy = false;
+let offlineSaveLastError = "";
+let offlineSavePhase = "";
 let waveformDisplayGain = 1;
 let activeBroadcaster = null;
 let activeBroadcastId = null;
@@ -588,6 +594,93 @@ async function refreshMicrophoneOptions() {
   }
 }
 
+
+let offlinePendingFile = null;
+let offlinePendingBlob = null;
+
+async function startOfflineRecording() {
+  if (offlineRecorder) return;
+  if (!cachedData) return;
+  const title = document.getElementById("offline-title").value.trim();
+  const speaker = document.getElementById("offline-speaker").value.trim();
+  const category = document.getElementById("offline-category").value;
+  const venue = document.getElementById("offline-venue").value.trim();
+  const date = document.getElementById("offline-date").value;
+  const description = document.getElementById("offline-description").value.trim();
+  const engine = await ensureMicEngine();
+  const recorder = startLiveAudioRecording(engine.stream, undefined, {});
+  try {
+    await createLiveAudioId();
+  } catch (e) {}
+  offlineRecorder = { recorder, startedAt: new Date().toISOString(), pending: { title, speaker, category, venue, date, description } };
+  offlineRecordingStartedAt = Date.now();
+  offlineSavePhase = "recording";
+  rerender();
+  if (activeMicEngine) updateMeter();
+}
+
+async function stopOfflineRecording() {
+  if (!offlineRecorder) return;
+  try {
+    const result = await offlineRecorder.recorder.stop();
+    offlinePendingBlob = result;
+    offlineRecordingPreviewUrl = URL.createObjectURL(result.blob);
+  } catch (error) {
+    offlineSaveLastError = error.message || "Recording stopped without audio.";
+  }
+  offlineRecorder = null;
+  offlineSavePhase = "";
+  rerender();
+}
+
+async function saveOfflineRecording(event) {
+  event.preventDefault();
+  if (offlineRecorder || offlineRecordingBusy) return;
+  const form = event.target;
+  const values = Object.fromEntries(new FormData(form).entries());
+  const title = String(values.title || "").trim();
+  if (!title) { toast("Enter a title for the offline recording."); return; }
+  offlineRecordingBusy = true;
+  offlineSaveLastError = "";
+  offlineSavePhase = "uploading";
+  rerender();
+  try {
+    const saved = await saveAdminLiveAudioProgram({
+      title,
+      speaker: String(values.speaker || "").trim(),
+      category: String(values.category || "Other"),
+      venue: String(values.venue || "").trim(),
+      date: String(values.date || ""),
+      description: String(values.description || "").trim(),
+      status: "draft"
+    });
+    const blob = offlinePendingBlob;
+    if (offlinePendingFile) {
+      await uploadAdminLiveAudioFile(saved.id, offlinePendingFile);
+    } else if (blob) {
+      const sessionId = createLiveAudioId();
+      await uploadAdminLiveAudioRecording(saved.id, sessionId, blob);
+    } else {
+      throw new Error("Record audio or choose a file before saving.");
+    }
+    offlinePendingFile = null;
+    offlinePendingBlob = null;
+    if (offlineRecordingPreviewUrl) URL.revokeObjectURL(offlineRecordingPreviewUrl);
+    offlineRecordingPreviewUrl = "";
+    offlineSavePhase = "";
+    cachedData = await loadAdminLiveAudioData();
+    activeTab = "recordings";
+    rerender();
+    toast("Offline recording saved as a draft. Use the dashboard to publish or export it.");
+  } catch (error) {
+    offlineSavePhase = "";
+    offlineSaveLastError = error.message || "The recording could not be saved.";
+  } finally {
+    offlineRecordingBusy = false;
+    rerender();
+  }
+}
+
 function renderBroadcastSettings(data) {
   const program = data.programs.find(item => item.id === editingId);
   if (!program) return '<div class="audio-admin-empty"><h2>Programme not found</h2><p>Go back and choose a broadcast again.</p></div>';
@@ -740,6 +833,65 @@ export function renderLiveAudioStudio(program) {
     '</div></section>';
 }
 
+
+function offlineRecordingUI() {
+  if (!offlineRecorder) return "";
+  return '<div class="audio-offline-card"><p class="audio-offline-status" role="status">Recording offline - nothing is live. Audio is filtered by the mixer and saved locally until you save it.</p>' +
+    '<div class="audio-mic-meter" role="meter" aria-label="Offline recording level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span data-audio-mic-level></span></div></div>';
+}
+
+function renderOfflineRecorder(data) {
+  const isRecording = Boolean(offlineRecorder);
+  const preview = offlineRecordingPreviewUrl
+    ? '<div class="audio-offline-preview"><h3>Preview</h3><audio controls src="' + escapeHtml(offlineRecordingPreviewUrl) + '" data-offline-preview></audio><p class="audio-field-note">Preview plays the filtered offline recording locally. Nothing is public until you save it under your programme.</p></div>'
+    : "";
+  const bg = '<div class="audio-offline-note" role="note"><strong>Background recording:</strong> browsers must keep this tab open and visible to record. Switching tabs can pause recording — keep this tab in front while recording. MediaRecorder and WebAudio filters run in the page, so the tab must stay open; the recording stops if the tab is closed or the browser pauses it.</div>';
+  return '<section class="audio-admin-form-wrap"><h2>Offline Recording</h2>' +
+    '<p>Record a talk or session without going live. Audio runs through the same voice mixer (bass/EQ, compressor, limiter, auto voice level) before it is captured, so use the controls below while recording.</p>' + bg +
+    '<form id="offline-recording-form">' +
+    '<div class="admin-field"><label for="offline-title">Title</label><input class="form-input" id="offline-title" name="title" maxlength="120" value="" required placeholder="e.g. Wednesday Bible Study"></div>' +
+    '<div class="admin-field"><label for="offline-speaker">Minister / Speaker</label><input class="form-input" id="offline-speaker" name="speaker" maxlength="100" value=""></div>' +
+    '<div class="admin-field"><label for="offline-category">Category</label><select class="form-select" id="offline-category" name="category">' +
+    data.categories.map(c => '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>').join("") + '</select></div>' +
+    '<div class="admin-field"><label for="offline-venue">Venue</label><input class="form-input" id="offline-venue" name="venue" maxlength="140" value=""></div>' +
+    '<div class="admin-field"><label for="offline-date">Date</label><input class="form-input" id="offline-date" name="date" type="date" value=""></div>' +
+    '<div class="admin-field"><label for="offline-description">Description</label><textarea class="form-textarea" id="offline-description" name="description" rows="3" maxlength="500"></textarea></div>' +
+    '<div class="admin-field audio-audio-file"><label for="offline-file">Upload a finished audio file instead (optional)</label><input class="form-input" id="offline-file" type="file" accept="audio/webm,audio/ogg,audio/mp4,.webm,.ogg,.m4a" data-offline-file>' +
+    '<small class="audio-field-note">Choose a WebM, OGG or M4A file. It uploads to Cloudinary when you save.</small></div>' +
+    '<div class="audio-offline-actions">' +
+    (isRecording
+      ? '<button class="button button-secondary" type="button" data-action="audio-offline-stop">Stop recording</button>'
+      : '<button class="button button-primary" type="button" data-action="audio-offline-start" ' + (offlineRecordingBusy ? "disabled" : "") + '>Start offline recording</button>') +
+    '<button class="button button-primary" type="submit" ' + (isRecording || offlineRecordingBusy ? "disabled" : "") + '>Save recording</button></div>' +
+    (offlineSavePhase === "uploading" ? '<p class="audio-offline-status" role="status">Uploading to Cloudinary and saving… keep this tab open.</p>' : "") +
+    (offlineSaveLastError ? '<p class="audio-finalize-error" role="alert">' + escapeHtml(offlineSaveLastError) + '</p>' : "") +
+    '</form>' + preview +
+    '<section class="panel audio-mixer-panel"><header class="panel-header"><div><h2>Audio Editing &amp; Effects</h2><p>Applied to the offline recording while it records.</p></div></header>' +
+    renderAudioMixerControls() +
+    '<p class="field-hint">Changes apply to the offline recording immediately.</p></section></section>';
+}
+
+function renderRecordingsDashboard(data) {
+  const recorded = (data.programs || []).filter(pr => pr.recordingPath);
+  if (!recorded.length) {
+    return '<section><div class="audio-admin-empty">' + icon("radio") + '<h2>No recordings yet</h2><p>Use the Recordings tab to record offline or upload an audio file. Published recordings with audio appear here with publish, edit, delete and export actions.</p></div></section>';
+  }
+  return '<section><div class="audio-admin-table-wrap"><table class="audio-admin-table"><thead><tr><th scope="col">Recording</th><th scope="col">Category</th><th scope="col">Status</th><th scope="col">Duration</th><th scope="col">Actions</th></tr></thead><tbody>' +
+    recorded.map(pr => {
+      const secs = Number(pr.recordingDurationSeconds) || 0;
+      const dur = secs > 0 ? Math.floor(secs / 60) + ":" + String(secs % 60).padStart(2, "0") : "—";
+      const status = pr.onAir
+        ? '<span class="status-pill status-published">Live now</span>'
+        : '<span class="status-pill ' + (pr.status === "published" ? "status-published" : "status-draft") + '">' + (pr.status === "published" ? "Published" : "Draft") + '</span>';
+      return '<tr><td><strong>' + escapeHtml(pr.title) + '</strong><small>' + escapeHtml(pr.speaker || "Minister not set") + '</small></td><td>' + escapeHtml(pr.category) + '</td><td>' + status + '</td><td>' + dur + '</td><td><div class="audio-admin-actions">' +
+        '<button class="button button-secondary" type="button" data-action="audio-admin-edit" data-id="' + escapeHtml(pr.id) + '">' + icon("edit") + ' Edit</button>' +
+        (pr.status === "draft" ? '<button class="button button-secondary" type="button" data-action="audio-admin-publish" data-id="' + escapeHtml(pr.id) + '">Publish</button>' : "") +
+        (pr.status === "published" && isExportableChurchRecording(pr) ? '<button class="button button-secondary" type="button" data-action="audio-admin-export-programme" data-id="' + escapeHtml(pr.id) + '">Export</button>' : "") +
+        '<button class="button button-secondary audio-admin-delete" type="button" data-action="audio-admin-delete" data-id="' + escapeHtml(pr.id) + '">' + icon("trash") + '</button>' +
+        '</div></td></tr>';
+    }).join("") + '</tbody></table></div></section>';
+}
+
 function renderLiveAudioContent() {
   if (!cachedData) {
     if (!loadingPromise) void refreshAdminData().catch(() => {});
@@ -755,9 +907,10 @@ function renderLiveAudioContent() {
   if (wizardStep === 1 && editingId !== null) return renderProgramDetails(cachedData);
   if (wizardStep === 2 && editingId !== null) return renderBroadcastSettings(cachedData);
   if (activeTab === "settings") return renderSettings(cachedData);
+  if (activeTab === "recordings") return renderOfflineRecorder(cachedData) + renderRecordingsDashboard(cachedData);
   const tabs = '<div class="audio-admin-tabs" role="group" aria-label="Filter broadcasts">' +
     tabButton("programs", "All broadcasts") + tabButton("drafts", "Drafts") +
-    tabButton("published", "Published") + tabButton("settings", "Settings") + "</div>";
+    tabButton("published", "Published") + tabButton("recordings", "Recordings") + tabButton("settings", "Settings") + "</div>";
   const title = activeTab === "drafts" ? "Drafts" : activeTab === "published" ? "Published broadcasts" : "Broadcast management";
   return '<section><div class="page-heading"><div><h1>Live Audio</h1><p>Web-only microphone broadcasts for C&S Bible Church.</p></div>' +
     '<button class="button button-secondary audio-admin-back" type="button" data-action="navigate" data-view="dashboard">' + icon("back") + "Back to admin dashboard</button></div>" +
@@ -1345,6 +1498,7 @@ export async function handleLiveAudioAdminAction(button) {
     return true;
   }
   if (action === "audio-admin-tab") {
+    if (offlineRecorder) await stopOfflineRecording();
     activeTab = button.dataset.tab;
     editingId = null;
     wizardStep = 1;
@@ -1572,13 +1726,30 @@ export async function handleLiveAudioAdminAction(button) {
       studioVisible = false;
       rerender();
       toast("Draft saved.");
-    } catch (error) { toast(error.message || "Draft could not be saved."); }
+    }    catch (error) { toast(error.message || "Draft could not be saved."); }
+    return true;
+  }
+  if (action === "audio-offline-start") {
+    try { await stopAdminAudioMicTest(); } catch (error) {}
+    try { await startOfflineRecording(); }
+    catch (error) {
+      offlineSaveLastError = error.message || "The offline recording could not start.";
+      rerender();
+    }
+    return true;
+  }
+  if (action === "audio-offline-stop") {
+    await stopOfflineRecording();
     return true;
   }
   return false;
 }
 
 export async function handleLiveAudioAdminSubmit(event) {
+  if (event.target.id === "offline-recording-form") {
+    await saveOfflineRecording(event);
+    return true;
+  }
   if (event.target.id === "live-audio-program-form") {
     event.preventDefault();
     const form = event.target;
@@ -1637,6 +1808,10 @@ if (typeof document !== "undefined" && document.addEventListener) {
   document.addEventListener("change", async event => {
     const input = event.target;
     if (!input || !input.matches) return;
+    if (input.matches("[data-offline-file]")) {
+      offlinePendingFile = input.files && input.files[0] ? input.files[0] : null;
+      return;
+    }
     if (input.matches("[data-audio-file]")) {
       pendingAudioFile = input.files && input.files[0] ? input.files[0] : null;
       return;
