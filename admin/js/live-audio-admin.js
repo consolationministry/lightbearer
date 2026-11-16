@@ -18,7 +18,7 @@ import {
 let pendingAudioFile = null;
 import { createLiveAudioId, subscribeLiveAudioBursts } from "../../js/live-audio-realtime.js";
 import { startLiveAudioRecording } from "../../js/live-audio-recording.js?v=3";
-import { AUDIO_CONTROL_SPECS, AUDIO_PRESETS, createLiveAudioMicEngine, DEFAULT_AUDIO_SETTINGS, startLiveAudioPublisher } from "../../js/live-audio-webrtc.js?v=5";
+import { AUDIO_CONTROL_SPECS, AUDIO_PRESETS, createLiveAudioMicEngine, DEFAULT_AUDIO_SETTINGS, startLiveAudioPublisher } from "../../js/live-audio-webrtc.js?v=6";
 import { buildWaveformBars, getWaveformDisplayGain, scaleWaveformBars } from "./live-audio-waveform.js";
 import { exportLiveAudioProgram, isExportableChurchRecording } from "./live-audio-export.js?v=1";
 
@@ -515,6 +515,11 @@ function renderAudioMixerControls() {
     const controls = AUDIO_CONTROL_SPECS.filter(function (spec) { return spec.group === group; })
       .map(function (spec) {
         const value = Number.isFinite(Number(audioSettings[spec.key])) ? audioSettings[spec.key] : spec.default;
+        if (spec.key === "autoVoiceLevel") {
+          return '<label class="audio-control audio-control-toggle" for="audio-control-autoVoiceLevel"><span><strong>' +
+            spec.label + '</strong><output data-audio-output="autoVoiceLevel">' + (value >= 1 ? "On" : "Off") + '</output></span>' +
+            '<input id="audio-control-autoVoiceLevel" type="checkbox" data-audio-control="autoVoiceLevel"' + (value >= 1 ? " checked" : "") + '></label>';
+        }
         return rangeControl(spec.key, spec.label, spec.min, spec.max, spec.step, value, spec.unit);
       }).join("");
     return '<section class="audio-mixer-section" data-mixer-section="' + group + '"><h3 class="audio-mixer-heading">' +
@@ -1659,10 +1664,16 @@ if (typeof document !== "undefined" && document.addEventListener) {
     const input = event.target;
     if (!input || !input.matches || !input.matches("[data-audio-control]")) return;
     const key = input.dataset.audioControl;
-    audioSettings[key] = Number(input.value);
-    const output = document.querySelector('[data-audio-output="' + key + '"]');
-    const unit = audioControlUnit(key);
-    if (output) output.value = input.value + unit;
+    if (input.type === "checkbox") {
+      audioSettings[key] = input.checked ? 1 : 0;
+      const output = document.querySelector('[data-audio-output="' + key + '"]');
+      if (output) output.value = input.checked ? "On" : "Off";
+    } else {
+      audioSettings[key] = Number(input.value);
+      const output = document.querySelector('[data-audio-output="' + key + '"]');
+      const unit = audioControlUnit(key);
+      if (output) output.value = input.value + unit;
+    }
     if (activeMicEngine) activeMicEngine.setSettings(audioSettings);
   });
   document.addEventListener("change", async event => {
