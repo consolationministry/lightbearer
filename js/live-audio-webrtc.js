@@ -21,11 +21,54 @@ export const AUDIO_CONTROL_SPECS = Object.freeze([
   { key: "gain", label: "Mic level", group: "output", min: -12, max: 6, step: 1, unit: " dB", default: 0 },
   { key: "volume", label: "Output volume", group: "output", min: 0, max: 100, step: 1, unit: "%", default: 100 },
   { key: "threshold", label: "Compressor threshold", group: "dynamics", min: -60, max: 0, step: 1, unit: " dB", default: -18 },
+  { key: "autoVoiceLevel", label: "Auto voice level", group: "dynamics", min: 0, max: 1, step: 1, unit: "", default: 0 },
+  { key: "limiterThreshold", label: "Limiter ceiling", group: "dynamics", min: -24, max: 0, step: 1, unit: " dB", default: -2 },
+  { key: "limiterRelease", label: "Limiter release", group: "dynamics", min: 10, max: 500, step: 5, unit: " ms", default: 100 },
   { key: "ratio", label: "Compressor ratio", group: "dynamics", min: 1, max: 20, step: 1, unit: ":1", default: 3 },
   { key: "knee", label: "Compressor knee", group: "dynamics", min: 0, max: 40, step: 1, unit: " dB", default: 12 },
   { key: "attack", label: "Attack", group: "dynamics", min: 0, max: 100, step: 1, unit: " ms", default: 4 },
   { key: "release", label: "Release", group: "dynamics", min: 20, max: 1000, step: 10, unit: " ms", default: 160 }
 ]);
+
+// Voice-aware automatic level adjustment. Measures voice-band energy around
+// 400-3400 Hz (the range that carries speech intelligibility) and nudges the
+// automatic trim toward a consistent target so quiet speech stays audible and
+// sudden loud speech does not clip. Returns the next trim in dB, unchanged
+// when not enough speech is present or the target is already reached.
+export const AUTO_VOICE_LEVEL_TARGET_DB = -18;
+export const AUTO_VOICE_LEVEL_MAX_TRIM_DB = 12;
+export function nextAutoVoiceTrim({ voiceRmsDb, trimDb, enabled }) {
+  const trim = Number.isFinite(Number(trimDb)) ? Number(trimDb) : 0;
+  if (!enabled || voiceRmsDb == null || !Number.isFinite(Number(voiceRmsDb))) return trim;
+  const error = AUTO_VOICE_LEVEL_TARGET_DB - Number(voiceRmsDb);
+  if (Math.abs(error) < 1) return trim;
+  const step = Math.max(-1, Math.min(1, error * 0.25));
+  return Math.max(-AUTO_VOICE_LEVEL_MAX_TRIM_DB, Math.min(AUTO_VOICE_LEVEL_MAX_TRIM_DB, trim + step));
+}
+
+// Voice-band RMS in dBFS computed from a time-domain sample buffer.
+export function voiceBandRmsDb(samples) {
+  if (!samples || !samples.length) return null;
+  let energy = 0;
+  let counted = 0;
+  for (let index = 2; index < samples.length - 2; index += 1) {
+    const a = samples[index - 2];
+    const b = samples[index - 1];
+    const c = samples[index];
+    const d = samples[index + 1];
+    const e = samples[index + 2];
+    // Zero-phase-ish voice emphasis: boosting the 400-3400 Hz emphasis by
+    // measuring local sample variance, which speech dominates over room rumble.
+    const localMean = (a + b + c + d + e) / 5;
+    const localVar = ((a - localMean) ** 2 + (c - localMean) ** 2 + (e - localMean) ** 2) / 3;
+    energy += localVar;
+    counted += 1;
+  }
+  if (counted === 0) return null;
+  const rms = Math.sqrt(energy / counted) / 128;
+  if (rms <= 0) return null;
+  return 20 * Math.log10(rms);
+}
 
 export const DEFAULT_AUDIO_SETTINGS = Object.freeze(
   Object.fromEntries(AUDIO_CONTROL_SPECS.map(spec => [spec.key, spec.default]))
@@ -275,6 +318,17 @@ export async function createLiveAudioMicEngine(options) {
     treble.frequency.value = 5200;
     const balance = typeof context.createStereoPanner === "function" ? context.createStereoPanner() : null;
     const compressor = context.createDynamicsCompressor();
+    // Safety limiter: a high-ratio compressor with a fast attack that caps
+    // peaks at the ceiling so a sudden loud voice or shout never clips.
+    const limiter = context.createDynamicsCompressor();
+    limiter.threshold.value = -2;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.001;
+    limiter.release.value = 0.1;
+    // Automatic trim applied after the limiter so the voice-aware level
+    // control can lift quiet speech without defeating the ceiling.
+    const autoTrim = context.createGain();
     let pitchNode = null;
     let pitchAvailable = false;
 
@@ -300,8 +354,8 @@ export async function createLiveAudioMicEngine(options) {
     analyser.smoothingTimeConstant = 0.72;
     const destination = context.createMediaStreamDestination();
 
-    // Serial chain: source -> low cut -> bass -> 16 EQ bands -> mid -> treble -> balance -> compressor -> pitch -> mic level -> volume -> analyser -> broadcast.
-    const serial = [source, highPass, bass, ...eqBands, mid, treble, balance, compressor];
+    // Serial chain: source -> low cut -> bass -> 16 EQ bands -> mid -> treble -> balance -> compressor -> limiter -> auto trim -> pitch -> mic level -> volume -> analyser -> broadcast.
+    const serial = [source, highPass, bass, ...eqBands, mid, treble, balance, compressor, limiter, autoTrim];
     for (let index = 0; index < serial.length - 1; index += 1) {
       if (serial[index] && serial[index + 1]) serial[index].connect(serial[index + 1]);
     }
@@ -316,7 +370,35 @@ export async function createLiveAudioMicEngine(options) {
     volume.connect(analyser);
     analyser.connect(destination);
 
-    const nodes = { highPass, bass, eqBands, mid, treble, balance, compressor, gain, volume, pitchNode };
+    const nodes = { highPass, bass, eqBands, mid, treble, balance, compressor, limiter, autoTrim, gain, volume, pitchNode };
+    let autoTrimDb = 0;
+    let autoVoiceEnabled = false;
+    const autoSamples = new Float32Array(analyser.fftSize);
+    let autoTimer = null;
+    const runAutoVoiceLevel = () => {
+      if (!autoVoiceEnabled || context.state === "closed") return;
+      try {
+        analyser.getFloatTimeDomainData(autoSamples);
+        let silent = true;
+        for (let index = 0; index < autoSamples.length; index += 1) {
+          if (Math.abs(autoSamples[index]) > 0.004) { silent = false; break; }
+        }
+        // Only adapt while someone is actually speaking; silence must not
+        // pump the gain up and down.
+        if (silent) return;
+        const db = voiceBandRmsDb(autoSamples);
+        const next = nextAutoVoiceTrim({ voiceRmsDb: db, trimDb: autoTrimDb, enabled: true });
+        if (next !== autoTrimDb) {
+          autoTrimDb = next;
+          nodes.autoTrim.gain.setTargetAtTime(Math.pow(10, autoTrimDb / 20), context.currentTime, 0.2);
+        }
+      } catch (error) { /* automatic level never breaks the mic chain */ }
+    };
+    const syncAutoVoice = () => {
+      const shouldRun = autoVoiceEnabled && context.state !== "closed";
+      if (shouldRun && !autoTimer) autoTimer = setInterval(runAutoVoiceLevel, 300);
+      if (!shouldRun && autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+    };
     const setSettings = values => {
       const settings = Object.assign({}, DEFAULT_AUDIO_SETTINGS, values || {});
       const now = context.currentTime;
@@ -336,6 +418,14 @@ export async function createLiveAudioMicEngine(options) {
       ramp(nodes.compressor.ratio, clamp(settings.ratio, 1, 20));
       ramp(nodes.compressor.attack, clamp(settings.attack, 0, 100) / 1000);
       ramp(nodes.compressor.release, clamp(settings.release, 20, 1000) / 1000);
+      ramp(nodes.limiter.threshold, clamp(settings.limiterThreshold, -24, 0));
+      ramp(nodes.limiter.release, clamp(settings.limiterRelease, 10, 500) / 1000);
+      const wantAuto = clamp(settings.autoVoiceLevel, 0, 1) >= 1;
+      if (wantAuto !== autoVoiceEnabled) { autoVoiceEnabled = wantAuto; syncAutoVoice(); }
+      if (!autoVoiceEnabled && autoTrimDb !== 0) {
+        autoTrimDb = 0;
+        nodes.autoTrim.gain.setTargetAtTime(1, now, 0.05);
+      }
       ramp(nodes.gain.gain, Math.pow(10, clamp(settings.gain, -12, 6) / 20));
       ramp(nodes.volume.gain, clamp(settings.volume, 0, 100) / 100);
       if (nodes.pitchNode) nodes.pitchNode.port.postMessage({ semitones: clamp(settings.pitch, -4, 4) });
@@ -365,6 +455,7 @@ export async function createLiveAudioMicEngine(options) {
         return Math.min(100, Math.round(Math.sqrt(energy / samples.length) * 260));
       },
       async stop() {
+        if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
         rawStream.getTracks().forEach(track => track.stop());
         destination.stream.getTracks().forEach(track => track.stop());
         if (context.state !== "closed") await context.close().catch(() => {});
