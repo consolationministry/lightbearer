@@ -18,7 +18,7 @@ import {
 let pendingAudioFile = null;
 import { createLiveAudioId, subscribeLiveAudioBursts } from "../../js/live-audio-realtime.js";
 import { startLiveAudioRecording } from "../../js/live-audio-recording.js?v=3";
-import { AUDIO_CONTROL_SPECS, AUDIO_PRESETS, createLiveAudioMicEngine, DEFAULT_AUDIO_SETTINGS, startLiveAudioPublisher } from "../../js/live-audio-webrtc.js?v=6";
+import { AUDIO_CONTROL_SPECS, AUDIO_PRESETS, createLiveAudioMicEngine, DEFAULT_AUDIO_SETTINGS, startLiveAudioPublisher } from "../../js/live-audio-webrtc.js?v=7";
 import { buildWaveformBars, getWaveformDisplayGain, scaleWaveformBars } from "./live-audio-waveform.js";
 import { deleteLocalRecording, getLocalRecording, listLocalRecordings, saveLocalRecording } from "./offline-recording-store.js";
 import { exportLiveAudioProgram, isExportableChurchRecording } from "./live-audio-export.js?v=1";
@@ -522,10 +522,10 @@ function renderAudioMixerControls() {
     const controls = AUDIO_CONTROL_SPECS.filter(function (spec) { return spec.group === group; })
       .map(function (spec) {
         const value = Number.isFinite(Number(audioSettings[spec.key])) ? audioSettings[spec.key] : spec.default;
-        if (spec.key === "autoVoiceLevel") {
-          return '<label class="audio-control audio-control-toggle" for="audio-control-autoVoiceLevel"><span><strong>' +
-            spec.label + '</strong><output data-audio-output="autoVoiceLevel">' + (value >= 1 ? "On" : "Off") + '</output></span>' +
-            '<input id="audio-control-autoVoiceLevel" type="checkbox" data-audio-control="autoVoiceLevel"' + (value >= 1 ? " checked" : "") + '></label>';
+        if (spec.key === "autoVoiceLevel" || spec.key === "noiseGate") {
+          return '<label class="audio-control audio-control-toggle" for="audio-control-' + spec.key + '"><span><strong>' +
+            spec.label + '</strong><output data-audio-output="' + spec.key + '">' + (value >= 1 ? "On" : "Off") + '</output></span>' +
+            '<input id="audio-control-' + spec.key + '" type="checkbox" data-audio-control="' + spec.key + '"' + (value >= 1 ? " checked" : "") + '></label>';
         }
         return rangeControl(spec.key, spec.label, spec.min, spec.max, spec.step, value, spec.unit);
       }).join("");
@@ -603,6 +603,16 @@ let offlineFinish = null;
 let localRecordings = [];
 let offlineDraft = { title: "", speaker: "", category: "", venue: "", date: "", description: "" };
 let offlineClockTimer = null;
+let offlineAutoDefaultsApplied = false;
+
+export function describeNoiseReduction(info, gateOn) {
+  const parts = [];
+  if (info && info.browserSuppression) parts.push("phone/browser noise suppression is on");
+  else if (info && info.browserSuppressionKnown) parts.push("this phone/browser did not apply its own noise suppression");
+  else parts.push("phone/browser noise suppression could not be confirmed");
+  parts.push(gateOn ? "noise gate lowers steady background sound between words" : "noise gate is off");
+  return "Noise reduction: " + parts.join("; ") + ". This reduces steady background noise but cannot remove all noise, especially while someone is speaking.";
+}
 
 function captureOfflineDraft() {
   const form = typeof document !== "undefined" ? document.getElementById("offline-recording-form") : null;
@@ -628,6 +638,13 @@ async function openOfflineMicTest() {
   if (!offlineDraft.title.trim()) { toast("Enter a title for the offline recording first."); return; }
   offlineStage = "mictest";
   offlineSaveLastError = "";
+  // Offline recordings start with automatic voice level and background noise
+  // reduction on; either can still be switched off. Live defaults are untouched.
+  if (!offlineAutoDefaultsApplied) {
+    offlineAutoDefaultsApplied = true;
+    audioSettings = Object.assign({}, audioSettings, { autoVoiceLevel: 1, noiseGate: 1 });
+    if (activeMicEngine) activeMicEngine.setSettings(audioSettings);
+  }
   rerender();
   await startMicTest();
 }
@@ -1003,7 +1020,7 @@ function renderOfflineRecorder(data) {
     '<div class="audio-offline-actions">' +
     (isRecording
       ? '<button class="button button-secondary" type="button" data-action="audio-offline-stop">Stop recording</button>'
-      : '<button class="button button-primary" type="button" data-action="audio-offline-setup" ' + (offlineRecordingBusy ? "disabled" : "") + '>' + icon("mic") + 'Set up mic &amp; record</button>') +
+      : '<button class="button button-primary audio-offline-setup-button" type="button" data-action="audio-offline-setup" ' + (offlineRecordingBusy ? "disabled" : "") + '>' + icon("mic") + 'Set up mic &amp; record</button>') +
     '<button class="button button-primary" type="submit" ' + (isRecording || offlineRecordingBusy ? "disabled" : "") + '>Save recording</button></div>' +
     (offlineSavePhase === "uploading" ? '<p class="audio-offline-status" role="status">Uploading to Cloudinary and saving… keep this tab open.</p>' : "") +
     (offlineSaveLastError ? '<p class="audio-finalize-error" role="alert">' + escapeHtml(offlineSaveLastError) + '</p>' : "") +
@@ -1082,7 +1099,7 @@ function renderOfflineStudio() {
     '<section class="audio-studio-panel audio-studio-mixer"><header><div><p class="audio-studio-kicker">SOUND MIXER</p><h2>Microphone controls</h2></div><span class="audio-studio-mic-live"><i></i>MIC ON</span></header>' +
     renderAudioMixerControls() + '<p class="audio-studio-panel-note">Changes apply to the recording immediately.</p></section>' +
     '<section class="audio-studio-panel audio-studio-mic-panel"><header><div><p class="audio-studio-kicker">INPUT MONITOR</p><h2>Microphone level</h2></div></header>' +
-    '<p class="audio-mic-status" data-audio-mic-status role="status" aria-live="polite">Recording offline. Keep this page open and in front while recording.</p>' +
+    '<p class="audio-mic-status" data-audio-mic-status role="status" aria-live="polite">Recording offline. Keep this page open and in front while recording. ' + escapeHtml(activeMicEngine ? describeNoiseReduction(activeMicEngine.noiseInfo, audioSettings.noiseGate >= 1) : "") + '</p>' +
     '<button class="button audio-studio-mute" type="button" data-action="audio-admin-toggle-mic" data-mic-mute-button aria-pressed="' + String(activeMicMuted) + '">' + (activeMicMuted ? "Unmute microphone" : "Mute microphone") + '</button></section>' +
     '</div></div></section>';
 }
@@ -1351,7 +1368,7 @@ async function ensureMicEngine() {
   activeMicEngine = await createLiveAudioMicEngine({ settings: audioSettings, deviceId: selectedMicrophoneId });
   const status = document.querySelector("[data-audio-mic-status]");
   if (status) status.textContent = activeMicEngine.pitchAvailable
-    ? "Microphone is on. Speak to check your voice and waveform."
+    ? "Microphone is on. Speak to check your voice and waveform. " + describeNoiseReduction(activeMicEngine.noiseInfo, audioSettings.noiseGate >= 1)
     : "Microphone is on. EQ and level work; pitch shift is not supported in this browser.";
   const startButton = document.querySelector('[data-action="audio-admin-mic-test"]');
   const stopButton = document.querySelector('[data-action="audio-admin-mic-stop"]');

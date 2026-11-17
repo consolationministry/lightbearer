@@ -699,3 +699,9 @@
 .audio-studio-burst-emoji { position: absolute; font-size: 30px; line-height: 1; pointer-events: none; animation: audio-studio-burst-rise 2.2s ease-out forwards; will-change: transform, opacity; }
 @keyframes audio-studio-burst-rise { 0% { opacity: 0; transform: translate(0, 0) scale(.6); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--drift, 0px), -70vh) scale(1.2); } }
 @media (prefers-reduced-motion: reduce) { .audio-studio-burst-emoji { animation: none; opacity: 0; } }
+
+/* Offline details: compact action row consistent with the live studio controls */
+.audio-offline-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.audio-offline-actions .button { width: auto; min-height: 38px; padding: 8px 14px; font-size: .78rem; }
+.audio-offline-actions .button svg { width: 15px; height: 15px; }
+@media (max-width: 560px) { .audio-offline-actions .button { flex: 1 1 140px; } }
