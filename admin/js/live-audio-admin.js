@@ -20,6 +20,7 @@ import { createLiveAudioId, subscribeLiveAudioBursts } from "../../js/live-audio
 import { startLiveAudioRecording } from "../../js/live-audio-recording.js?v=3";
 import { AUDIO_CONTROL_SPECS, AUDIO_PRESETS, createLiveAudioMicEngine, DEFAULT_AUDIO_SETTINGS, startLiveAudioPublisher } from "../../js/live-audio-webrtc.js?v=6";
 import { buildWaveformBars, getWaveformDisplayGain, scaleWaveformBars } from "./live-audio-waveform.js";
+import { deleteLocalRecording, getLocalRecording, listLocalRecordings, saveLocalRecording } from "./offline-recording-store.js";
 import { exportLiveAudioProgram, isExportableChurchRecording } from "./live-audio-export.js?v=1";
 
 let activeTab = "programs";
@@ -598,6 +599,8 @@ async function refreshMicrophoneOptions() {
 let offlinePendingFile = null;
 let offlinePendingBlob = null;
 let offlineStage = "details";
+let offlineFinish = null;
+let localRecordings = [];
 let offlineDraft = { title: "", speaker: "", category: "", venue: "", date: "", description: "" };
 let offlineClockTimer = null;
 
@@ -655,12 +658,26 @@ async function startOfflineRecording() {
 
 async function stopOfflineRecording() {
   if (!offlineRecorder) return;
+  const meta = offlineRecorder.pending;
+  let stopped = null;
   try {
     const result = await offlineRecorder.recorder.stop();
     offlinePendingBlob = result;
+    stopped = result;
     offlineRecordingPreviewUrl = URL.createObjectURL(result.blob);
   } catch (error) {
     offlineSaveLastError = error.message || "Recording stopped without audio.";
+  }
+  if (stopped) {
+    const id = createLiveAudioId();
+    offlineFinish = { phase: "choice", localId: id, title: meta.title, error: "", stored: false };
+    try {
+      await saveLocalRecording({ id, blob: stopped.blob, contentType: stopped.contentType || stopped.blob.type, durationSeconds: stopped.durationSeconds, meta, createdAt: new Date().toISOString() });
+      offlineFinish.stored = true;
+      await refreshLocalRecordings();
+    } catch (error) {
+      offlineFinish.error = "Could not store a copy on this device: " + (error.message || "storage failed") + ". Keep this page open.";
+    }
   }
   offlineRecorder = null;
   offlineSavePhase = "";
@@ -672,6 +689,89 @@ async function stopOfflineRecording() {
   rerender();
 }
 
+async function refreshLocalRecordings() {
+  // also called on tab open
+  try { localRecordings = await listLocalRecordings(); } catch (error) { localRecordings = []; }
+}
+
+function isOnline() { return typeof navigator === "undefined" || navigator.onLine !== false; }
+
+async function uploadLocalRecording(id, status) {
+  if (!isOnline()) throw new Error("No internet connection. The recording is safe on this device. Connect to mobile data or Wi-Fi, then try again.");
+  const rec = await getLocalRecording(id);
+  if (!rec) throw new Error("This recording is no longer stored on this device.");
+  const m = rec.meta || {};
+  const saved = await saveAdminLiveAudioProgram({ title: m.title, speaker: m.speaker, category: m.category || "Other", venue: m.venue, date: m.date, description: m.description, status: "draft" });
+  await uploadAdminLiveAudioRecording(saved.id, createLiveAudioId(), { blob: rec.blob, contentType: rec.contentType, durationSeconds: rec.durationSeconds });
+  if (status === "published") await setAdminLiveAudioStatus(saved.id, "published");
+  await deleteLocalRecording(id);
+  await refreshLocalRecordings();
+  cachedData = await loadAdminLiveAudioData();
+  return saved;
+}
+
+async function runOfflineFinish(status) {
+  const f = offlineFinish;
+  if (!f) return;
+  f.phase = "uploading"; f.error = ""; f.status = status;
+  rerender();
+  try {
+    await uploadLocalRecording(f.localId, status);
+    f.phase = status === "published" ? "published" : "draft-saved";
+  } catch (error) {
+    f.phase = "choice";
+    f.error = error.message || "The upload did not complete. The recording is still safe on this device.";
+  }
+  rerender();
+}
+
+function renderOfflineFinishDialog() {
+  const f = offlineFinish;
+  if (!f) return "";
+  const title = escapeHtml(f.title || "Recording");
+  const online = isOnline();
+  let heading = "Recording finished"; let message = ""; let actions = ""; let status = "";
+  if (f.phase === "uploading") {
+    heading = f.status === "published" ? "Uploading and publishing" : "Saving privately as draft";
+    message = '“' + title + '” is uploading. Keep this page open until it finishes.';
+    status = '<span class="audio-finalize-spinner" aria-hidden="true"></span>';
+  } else if (f.phase === "published") {
+    heading = "Recording published";
+    message = '“' + title + '” is uploaded and now on the public Listen page.';
+    actions = '<button class="button button-primary" type="button" data-action="audio-offline-finish-close">Complete</button>';
+  } else if (f.phase === "draft-saved") {
+    heading = "Private draft saved";
+    message = '“' + title + '” is saved for admins only. Publish it later from the Recordings tab.';
+    actions = '<button class="button button-primary" type="button" data-action="audio-offline-finish-close">Complete</button>';
+  } else {
+    message = '“' + title + '” was recorded' + (f.stored ? " and is saved on this device." : ".") + (online
+      ? " Choose what to do with it."
+      : " You are offline: uploading needs internet. Keep it on this device and upload later when data is back.");
+    const dis = online ? "" : " disabled";
+    actions = '<button class="button button-secondary" type="button" data-action="audio-offline-finish-device">Keep on this device</button>' +
+      '<button class="button button-secondary" type="button" data-action="audio-offline-finish-draft"' + dis + '>Save privately as draft</button>' +
+      '<button class="button button-primary" type="button" data-action="audio-offline-finish-publish"' + dis + '>Upload &amp; publish</button>';
+  }
+  return '<div class="audio-finalize-backdrop"><section class="audio-finalize-dialog" role="dialog" aria-modal="true" aria-labelledby="audio-offline-finish-title">' +
+    '<span class="audio-finalize-kicker">OFFLINE RECORDING · FINISHED</span><h2 id="audio-offline-finish-title">' + heading + '</h2><p>' + message + '</p>' +
+    (f.error ? '<p class="audio-finalize-error" role="alert">' + escapeHtml(f.error) + '</p>' : "") + status +
+    (actions ? '<div class="audio-finalize-actions">' + actions + '</div>' : "") + '</section></div>';
+}
+
+function renderLocalRecordings() {
+  if (!localRecordings.length) return "";
+  const online = isOnline();
+  return '<section class="audio-admin-form-wrap audio-local-recordings"><h2>Saved on this device</h2>' +
+    '<p class="audio-field-note">' + (online ? "These are not uploaded yet." : "You are offline. Uploads need internet; recordings stay safe here until you reconnect.") + '</p>' +
+    localRecordings.map(r => {
+      const m = r.meta || {}; const dis = online ? "" : " disabled";
+      return '<article class="audio-admin-row"><div><strong>' + escapeHtml(m.title || "Recording") + '</strong><small>' + Math.round(r.durationSeconds || 0) + 's · ' + escapeHtml(new Date(r.createdAt).toLocaleString()) + '</small></div>' +
+        '<div class="audio-admin-actions"><button class="button button-secondary" type="button" data-action="audio-local-draft" data-id="' + escapeHtml(r.id) + '"' + dis + '>Save as private draft</button>' +
+        '<button class="button button-primary" type="button" data-action="audio-local-publish" data-id="' + escapeHtml(r.id) + '"' + dis + '>Upload &amp; publish</button>' +
+        '<button class="button button-secondary audio-admin-delete" type="button" data-action="audio-local-delete" data-id="' + escapeHtml(r.id) + '">Delete</button></div></article>';
+    }).join("") + '</section>';
+}
+
 async function saveOfflineRecording(event) {
   event.preventDefault();
   if (offlineRecorder || offlineRecordingBusy) return;
@@ -679,6 +779,7 @@ async function saveOfflineRecording(event) {
   const values = Object.fromEntries(new FormData(form).entries());
   const title = String(values.title || "").trim();
   if (!title) { toast("Enter a title for the offline recording."); return; }
+  if (!isOnline()) { offlineSaveLastError = "No internet connection. Recordings you make stay saved on this device; upload them when you are back online."; rerender(); return; }
   offlineRecordingBusy = true;
   offlineSaveLastError = "";
   offlineSavePhase = "uploading";
@@ -1007,13 +1108,23 @@ function renderRecordingsDashboard(data) {
     }).join("") + '</tbody></table></div></section>';
 }
 
+const OFFLINE_FALLBACK_DATA = { programs: [], categories: ["Bible Study", "Sunday Service", "Prayer Meeting", "Worship", "Youth Service", "Other"], stats: {} };
+
 function renderLiveAudioContent() {
+  if (!cachedData && loadError && activeTab === "recordings") {
+    // Broadcast service unreachable (e.g. mobile data off): recording still works locally.
+    if (offlineStage === "record" && offlineRecorder) return renderOfflineStudio();
+    if (offlineStage === "mictest") return renderOfflineMicTest(OFFLINE_FALLBACK_DATA);
+    return '<section class="audio-admin-empty" role="status"><h2>You are offline</h2><p>' + escapeHtml(loadError) + ' You can still record below. Uploading needs internet.</p>' +
+      '<button class="button button-secondary" type="button" data-action="audio-admin-retry">Retry connection</button></section>' +
+      renderOfflineRecorder(OFFLINE_FALLBACK_DATA) + renderLocalRecordings();
+  }
   if (!cachedData) {
     if (!loadingPromise) void refreshAdminData().catch(() => {});
     return '<section class="audio-admin-empty" role="status"><h2>' +
       (loadError ? "Live Audio setup needs attention" : "Loading Live Audio…") + "</h2><p>" +
       escapeHtml(loadError || "Connecting to the church broadcast service.") + "</p>" +
-      (loadError ? '<button class="button button-primary" type="button" data-action="audio-admin-retry">Retry</button>' : "") + "</section>";
+      (loadError ? '<button class="button button-primary" type="button" data-action="audio-admin-retry">Retry</button><button class="button button-secondary" type="button" data-action="audio-offline-open">Record offline instead</button>' : "") + "</section>";
   }
   if (studioVisible && activeBroadcaster && activeBroadcastId) {
     const liveProgram = cachedData.programs.find(program => program.id === activeBroadcastId);
@@ -1025,7 +1136,7 @@ function renderLiveAudioContent() {
   if (activeTab === "recordings") {
     if (offlineStage === "record" && offlineRecorder) return renderOfflineStudio();
     if (offlineStage === "mictest") return renderOfflineMicTest(cachedData);
-    return renderOfflineRecorder(cachedData) + renderRecordingsDashboard(cachedData);
+    return renderOfflineRecorder(cachedData) + renderLocalRecordings() + renderRecordingsDashboard(cachedData);
   }
   const tabs = '<div class="audio-admin-tabs" role="group" aria-label="Filter broadcasts">' +
     tabButton("programs", "All broadcasts") + tabButton("drafts", "Drafts") +
@@ -1620,6 +1731,7 @@ export async function handleLiveAudioAdminAction(button) {
   if (action === "audio-admin-tab") {
     if (offlineRecorder) await stopOfflineRecording();
     offlineStage = "details";
+    if (button.dataset.tab === "recordings") await refreshLocalRecordings();
     activeTab = button.dataset.tab;
     editingId = null;
     wizardStep = 1;
@@ -1850,6 +1962,33 @@ export async function handleLiveAudioAdminAction(button) {
     }    catch (error) { toast(error.message || "Draft could not be saved."); }
     return true;
   }
+  if (action === "audio-offline-finish-publish") { await runOfflineFinish("published"); return true; }
+  if (action === "audio-offline-finish-draft") { await runOfflineFinish("draft"); return true; }
+  if (action === "audio-offline-finish-device") {
+    offlineFinish = null; rerender();
+    toast("Saved on this device. Upload it from the Recordings tab when you have internet.");
+    return true;
+  }
+  if (action === "audio-offline-finish-close") { offlineFinish = null; rerender(); return true; }
+  if (action === "audio-local-publish" || action === "audio-local-draft") {
+    const status = action === "audio-local-publish" ? "published" : "draft";
+    try {
+      await uploadLocalRecording(button.dataset.id, status);
+      rerender();
+      toast(status === "published" ? "Recording uploaded and published." : "Recording saved as a private draft.");
+    } catch (error) { toast(error.message || "The upload did not complete."); }
+    return true;
+  }
+  if (action === "audio-local-delete") {
+    if (!window.confirm("Delete this recording from this device? It has not been uploaded.")) return true;
+    await deleteLocalRecording(button.dataset.id); await refreshLocalRecordings(); rerender();
+    return true;
+  }
+  if (action === "audio-offline-open") {
+    await refreshLocalRecordings();
+    activeTab = "recordings"; offlineStage = "details"; rerender();
+    return true;
+  }
   if (action === "audio-offline-setup") {
     await openOfflineMicTest();
     return true;
@@ -1992,6 +2131,11 @@ if (typeof document !== "undefined" && document.addEventListener) {
   });
 }
 
+if (typeof window !== "undefined" && window.addEventListener) {
+  window.addEventListener("online", () => { if (activeTab === "recordings" || offlineFinish) rerender(); });
+  window.addEventListener("offline", () => { if (activeTab === "recordings" || offlineFinish) rerender(); });
+}
+
 export function renderLiveAudioAdmin() {
-  return renderLiveAudioContent() + renderBroadcastActionDialog();
+  return renderLiveAudioContent() + renderBroadcastActionDialog() + renderOfflineFinishDialog();
 }

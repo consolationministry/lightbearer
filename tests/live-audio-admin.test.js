@@ -438,3 +438,19 @@ test("offline recording has its own mic test and recording studio, isolated from
   const start = source.slice(source.indexOf("async function startOfflineRecording("), source.indexOf("async function stopOfflineRecording("));
   assert.doesNotMatch(start, /startLiveAudioPublisher|beginBroadcast/);
 });
+
+test("offline recording is stored on device first and uploads only on explicit online choice", async () => {
+  const source = await readFile(new URL("../admin/js/live-audio-admin.js", import.meta.url), "utf8");
+  const store = await readFile(new URL("../admin/js/offline-recording-store.js", import.meta.url), "utf8");
+  assert.match(store, /indexedDB\.open/);
+  const stop = source.slice(source.indexOf("async function stopOfflineRecording("), source.indexOf("async function refreshLocalRecordings("));
+  assert.match(stop, /saveLocalRecording\(/);
+  assert.doesNotMatch(stop, /uploadAdminLiveAudio|saveAdminLiveAudioProgram/);
+  const up = source.slice(source.indexOf("async function uploadLocalRecording("), source.indexOf("async function runOfflineFinish("));
+  assert.match(up, /navigator\.onLine|isOnline\(\)/);
+  assert.match(source, /audio-offline-finish-publish/);
+  assert.match(source, /audio-offline-finish-draft/);
+  assert.match(source, /audio-local-publish/);
+  assert.match(source, /audio-admin-publish/);
+  assert.match(source, /OFFLINE_FALLBACK_DATA/);
+});
