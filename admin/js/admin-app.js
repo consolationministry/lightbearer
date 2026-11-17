@@ -4,7 +4,7 @@ import { renderCmsSettingsPanel, saveCmsContent, saveCmsSocialLinks, uploadCmsIm
 import { createCategory, createHymn, createProgram, createService, deleteCategory, deleteHymn, deleteHymns, deleteProgram, deleteService, getAdminSettings, getCategories, getDailyQuoteSettings, getDashboardStats, getHymn, getHymns, getHymnListRows, getDraftHymns, getProgram, getPrograms, getRecentlyUpdatedHymns, getServicePlan, getServicePlans, getStorageMode, initializeAdminData, moveAllPublishedHymnsToDrafts, publishHymn, saveHymnAsDraft, setHymnsStatus, updateAdminSettings, updateCategory, updateDailyQuoteSettings, updateHymn, updateProgram, updateService } from "./admin-data.js?v=45";
 
 import { adminHymnNumberLabel, adminHymnTitle, filterAdminHymnsByLanguage, hasAdminHymnTitle } from "./admin-hymn-display.js?v=2";
-import { handleLiveAudioAdminAction, handleLiveAudioAdminSubmit, renderLiveAudioAdmin, stopAdminAudioMicTest } from "./live-audio-admin.js?v=13";
+import { handleLiveAudioAdminAction, handleLiveAudioAdminSubmit, renderLiveAudioAdmin, stopAdminAudioMicTest } from "./live-audio-admin.js?v=14";
 import { getCloudinarySettings, renderCloudinarySettingsPanel, removeCloudinarySettings, saveCloudinarySettings } from "./cloudinary-settings.js?v=4";
 import { getProgrammeInteractions } from "../../js/programme-interactions.js";
 import { applyAvailableUpdate, initializeUpdates } from "../../js/updates.js";

@@ -22,6 +22,7 @@ export const AUDIO_CONTROL_SPECS = Object.freeze([
   { key: "volume", label: "Output volume", group: "output", min: 0, max: 100, step: 1, unit: "%", default: 100 },
   { key: "threshold", label: "Compressor threshold", group: "dynamics", min: -60, max: 0, step: 1, unit: " dB", default: -18 },
   { key: "autoVoiceLevel", label: "Auto voice level", group: "dynamics", min: 0, max: 1, step: 1, unit: "", default: 0 },
+  { key: "noiseGate", label: "Background noise reduction", group: "dynamics", min: 0, max: 1, step: 1, unit: "", default: 0 },
   { key: "limiterThreshold", label: "Limiter ceiling", group: "dynamics", min: -24, max: 0, step: 1, unit: " dB", default: -2 },
   { key: "limiterRelease", label: "Limiter release", group: "dynamics", min: 10, max: 500, step: 5, unit: " ms", default: 100 },
   { key: "ratio", label: "Compressor ratio", group: "dynamics", min: 1, max: 20, step: 1, unit: ":1", default: 3 },
@@ -46,28 +47,40 @@ export function nextAutoVoiceTrim({ voiceRmsDb, trimDb, enabled }) {
   return Math.max(-AUTO_VOICE_LEVEL_MAX_TRIM_DB, Math.min(AUTO_VOICE_LEVEL_MAX_TRIM_DB, trim + step));
 }
 
-// Voice-band RMS in dBFS computed from a time-domain sample buffer.
+// RMS in dBFS of a Float32 time-domain buffer (-1..1). In the mic engine this is
+// fed from a 300-3400 Hz band-pass tap so only the speech band is measured.
+// (Earlier versions divided by 128 as if samples were bytes, which read ~40 dB
+// too quiet and pinned the trim at its maximum, so auto level never worked.)
 export function voiceBandRmsDb(samples) {
   if (!samples || !samples.length) return null;
   let energy = 0;
-  let counted = 0;
-  for (let index = 2; index < samples.length - 2; index += 1) {
-    const a = samples[index - 2];
-    const b = samples[index - 1];
-    const c = samples[index];
-    const d = samples[index + 1];
-    const e = samples[index + 2];
-    // Zero-phase-ish voice emphasis: boosting the 400-3400 Hz emphasis by
-    // measuring local sample variance, which speech dominates over room rumble.
-    const localMean = (a + b + c + d + e) / 5;
-    const localVar = ((a - localMean) ** 2 + (c - localMean) ** 2 + (e - localMean) ** 2) / 3;
-    energy += localVar;
-    counted += 1;
-  }
-  if (counted === 0) return null;
-  const rms = Math.sqrt(energy / counted) / 128;
-  if (rms <= 0) return null;
+  for (let index = 0; index < samples.length; index += 1) energy += samples[index] * samples[index];
+  const rms = Math.sqrt(energy / samples.length);
+  if (!(rms > 0)) return null;
   return 20 * Math.log10(rms);
+}
+
+// Noise gate (soft expander). Tracks a slow noise floor and only opens when the
+// voice band rises clearly above it. Closed state attenuates, never mutes, so
+// it reduces steady background noise between words but cannot remove noise
+// that is happening while someone speaks.
+export const NOISE_GATE_ATTENUATION_DB = -14;
+export const NOISE_GATE_OPEN_MARGIN_DB = 9;
+export const NOISE_GATE_MIN_FLOOR_DB = -62;
+export const NOISE_GATE_MAX_FLOOR_DB = -42;
+export function nextNoiseGateState({ levelDb, floorDb, open, enabled }) {
+  const floor0 = Number.isFinite(Number(floorDb)) ? Number(floorDb) : NOISE_GATE_MAX_FLOOR_DB;
+  if (!enabled) return { floorDb: floor0, open: true };
+  const level = levelDb == null || !Number.isFinite(Number(levelDb)) ? -120 : Number(levelDb);
+  let floor = floor0;
+  // Floor falls quickly to quieter levels and creeps up slowly, so speech does
+  // not drag it upward.
+  floor = level < floor ? floor + (level - floor) * 0.3 : floor + (level - floor) * 0.01;
+  floor = Math.max(NOISE_GATE_MIN_FLOOR_DB, Math.min(NOISE_GATE_MAX_FLOOR_DB, floor));
+  const openAt = floor + NOISE_GATE_OPEN_MARGIN_DB;
+  const closeAt = floor + NOISE_GATE_OPEN_MARGIN_DB - 4;
+  const nextOpen = open ? level > closeAt : level > openAt;
+  return { floorDb: floor, open: nextOpen };
 }
 
 export const DEFAULT_AUDIO_SETTINGS = Object.freeze(
@@ -291,6 +304,23 @@ export async function createLiveAudioMicEngine(options) {
     throw new Error("This browser does not support live audio processing.");
   }
 
+  // Report honestly what the browser/phone actually applied.
+  const noiseInfo = (() => {
+    try {
+      const track = rawStream.getAudioTracks()[0];
+      const applied = track && track.getSettings ? track.getSettings() : {};
+      const supported = navigator.mediaDevices.getSupportedConstraints ? navigator.mediaDevices.getSupportedConstraints() : {};
+      return {
+        browserSuppression: applied.noiseSuppression === true,
+        browserSuppressionKnown: typeof applied.noiseSuppression === "boolean",
+        browserSuppressionSupported: supported.noiseSuppression === true,
+        echoCancellation: applied.echoCancellation === true
+      };
+    } catch (error) {
+      return { browserSuppression: false, browserSuppressionKnown: false, browserSuppressionSupported: false, echoCancellation: false };
+    }
+  })();
+
   const context = new AudioContextClass({ latencyHint: "interactive" });
   try {
     if (context.state === "suspended") await context.resume();
@@ -353,9 +383,19 @@ export async function createLiveAudioMicEngine(options) {
     analyser.fftSize = 1024;
     analyser.smoothingTimeConstant = 0.72;
     const destination = context.createMediaStreamDestination();
+    // Speech-band tap (300-3400 Hz) used to measure voice level for auto level.
+    const voiceHigh = context.createBiquadFilter();
+    voiceHigh.type = "highpass"; voiceHigh.frequency.value = 300; voiceHigh.Q.value = 0.7;
+    const voiceLow = context.createBiquadFilter();
+    voiceLow.type = "lowpass"; voiceLow.frequency.value = 3400; voiceLow.Q.value = 0.7;
+    const voiceAnalyser = context.createAnalyser();
+    voiceAnalyser.fftSize = 1024;
+    voiceAnalyser.smoothingTimeConstant = 0;
+    // Noise gate gain sits right after the low cut; a parallel tap measures it.
+    const gate = context.createGain();
 
     // Serial chain: source -> low cut -> bass -> 16 EQ bands -> mid -> treble -> balance -> compressor -> limiter -> auto trim -> pitch -> mic level -> volume -> analyser -> broadcast.
-    const serial = [source, highPass, bass, ...eqBands, mid, treble, balance, compressor, limiter, autoTrim];
+    const serial = [source, highPass, gate, bass, ...eqBands, mid, treble, balance, compressor, limiter, autoTrim];
     for (let index = 0; index < serial.length - 1; index += 1) {
       if (serial[index] && serial[index + 1]) serial[index].connect(serial[index + 1]);
     }
@@ -369,19 +409,49 @@ export async function createLiveAudioMicEngine(options) {
     gain.connect(volume);
     volume.connect(analyser);
     analyser.connect(destination);
+    // Measurement taps (not in the audio path): voice band after the chain, and
+    // the pre-gate signal for the noise gate.
+    autoTrim.connect(voiceHigh); voiceHigh.connect(voiceLow); voiceLow.connect(voiceAnalyser);
+    const gateTap = context.createBiquadFilter();
+    gateTap.type = "highpass"; gateTap.frequency.value = 300;
+    const gateAnalyser = context.createAnalyser();
+    gateAnalyser.fftSize = 1024; gateAnalyser.smoothingTimeConstant = 0;
+    source.connect(gateTap); gateTap.connect(gateAnalyser);
 
-    const nodes = { highPass, bass, eqBands, mid, treble, balance, compressor, limiter, autoTrim, gain, volume, pitchNode };
+    const nodes = { gate, highPass, bass, eqBands, mid, treble, balance, compressor, limiter, autoTrim, gain, volume, pitchNode };
     let autoTrimDb = 0;
     let autoVoiceEnabled = false;
-    const autoSamples = new Float32Array(analyser.fftSize);
+    const autoSamples = new Float32Array(voiceAnalyser.fftSize);
+    const gateSamples = new Float32Array(gateAnalyser.fftSize);
+    let gateEnabled = false;
+    let gateState = { floorDb: NOISE_GATE_MAX_FLOOR_DB, open: true };
+    let gateTimer = null;
+    const runNoiseGate = () => {
+      if (!gateEnabled || context.state === "closed") return;
+      try {
+        gateAnalyser.getFloatTimeDomainData(gateSamples);
+        const wasOpen = gateState.open;
+        gateState = nextNoiseGateState({ levelDb: voiceBandRmsDb(gateSamples), floorDb: gateState.floorDb, open: gateState.open, enabled: true });
+        if (gateState.open !== wasOpen) {
+          const target = gateState.open ? 1 : Math.pow(10, NOISE_GATE_ATTENUATION_DB / 20);
+          nodes.gate.gain.setTargetAtTime(target, context.currentTime, gateState.open ? 0.02 : 0.2);
+        }
+      } catch (error) { /* the gate never breaks the mic chain */ }
+    };
+    const syncNoiseGate = () => {
+      const shouldRun = gateEnabled && context.state !== "closed";
+      if (shouldRun && !gateTimer) gateTimer = setInterval(runNoiseGate, 60);
+      if (!shouldRun && gateTimer) { clearInterval(gateTimer); gateTimer = null; }
+      if (!shouldRun) { gateState = { floorDb: NOISE_GATE_MAX_FLOOR_DB, open: true }; nodes.gate.gain.setTargetAtTime(1, context.currentTime, 0.05); }
+    };
     let autoTimer = null;
     const runAutoVoiceLevel = () => {
       if (!autoVoiceEnabled || context.state === "closed") return;
       try {
-        analyser.getFloatTimeDomainData(autoSamples);
+        voiceAnalyser.getFloatTimeDomainData(autoSamples);
         let silent = true;
         for (let index = 0; index < autoSamples.length; index += 1) {
-          if (Math.abs(autoSamples[index]) > 0.004) { silent = false; break; }
+          if (Math.abs(autoSamples[index]) > 0.002) { silent = false; break; }
         }
         // Only adapt while someone is actually speaking; silence must not
         // pump the gain up and down.
@@ -420,6 +490,8 @@ export async function createLiveAudioMicEngine(options) {
       ramp(nodes.compressor.release, clamp(settings.release, 20, 1000) / 1000);
       ramp(nodes.limiter.threshold, clamp(settings.limiterThreshold, -24, 0));
       ramp(nodes.limiter.release, clamp(settings.limiterRelease, 10, 500) / 1000);
+      const wantGate = clamp(settings.noiseGate, 0, 1) >= 1;
+      if (wantGate !== gateEnabled) { gateEnabled = wantGate; syncNoiseGate(); }
       const wantAuto = clamp(settings.autoVoiceLevel, 0, 1) >= 1;
       if (wantAuto !== autoVoiceEnabled) { autoVoiceEnabled = wantAuto; syncAutoVoice(); }
       if (!autoVoiceEnabled && autoTrimDb !== 0) {
@@ -438,6 +510,7 @@ export async function createLiveAudioMicEngine(options) {
       analyser,
       context,
       pitchAvailable,
+      noiseInfo,
       setSettings,
       waveform(buffer) {
         const samples = buffer || new Uint8Array(analyser.fftSize);
@@ -456,6 +529,7 @@ export async function createLiveAudioMicEngine(options) {
       },
       async stop() {
         if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+        if (gateTimer) { clearInterval(gateTimer); gateTimer = null; }
         rawStream.getTracks().forEach(track => track.stop());
         destination.stream.getTracks().forEach(track => track.stop());
         if (context.state !== "closed") await context.close().catch(() => {});
