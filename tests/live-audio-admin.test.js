@@ -420,3 +420,21 @@ test("large recordings use Cloudinary's ranged chunk upload protocol", async () 
   assert.equal(new Headers(chunks[1].headers).get("content-range"), "bytes 20971520-20971520/20971521");
   assert.equal(new Headers(chunks[0].headers).get("x-unique-upload-id"), new Headers(chunks[1].headers).get("x-unique-upload-id"));
 });
+
+test("offline recording has its own mic test and recording studio, isolated from the live publisher", async () => {
+  const source = await readFile(new URL("../admin/js/live-audio-admin.js", import.meta.url), "utf8");
+  assert.match(source, /function renderOfflineMicTest\(/);
+  assert.match(source, /function renderOfflineStudio\(/);
+  assert.match(source, /data-offline-duration/);
+  const mic = source.slice(source.indexOf("function renderOfflineMicTest("), source.indexOf("function renderOfflineStudio("));
+  const studio = source.slice(source.indexOf("function renderOfflineStudio("), source.indexOf("function renderRecordingsDashboard"));
+  for (const part of [mic, studio]) {
+    assert.match(part, /renderAudioMixerControls\(\)/);
+    assert.match(part, /data-audio-mic-level/);
+    assert.doesNotMatch(part, /audio-admin-go-live-now|audio-admin-stop-live/);
+  }
+  assert.match(mic, /data-action="audio-admin-mic-test"/);
+  assert.match(studio, /audio-admin-toggle-mic/);
+  const start = source.slice(source.indexOf("async function startOfflineRecording("), source.indexOf("async function stopOfflineRecording("));
+  assert.doesNotMatch(start, /startLiveAudioPublisher|beginBroadcast/);
+});

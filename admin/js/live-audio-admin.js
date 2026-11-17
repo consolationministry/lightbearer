@@ -597,16 +597,43 @@ async function refreshMicrophoneOptions() {
 
 let offlinePendingFile = null;
 let offlinePendingBlob = null;
+let offlineStage = "details";
+let offlineDraft = { title: "", speaker: "", category: "", venue: "", date: "", description: "" };
+let offlineClockTimer = null;
+
+function captureOfflineDraft() {
+  const form = typeof document !== "undefined" ? document.getElementById("offline-recording-form") : null;
+  if (!form) return;
+  const values = Object.fromEntries(new FormData(form).entries());
+  ["title", "speaker", "category", "venue", "date", "description"].forEach(key => {
+    if (values[key] !== undefined) offlineDraft[key] = String(values[key]);
+  });
+}
+
+function stopOfflineClock() {
+  if (offlineClockTimer) window.clearInterval(offlineClockTimer);
+  offlineClockTimer = null;
+}
+
+function updateOfflineClock() {
+  const node = document.querySelector("[data-offline-duration]");
+  if (node && offlineRecordingStartedAt) node.textContent = formatElapsed(offlineRecordingStartedAt);
+}
+
+async function openOfflineMicTest() {
+  captureOfflineDraft();
+  if (!offlineDraft.title.trim()) { toast("Enter a title for the offline recording first."); return; }
+  offlineStage = "mictest";
+  offlineSaveLastError = "";
+  rerender();
+  await startMicTest();
+}
 
 async function startOfflineRecording() {
   if (offlineRecorder) return;
   if (!cachedData) return;
-  const title = document.getElementById("offline-title").value.trim();
-  const speaker = document.getElementById("offline-speaker").value.trim();
-  const category = document.getElementById("offline-category").value;
-  const venue = document.getElementById("offline-venue").value.trim();
-  const date = document.getElementById("offline-date").value;
-  const description = document.getElementById("offline-description").value.trim();
+  captureOfflineDraft();
+  const { title, speaker, category, venue, date, description } = offlineDraft;
   const engine = await ensureMicEngine();
   const recorder = startLiveAudioRecording(engine.stream, undefined, {});
   try {
@@ -615,8 +642,15 @@ async function startOfflineRecording() {
   offlineRecorder = { recorder, startedAt: new Date().toISOString(), pending: { title, speaker, category, venue, date, description } };
   offlineRecordingStartedAt = Date.now();
   offlineSavePhase = "recording";
+  offlineStage = "record";
+  activeMicMuted = false;
   rerender();
-  if (activeMicEngine) updateMeter();
+  stopOfflineClock();
+  offlineClockTimer = window.setInterval(updateOfflineClock, 1000);
+  if (activeMicEngine) {
+    if (activeMicFrame) cancelAnimationFrame(activeMicFrame);
+    updateMeter();
+  }
 }
 
 async function stopOfflineRecording() {
@@ -630,6 +664,11 @@ async function stopOfflineRecording() {
   }
   offlineRecorder = null;
   offlineSavePhase = "";
+  offlineRecordingStartedAt = 0;
+  stopOfflineClock();
+  offlineStage = "details";
+  activeMicMuted = false;
+  try { await stopAdminAudioMicTest(); } catch (error) {}
   rerender();
 }
 
@@ -668,6 +707,8 @@ async function saveOfflineRecording(event) {
     if (offlineRecordingPreviewUrl) URL.revokeObjectURL(offlineRecordingPreviewUrl);
     offlineRecordingPreviewUrl = "";
     offlineSavePhase = "";
+    offlineDraft = { title: "", speaker: "", category: "", venue: "", date: "", description: "" };
+    offlineStage = "details";
     cachedData = await loadAdminLiveAudioData();
     activeTab = "recordings";
     rerender();
@@ -846,29 +887,103 @@ function renderOfflineRecorder(data) {
     ? '<div class="audio-offline-preview"><h3>Preview</h3><audio controls src="' + escapeHtml(offlineRecordingPreviewUrl) + '" data-offline-preview></audio><p class="audio-field-note">Preview plays the filtered offline recording locally. Nothing is public until you save it under your programme.</p></div>'
     : "";
   const bg = '<div class="audio-offline-note" role="note"><strong>Background recording:</strong> browsers must keep this tab open and visible to record. Switching tabs can pause recording — keep this tab in front while recording. MediaRecorder and WebAudio filters run in the page, so the tab must stay open; the recording stops if the tab is closed or the browser pauses it.</div>';
-  return '<section class="audio-admin-form-wrap"><h2>Offline Recording</h2>' +
-    '<p>Record a talk or session without going live. Audio runs through the same voice mixer (bass/EQ, compressor, limiter, auto voice level) before it is captured, so use the controls below while recording.</p>' + bg +
+  return '<section class="audio-admin-form-wrap"><p class="audio-wizard-step">OFFLINE RECORDING · STEP 1 OF 3</p><h2>Offline Recording Details</h2>' +
+    '<p>Record a talk or session without going live. Audio runs through the same voice mixer (bass/EQ, compressor, limiter, auto voice level) before it is captured, so you can test your mic and tune the mixer before and during recording.</p>' + bg +
     '<form id="offline-recording-form">' +
-    '<div class="admin-field"><label for="offline-title">Title</label><input class="form-input" id="offline-title" name="title" maxlength="120" value="" required placeholder="e.g. Wednesday Bible Study"></div>' +
-    '<div class="admin-field"><label for="offline-speaker">Minister / Speaker</label><input class="form-input" id="offline-speaker" name="speaker" maxlength="100" value=""></div>' +
+    '<div class="admin-field"><label for="offline-title">Title</label><input class="form-input" id="offline-title" name="title" maxlength="120" value="' + escapeHtml(offlineDraft.title) + '" required placeholder="e.g. Wednesday Bible Study"></div>' +
+    '<div class="admin-field"><label for="offline-speaker">Minister / Speaker</label><input class="form-input" id="offline-speaker" name="speaker" maxlength="100" value="' + escapeHtml(offlineDraft.speaker) + '"></div>' +
     '<div class="admin-field"><label for="offline-category">Category</label><select class="form-select" id="offline-category" name="category">' +
-    data.categories.map(c => '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>').join("") + '</select></div>' +
-    '<div class="admin-field"><label for="offline-venue">Venue</label><input class="form-input" id="offline-venue" name="venue" maxlength="140" value=""></div>' +
-    '<div class="admin-field"><label for="offline-date">Date</label><input class="form-input" id="offline-date" name="date" type="date" value=""></div>' +
-    '<div class="admin-field"><label for="offline-description">Description</label><textarea class="form-textarea" id="offline-description" name="description" rows="3" maxlength="500"></textarea></div>' +
+    data.categories.map(c => '<option value="' + escapeHtml(c) + '"' + (c === offlineDraft.category ? " selected" : "") + '>' + escapeHtml(c) + '</option>').join("") + '</select></div>' +
+    '<div class="admin-field"><label for="offline-venue">Venue</label><input class="form-input" id="offline-venue" name="venue" maxlength="140" value="' + escapeHtml(offlineDraft.venue) + '"></div>' +
+    '<div class="admin-field"><label for="offline-date">Date</label><input class="form-input" id="offline-date" name="date" type="date" value="' + escapeHtml(offlineDraft.date) + '"></div>' +
+    '<div class="admin-field"><label for="offline-description">Description</label><textarea class="form-textarea" id="offline-description" name="description" rows="3" maxlength="500">' + escapeHtml(offlineDraft.description) + '</textarea></div>' +
     '<div class="admin-field audio-audio-file"><label for="offline-file">Upload a finished audio file instead (optional)</label><input class="form-input" id="offline-file" type="file" accept="audio/webm,audio/ogg,audio/mp4,.webm,.ogg,.m4a" data-offline-file>' +
     '<small class="audio-field-note">Choose a WebM, OGG or M4A file. It uploads to Cloudinary when you save.</small></div>' +
     '<div class="audio-offline-actions">' +
     (isRecording
       ? '<button class="button button-secondary" type="button" data-action="audio-offline-stop">Stop recording</button>'
-      : '<button class="button button-primary" type="button" data-action="audio-offline-start" ' + (offlineRecordingBusy ? "disabled" : "") + '>Start offline recording</button>') +
+      : '<button class="button button-primary" type="button" data-action="audio-offline-setup" ' + (offlineRecordingBusy ? "disabled" : "") + '>' + icon("mic") + 'Set up mic &amp; record</button>') +
     '<button class="button button-primary" type="submit" ' + (isRecording || offlineRecordingBusy ? "disabled" : "") + '>Save recording</button></div>' +
     (offlineSavePhase === "uploading" ? '<p class="audio-offline-status" role="status">Uploading to Cloudinary and saving… keep this tab open.</p>' : "") +
     (offlineSaveLastError ? '<p class="audio-finalize-error" role="alert">' + escapeHtml(offlineSaveLastError) + '</p>' : "") +
     '</form>' + preview +
-    '<section class="panel audio-mixer-panel"><header class="panel-header"><div><h2>Audio Editing &amp; Effects</h2><p>Applied to the offline recording while it records.</p></div></header>' +
+    '</section>';
+}
+
+function offlineSteps(current) {
+  const labels = ["Details", "Mic Test", "Record"];
+  return '<div class="audio-broadcast-steps audio-mic-progress" aria-label="Offline recording setup progress">' + labels.map((label, index) => {
+    const n = index + 1;
+    const cls = n < current ? "is-complete" : n === current ? "is-current" : "";
+    return '<span class="' + cls + '"><b>' + (n < current ? icon("check") : String(n)) + '</b>' + label + '</span>';
+  }).join("<i></i>") + '</div>';
+}
+
+function renderOfflineMicTest(data) {
+  const browser = typeof navigator === "undefined" ? null : navigator;
+  const secure = typeof window === "undefined" ? false : window.isSecureContext !== false;
+  const micSupported = Boolean(browser && browser.mediaDevices && typeof browser.mediaDevices.getUserMedia === "function");
+  const audioSupported = typeof AudioContext === "function" ||
+    (typeof window !== "undefined" && typeof window.webkitAudioContext === "function");
+  const canRecord = secure && micSupported && audioSupported && typeof MediaRecorder !== "undefined";
+  const micReady = Boolean(activeMicEngine);
+  return '<section class="audio-mic-test-page audio-offline-setup">' +
+    '<header class="audio-mic-test-heading"><button class="audio-broadcast-back" type="button" data-action="audio-offline-back">' + icon("back") + 'Back to Recording Details</button>' +
+    '<div class="audio-mic-test-heading-row"><div class="audio-mic-title"><span class="audio-mic-title-icon">' + icon("mic") + '</span><div>' +
+    '<p class="audio-wizard-step">OFFLINE RECORDING · SETUP</p><h1>Mic &amp; Audio Test</h1><p>Test your microphone and adjust audio before recording. Nothing is broadcast.</p></div></div>' +
+    offlineSteps(2) + '</div></header>' +
+    '<div class="audio-mic-test-layout"><div class="audio-mic-main">' +
+    '<section class="audio-mic-check-card"><div class="audio-mic-check-controls"><div class="audio-mic-check-intro"><span class="audio-mic-test-icon">' + icon("mic") + '</span><div>' +
+    '<h2>Microphone Test</h2><p>Speak to check your audio input.</p></div></div>' +
+    '<div class="audio-mic-status-pill' + (micReady ? " is-ready" : "") + '" data-audio-ready-status><span class="audio-status-dot"></span>' + (micReady ? "Microphone is working" : "Microphone not tested") + '</div>' +
+    '<label class="audio-device-select" for="audio-mic-device"><span>Select microphone</span><select id="audio-mic-device" data-audio-mic-select>' + renderMicrophoneOptions() + '</select></label>' +
+    '<div class="audio-mic-actions"><button class="button button-secondary" type="button" data-action="audio-admin-mic-test">' + (micReady ? "Test Again" : "Test microphone") + '</button>' +
+    '<button class="button button-secondary" type="button" data-action="audio-admin-mic-stop" ' + (micReady ? "" : "hidden") + '>Stop test</button></div></div>' +
+    '<div class="audio-mic-visual"><div class="audio-mic-visual-heading"><strong>Audio Preview</strong><span>Input level only · no local playback</span></div>' +
+    '<canvas class="audio-waveform audio-mic-waveform" data-audio-waveform width="760" height="150" aria-label="Live audio waveform" role="img"></canvas>' +
+    '<div class="audio-mic-meter" role="meter" aria-label="Microphone input level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span data-audio-mic-level></span></div>' +
+    '<p class="audio-mic-status" data-audio-mic-status role="status" aria-live="polite">' + (micReady ? "Microphone is working. Audio stays on this device." : "Test your microphone before recording.") + '</p></div></section>' +
+    '<section class="panel audio-mixer-panel"><header class="panel-header"><div><h2>Audio Editing &amp; Effects</h2><p>Adjust the voice signal before it is recorded.</p></div></header>' +
     renderAudioMixerControls() +
-    '<p class="field-hint">Changes apply to the offline recording immediately.</p></section></section>';
+    '<p class="field-hint">Adjustments are applied to the offline recording. Pitch shift depends on browser audio-worklet support.</p></section>' +
+    '<div class="audio-mic-check-grid"><section class="panel audio-mic-device-check"><header class="panel-header"><div><h2>Audio Device Check</h2><p>Make sure your input and browser are ready.</p></div></header>' +
+    '<div class="audio-check-status-grid">' + renderHealthRow("Microphone", micReady ? "Connected" : "Test required", micReady, "mic") +
+    renderHealthRow("Audio processing", audioSupported ? "Supported" : "Unavailable", audioSupported, "speaker") +
+    renderHealthRow("Connection security", secure ? "HTTPS browser context" : "HTTPS required", secure, "shield") + '</div></section>' +
+    '<section class="panel audio-mic-system-check"><header class="panel-header"><div><h2>Recorder Check</h2><p>Offline recording requirements.</p></div></header>' +
+    '<div class="audio-system-status-list">' + renderHealthRow("Audio recorder", typeof MediaRecorder !== "undefined" ? "Available" : "Not supported", typeof MediaRecorder !== "undefined", "radio") + '</div>' +
+    '<p class="audio-system-note">Keep this tab open and in front while recording.</p></section></div></div>' +
+    '<aside class="audio-mic-side"><section class="audio-stream-details-card"><header class="audio-side-heading"><h2>Recording Details</h2></header><dl class="audio-stream-details">' +
+    '<div><dt>' + icon("radio") + 'Title</dt><dd>' + escapeHtml(offlineDraft.title || "Not set") + '</dd></div>' +
+    '<div><dt>' + icon("mic") + 'Minister</dt><dd>' + escapeHtml(offlineDraft.speaker || "Not set") + '</dd></div>' +
+    '<div><dt>' + icon("shield") + 'Venue</dt><dd>' + escapeHtml(offlineDraft.venue || "Not set") + '</dd></div>' +
+    '<div><dt>' + icon("check") + 'Date</dt><dd>' + escapeHtml(offlineDraft.date ? formatDate(offlineDraft.date) : "Not set") + '</dd></div>' +
+    '<div><dt>' + icon("wifi") + 'Category</dt><dd>' + escapeHtml(offlineDraft.category || "Other") + '</dd></div></dl></section>' +
+    '<section class="audio-go-live-card"><span class="audio-go-live-mark">' + icon(micReady ? "check" : "mic") + '</span>' +
+    '<h2>' + (micReady && canRecord ? "You’re Ready!" : "Ready when you are") + '</h2>' +
+    '<p>' + (micReady ? "Your microphone is working. Start recording when ready." : "Test your microphone, then start recording.") + '</p>' +
+    '<button class="button button-primary audio-go-live-button" type="button" data-action="audio-offline-start"' + (canRecord && !offlineRecordingBusy ? "" : " disabled") + '>' + icon("radio") + 'Start Recording <span aria-hidden="true">›</span></button>' +
+    '<p class="audio-go-live-note">This is a local recording. It never starts or affects a live broadcast.</p></section></aside></div></section>';
+}
+
+function renderOfflineStudio() {
+  return '<section class="audio-live-studio audio-offline-studio" aria-label="Offline recording control room">' +
+    '<header class="audio-studio-header"><div><p class="audio-studio-kicker">OFFLINE RECORDING · STEP 3 OF 3</p><h1>Recording Studio</h1><p>Monitor your microphone while recording. Nothing is live.</p></div>' +
+    '<div class="audio-studio-header-actions"><button class="button audio-studio-end" type="button" data-action="audio-offline-stop">Stop recording</button></div></header>' +
+    '<div class="audio-studio-layout"><div class="audio-studio-main"><section class="audio-studio-stage"><div class="audio-studio-artwork-wrap">' +
+    '<img class="audio-studio-artwork audio-studio-artwork-fallback" src="../assets/demo-church-mark.png" alt="" loading="lazy"><div class="audio-studio-artwork-shade"></div>' +
+    '<div class="audio-studio-stage-content"><span class="audio-studio-live-pill"><i></i> REC</span><p class="audio-studio-church">C&amp;S Bible Church</p>' +
+    '<h2>' + escapeHtml(offlineDraft.title) + '</h2><p class="audio-studio-program-meta">' + escapeHtml(offlineDraft.speaker || "Minister not set") + " · " + escapeHtml(offlineDraft.category || "Other") + '</p>' +
+    '<div class="audio-studio-wave-wrap"><canvas class="audio-waveform audio-studio-waveform" data-audio-waveform width="920" height="124" aria-label="Recording audio waveform" role="img"></canvas></div>' +
+    '<div class="audio-studio-mic-meter-row"><span class="audio-studio-mic-meter-label">MIC LEVEL</span><div class="audio-mic-meter audio-studio-meter" role="meter" aria-label="Microphone input level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span data-audio-mic-level></span></div></div>' +
+    '<div class="audio-studio-stage-footer"><span>Offline recording · saved on this device until you save it</span></div></div></div></section>' +
+    '<section class="audio-studio-metrics"><article class="audio-studio-metric"><span class="audio-studio-metric-icon">◷</span><div><small>RECORDING TIME</small><strong data-offline-duration>' + formatElapsed(offlineRecordingStartedAt) + '</strong></div></article></section>' +
+    '<section class="audio-studio-panel audio-studio-mixer"><header><div><p class="audio-studio-kicker">SOUND MIXER</p><h2>Microphone controls</h2></div><span class="audio-studio-mic-live"><i></i>MIC ON</span></header>' +
+    renderAudioMixerControls() + '<p class="audio-studio-panel-note">Changes apply to the recording immediately.</p></section>' +
+    '<section class="audio-studio-panel audio-studio-mic-panel"><header><div><p class="audio-studio-kicker">INPUT MONITOR</p><h2>Microphone level</h2></div></header>' +
+    '<p class="audio-mic-status" data-audio-mic-status role="status" aria-live="polite">Recording offline. Keep this page open and in front while recording.</p>' +
+    '<button class="button audio-studio-mute" type="button" data-action="audio-admin-toggle-mic" data-mic-mute-button aria-pressed="' + String(activeMicMuted) + '">' + (activeMicMuted ? "Unmute microphone" : "Mute microphone") + '</button></section>' +
+    '</div></div></section>';
 }
 
 function renderRecordingsDashboard(data) {
@@ -907,7 +1022,11 @@ function renderLiveAudioContent() {
   if (wizardStep === 1 && editingId !== null) return renderProgramDetails(cachedData);
   if (wizardStep === 2 && editingId !== null) return renderBroadcastSettings(cachedData);
   if (activeTab === "settings") return renderSettings(cachedData);
-  if (activeTab === "recordings") return renderOfflineRecorder(cachedData) + renderRecordingsDashboard(cachedData);
+  if (activeTab === "recordings") {
+    if (offlineStage === "record" && offlineRecorder) return renderOfflineStudio();
+    if (offlineStage === "mictest") return renderOfflineMicTest(cachedData);
+    return renderOfflineRecorder(cachedData) + renderRecordingsDashboard(cachedData);
+  }
   const tabs = '<div class="audio-admin-tabs" role="group" aria-label="Filter broadcasts">' +
     tabButton("programs", "All broadcasts") + tabButton("drafts", "Drafts") +
     tabButton("published", "Published") + tabButton("recordings", "Recordings") + tabButton("settings", "Settings") + "</div>";
@@ -927,9 +1046,10 @@ function rerender() {
   if (content) {
     const shell = content.closest(".admin-shell");
     if (shell) shell.classList.toggle("audio-broadcast-shell",
-      (wizardStep === 1 || wizardStep === 2) && editingId !== null || Boolean(activeBroadcaster));
+      (wizardStep === 1 || wizardStep === 2) && editingId !== null || Boolean(activeBroadcaster) ||
+      (activeTab === "recordings" && (offlineStage === "mictest" || offlineStage === "record")));
     content.innerHTML = renderLiveAudioAdmin();
-    if (wizardStep === 2 && editingId !== null) void refreshMicrophoneOptions();
+    if (wizardStep === 2 && editingId !== null || activeTab === "recordings" && offlineStage === "mictest") void refreshMicrophoneOptions();
   }
   if (activeBroadcaster) {
     const status = document.querySelector("[data-audio-mic-status]");
@@ -1499,6 +1619,7 @@ export async function handleLiveAudioAdminAction(button) {
   }
   if (action === "audio-admin-tab") {
     if (offlineRecorder) await stopOfflineRecording();
+    offlineStage = "details";
     activeTab = button.dataset.tab;
     editingId = null;
     wizardStep = 1;
@@ -1729,8 +1850,17 @@ export async function handleLiveAudioAdminAction(button) {
     }    catch (error) { toast(error.message || "Draft could not be saved."); }
     return true;
   }
+  if (action === "audio-offline-setup") {
+    await openOfflineMicTest();
+    return true;
+  }
+  if (action === "audio-offline-back") {
+    await stopAdminAudioMicTest();
+    offlineStage = "details";
+    rerender();
+    return true;
+  }
   if (action === "audio-offline-start") {
-    try { await stopAdminAudioMicTest(); } catch (error) {}
     try { await startOfflineRecording(); }
     catch (error) {
       offlineSaveLastError = error.message || "The offline recording could not start.";
