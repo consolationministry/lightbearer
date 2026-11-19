@@ -292,14 +292,17 @@ export async function createLiveAudioMicEngine(options) {
       audio: audioConstraints
     });
   } catch (error) {
-    if (error && (error.name === "OverconstrainedError" || error.name === "ConstraintNotSatisfiedError")) {
-      // Keep echo cancellation even on fallback: plain { audio: true } lets
-      // the browser drop it, which is the classic recorded echo. Only the
-      // exact device id is dropped here, never the echo/noise constraints.
+    if (!opts.deviceId && !forceEchoCancellation && error && (error.name === "OverconstrainedError" || error.name === "ConstraintNotSatisfiedError")) {
+      // Live-caller fallback kept exactly as before: plain { audio: true }
+      // when no device was requested. Never scoped to offline.
+      rawStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } else if (forceEchoCancellation && error && (error.name === "OverconstrainedError" || error.name === "ConstraintNotSatisfiedError")) {
+      // Offline-only opt-in fallback: request echo cancellation again
+      // without the exact device id so the offline recorder keeps it.
       rawStream = await navigator.mediaDevices.getUserMedia({
         audio: {
           autoGainControl: false,
-          echoCancellation: forceEchoCancellation ? { exact: true } : true,
+          echoCancellation: { exact: true },
           noiseSuppression: true,
           channelCount: 1
         }
