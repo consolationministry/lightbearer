@@ -266,6 +266,9 @@ export function readLiveAudioPeerStats(report) {
 
 export async function createLiveAudioMicEngine(options) {
   const opts = options || {};
+  // Offline-only opt-in: force browser echo cancellation for the whole
+  // capture, even when the device constraint is over-constrained.
+  const forceEchoCancellation = opts.forceEchoCancellation === true;
   if (!globalThis.navigator || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     throw new Error("This browser does not support microphone access.");
   }
@@ -280,7 +283,7 @@ export async function createLiveAudioMicEngine(options) {
       // background voices before local audio processing. Auto gain stays off
       // because the processing chain already runs a compressor.
       autoGainControl: false,
-      echoCancellation: true,
+      echoCancellation: forceEchoCancellation ? { exact: true } : true,
       noiseSuppression: true,
       channelCount: 1
     };
@@ -289,8 +292,18 @@ export async function createLiveAudioMicEngine(options) {
       audio: audioConstraints
     });
   } catch (error) {
-    if (!opts.deviceId && error && (error.name === "OverconstrainedError" || error.name === "ConstraintNotSatisfiedError")) {
-      rawStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    if (error && (error.name === "OverconstrainedError" || error.name === "ConstraintNotSatisfiedError")) {
+      // Keep echo cancellation even on fallback: plain { audio: true } lets
+      // the browser drop it, which is the classic recorded echo. Only the
+      // exact device id is dropped here, never the echo/noise constraints.
+      rawStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          autoGainControl: false,
+          echoCancellation: forceEchoCancellation ? { exact: true } : true,
+          noiseSuppression: true,
+          channelCount: 1
+        }
+      });
     } else {
       throw new Error(error && error.name === "NotAllowedError"
         ? "Microphone permission was denied. Allow microphone access in your browser settings."
