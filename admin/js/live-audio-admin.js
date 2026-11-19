@@ -652,6 +652,10 @@ async function openOfflineMicTest() {
 async function startOfflineRecording() {
   if (offlineRecorder) return;
   if (!cachedData) return;
+  // Never let a leftover preview element feed the mic while recording:
+  // its playback would be re-captured as an echo on the new recording.
+  const leftoverPreview = typeof document !== "undefined" ? document.querySelector("[data-offline-preview]") : null;
+  if (leftoverPreview) { leftoverPreview.pause(); leftoverPreview.muted = true; }
   captureOfflineDraft();
   const { title, speaker, category, venue, date, description } = offlineDraft;
   const engine = await ensureMicEngine();
@@ -1002,10 +1006,10 @@ function offlineRecordingUI() {
 function renderOfflineRecorder(data) {
   const isRecording = Boolean(offlineRecorder);
   const preview = offlineRecordingPreviewUrl
-    ? '<div class="audio-offline-preview"><h3>Preview</h3><audio controls src="' + escapeHtml(offlineRecordingPreviewUrl) + '" data-offline-preview></audio><p class="audio-field-note">Preview plays the filtered offline recording locally. Nothing is public until you save it under your programme.</p></div>'
+    ? '<div class="audio-offline-preview audio-offline-card audio-offline-echo-safe"><h3>Preview your last recording</h3><audio controls src="' + escapeHtml(offlineRecordingPreviewUrl) + '" data-offline-preview ' + (isRecording ? "muted" : "") + '></audio><p class="audio-field-note audio-offline-echo-note">Keep this preview muted while you record a new one: its playback can be picked up by the microphone and sound like an echo on the new recording.</p></div>'
     : "";
-  const bg = '<div class="audio-offline-note" role="note"><strong>Background recording:</strong> browsers must keep this tab open and visible to record. Switching tabs can pause recording — keep this tab in front while recording. MediaRecorder and WebAudio filters run in the page, so the tab must stay open; the recording stops if the tab is closed or the browser pauses it.</div>';
-  return '<section class="audio-admin-form-wrap"><p class="audio-wizard-step">OFFLINE RECORDING · STEP 1 OF 3</p><h2>Offline Recording Details</h2>' +
+  const bg = '<div class="audio-offline-note audio-offline-warning" role="note"><strong>Keep this tab in front:</strong> browsers pause recording when the tab is hidden. Keep this tab open and visible while recording.</div>';
+  return '<section class="audio-offline-page audio-admin-form-wrap"><p class="audio-wizard-step">OFFLINE RECORDING · STEP 1 OF 3</p><h2>Offline Recording Details</h2>' +
     '<p>Record a talk or session without going live. Audio runs through the same voice mixer (bass/EQ, compressor, limiter, auto voice level) before it is captured, so you can test your mic and tune the mixer before and during recording.</p>' + bg +
     '<form id="offline-recording-form">' +
     '<div class="admin-field"><label for="offline-title">Title</label><input class="form-input" id="offline-title" name="title" maxlength="120" value="' + escapeHtml(offlineDraft.title) + '" required placeholder="e.g. Wednesday Bible Study"></div>' +
@@ -1365,7 +1369,11 @@ function updateMeter() {
 
 async function ensureMicEngine() {
   if (activeMicEngine) return activeMicEngine;
-  activeMicEngine = await createLiveAudioMicEngine({ settings: audioSettings, deviceId: selectedMicrophoneId });
+  // Offline recording captures the voice to a file: force browser echo
+  // cancellation so speakers in the room do not double up on the recording.
+  // The live stream path still uses the default behaviour.
+  const offlinePath = offlineStage === "mictest" || offlineStage === "record";
+  activeMicEngine = await createLiveAudioMicEngine({ settings: audioSettings, deviceId: selectedMicrophoneId, forceEchoCancellation: offlinePath });
   const status = document.querySelector("[data-audio-mic-status]");
   if (status) status.textContent = activeMicEngine.pitchAvailable
     ? "Microphone is on. Speak to check your voice and waveform. " + describeNoiseReduction(activeMicEngine.noiseInfo, audioSettings.noiseGate >= 1)

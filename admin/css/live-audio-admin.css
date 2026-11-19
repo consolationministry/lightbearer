@@ -705,3 +705,79 @@
 .audio-offline-actions .button { width: auto; min-height: 38px; padding: 8px 14px; font-size: .78rem; }
 .audio-offline-actions .button svg { width: 15px; height: 15px; }
 @media (max-width: 560px) { .audio-offline-actions .button { flex: 1 1 140px; } }
+
+/* Offline studio redesign: dark card look matching the broadcast shell.
+   All rules are scoped to the offline-only classes (audio-offline-page,
+   audio-offline-setup, audio-offline-studio, audio-offline-card,
+   audio-offline-note, audio-offline-preview, audio-offline-status) so the
+   live livestream studio and its styles are never changed. */
+.audio-offline-page {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  max-width: 920px;
+  color: #eef5ff;
+}
+.audio-offline-page h2 { margin: 0; color: #f5f8ff; font-size: clamp(1.35rem, 2.3vw, 1.75rem); letter-spacing: -.035em; }
+.audio-offline-page > p { margin: 0; color: #9aacc5; font-size: .78rem; line-height: 1.55; max-width: 640px; }
+.audio-offline-page #offline-recording-form {
+  display: grid;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid #172f4d;
+  border-radius: 10px;
+  background: #0a1a30;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .12);
+}
+.audio-offline-page #offline-recording-form .admin-field { display: grid; gap: 0; }
+.audio-offline-page #offline-recording-form .admin-field label { display: block; margin: 0 0 6px; color: #dce9fb; font-size: .72rem; font-weight: 700; }
+.audio-offline-page #offline-recording-form .form-input,
+.audio-offline-page #offline-recording-form .form-select,
+.audio-offline-page #offline-recording-form .form-textarea {
+  width: 100%; min-height: 38px; padding: 8px 10px;
+  border: 1px solid #294363; border-radius: 6px;
+  color: #edf4ff; background: #0a1a30; font-size: .72rem;
+}
+.audio-offline-page #offline-recording-form .form-textarea { min-height: 68px; resize: vertical; line-height: 1.45; }
+.audio-offline-page #offline-recording-form .form-input:focus,
+.audio-offline-page #offline-recording-form .form-select:focus,
+.audio-offline-page #offline-recording-form .form-textarea:focus { border-color: #2d84ff; outline: 2px solid rgba(45, 132, 255, .18); }
+.audio-offline-page #offline-recording-form input[type="date"] { color-scheme: dark; }
+.audio-offline-page #offline-recording-form .audio-field-note { display: block; margin-top: 5px; color: #8196b1; font-size: .61rem; }
+
+.audio-offline-note {
+  padding: 10px 12px;
+  border: 1px solid #1b3554;
+  border-radius: 10px;
+  color: #9aacc5;
+  background: #0a1a30;
+  font-size: .68rem;
+  line-height: 1.5;
+}
+.audio-offline-warning { border-color: #4b3d25; color: #e9c878; background: #302919; }
+.audio-offline-warning strong { display: block; margin-bottom: 2px; }
+.audio-offline-card {
+  padding: 15px;
+  border: 1px solid #172f4d;
+  border-radius: 10px;
+  background: #0a1a30;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .12);
+}
+.audio-offline-preview h3 { margin: 0 0 10px; color: #f2f6ff; font-size: .82rem; }
+.audio-offline-preview audio { width: 100%; min-height: 40px; }
+.audio-offline-echo-note { display: block; margin-top: 8px; color: #8196b1; font-size: .61rem; line-height: 1.45; }
+.audio-offline-status { margin: 0; color: #9aacc5; font-size: .68rem; line-height: 1.5; }
+
+/* Offline mic-test page: gentle offline-only emphasis over the shared
+   mic-test layout (which also serves the live setup page - not restyled here). */
+.audio-mic-test-page.audio-offline-setup .audio-mic-check-card { border-color: #1d3a5f; }
+
+/* Offline recording studio: reuse the studio layout, give the stage a distinct
+   offline accent. Scoped to .audio-offline-studio only, so the live studio
+   (which uses .audio-live-studio without .audio-offline-studio) is unchanged. */
+.audio-offline-studio .audio-studio-stage { border-color: #4b2b3a; }
+.audio-offline-studio .audio-offline-note { margin-top: 10px; }
+
+@media (max-width: 560px) {
+  .audio-offline-page #offline-recording-form { padding: 12px; }
+}

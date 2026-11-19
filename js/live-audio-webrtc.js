@@ -266,6 +266,9 @@ export function readLiveAudioPeerStats(report) {
 
 export async function createLiveAudioMicEngine(options) {
   const opts = options || {};
+  // Offline-only opt-in: force browser echo cancellation for the whole
+  // capture, even when the device constraint is over-constrained.
+  const forceEchoCancellation = opts.forceEchoCancellation === true;
   if (!globalThis.navigator || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     throw new Error("This browser does not support microphone access.");
   }
@@ -280,7 +283,7 @@ export async function createLiveAudioMicEngine(options) {
       // background voices before local audio processing. Auto gain stays off
       // because the processing chain already runs a compressor.
       autoGainControl: false,
-      echoCancellation: true,
+      echoCancellation: forceEchoCancellation ? { exact: true } : true,
       noiseSuppression: true,
       channelCount: 1
     };
@@ -289,8 +292,21 @@ export async function createLiveAudioMicEngine(options) {
       audio: audioConstraints
     });
   } catch (error) {
-    if (!opts.deviceId && error && (error.name === "OverconstrainedError" || error.name === "ConstraintNotSatisfiedError")) {
+    if (!opts.deviceId && !forceEchoCancellation && error && (error.name === "OverconstrainedError" || error.name === "ConstraintNotSatisfiedError")) {
+      // Live-caller fallback kept exactly as before: plain { audio: true }
+      // when no device was requested. Never scoped to offline.
       rawStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } else if (forceEchoCancellation && error && (error.name === "OverconstrainedError" || error.name === "ConstraintNotSatisfiedError")) {
+      // Offline-only opt-in fallback: request echo cancellation again
+      // without the exact device id so the offline recorder keeps it.
+      rawStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          autoGainControl: false,
+          echoCancellation: { exact: true },
+          noiseSuppression: true,
+          channelCount: 1
+        }
+      });
     } else {
       throw new Error(error && error.name === "NotAllowedError"
         ? "Microphone permission was denied. Allow microphone access in your browser settings."
