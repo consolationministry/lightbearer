@@ -1,3 +1,4 @@
+import { cacheRead, enqueueWrite, flushQueue, isOfflineError, isQueueable, readCached, tableOf } from "./offline-admin.js";
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "../config.js?v=33";
 
 const SESSION_KEY = "cns-lightbearer-admin-session-v1";
@@ -119,7 +120,45 @@ async function refreshSession(session) {
   return refreshed;
 }
 
+let offlineUserId = "";
+export function setOfflineUserId(id) { offlineUserId = id || ""; }
+function browserOffline() { return typeof navigator !== "undefined" && navigator.onLine === false; }
+function offlineFailure() { return new SupabaseRequestError("You are offline.", 0, "NETWORK_ERROR"); }
+
 export async function supabaseRequest(path, options) {
+  const opts = options || {};
+  if (!adminAuthorizationRequired || opts.publicOnly || opts.noQueue) return networkRequest(path, opts);
+  const method = String(opts.method || "GET").toUpperCase();
+  if (method === "GET" && tableOf(path)) {
+    try {
+      const rows = await (browserOffline() ? Promise.reject(offlineFailure()) : networkRequest(path, opts));
+      cacheRead(path, rows).catch(function () {});
+      return rows;
+    } catch (error) {
+      if (isOfflineError(error)) {
+        const cached = await readCached(path).catch(function () { return undefined; });
+        if (cached !== undefined) return cached;
+      }
+      throw error;
+    }
+  }
+  if (isQueueable(path, opts)) {
+    if (!browserOffline()) {
+      try { return await networkRequest(path, opts); }
+      catch (error) { if (!isOfflineError(error)) throw error; }
+    }
+    await enqueueWrite(path, opts, offlineUserId);
+    const body = opts.body && typeof opts.body === "object" ? opts.body : null;
+    return /return=representation/.test(opts.prefer || "") ? (Array.isArray(body) ? body : body ? [body] : []) : null;
+  }
+  return networkRequest(path, opts);
+}
+
+export function syncOfflineQueue() {
+  return flushQueue(function (p, o) { return networkRequest(p, o); }, offlineUserId);
+}
+
+async function networkRequest(path, options) {
   const opts = options || {};
   if (!isSupabaseConfigured()) throw new SupabaseRequestError("Admin backend configuration is missing.", 0, "NOT_CONFIGURED");
   const isExplicitlyPublic = opts.publicOnly || publicRequestPaths.has(String(path || ""));
@@ -152,7 +191,7 @@ export async function supabaseRequest(path, options) {
 
   if (response.status === 401 && session && session.refresh_token && !opts.noRefresh) {
     const refreshed = await refreshSession(session);
-    if (refreshed) return supabaseRequest(path, Object.assign({}, opts, { session: refreshed, noRefresh: true }));
+    if (refreshed) return networkRequest(path, Object.assign({}, opts, { session: refreshed, noRefresh: true }));
   }
   if (!response.ok) throw requestError(payload, response);
   return payload;

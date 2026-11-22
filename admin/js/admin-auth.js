@@ -1,4 +1,6 @@
-import { clearSession, clearActiveSession, getActiveSession, getStoredSession, isSupabaseConfigured, requireAdminAuthorization, saveSession, setActiveSession, setPublicRequestPaths, supabaseRequest } from "./supabase-client.js?v=33";
+import { clearSession, clearActiveSession, getActiveSession, getStoredSession, isSupabaseConfigured, requireAdminAuthorization, saveSession, setActiveSession, setOfflineUserId, setPublicRequestPaths, supabaseRequest, syncOfflineQueue } from "./supabase-client.js?v=33";
+
+import { clearAdminOffline, isOfflineError, loadAdminSnapshot, saveAdminSnapshot } from "./offline-admin.js";
 
 requireAdminAuthorization();
 setPublicRequestPaths(["auth/v1/token?grant_type=password"]);
@@ -55,6 +57,8 @@ export async function loginAdmin(email, password) {
     currentAdmin = await getVerifiedAdmin(session);
     setActiveSession(session);
     saveSession(session);
+    setOfflineUserId(currentAdmin.id);
+    await saveAdminSnapshot(currentAdmin).catch(function () {});
     return currentAdmin;
   } catch (error) {
     currentAdmin = null;
@@ -83,6 +87,7 @@ export async function logoutAdmin() {
     // Always clear this device's session even if the network is unavailable.
   } finally {
     clearSession();
+    await clearAdminOffline({ dropQueue: false }).catch(function () {});
   }
   return true;
 }
@@ -118,11 +123,34 @@ export async function initializeAdminAuth() {
   setActiveSession(session);
   try {
     currentAdmin = await getVerifiedAdmin(session);
+    setOfflineUserId(currentAdmin.id);
+    await saveAdminSnapshot(currentAdmin).catch(function () {});
+    syncOfflineQueue().catch(function () {});
     return { configured: true, authenticated: true, admin: currentAdmin };
   } catch (error) {
+    if (isOfflineError(error)) {
+      // Offline: only a device that already signed in and was verified recently may reopen.
+      const snapshot = await loadAdminSnapshot().catch(function () { return null; });
+      if (snapshot) {
+        currentAdmin = snapshot;
+        setOfflineUserId(snapshot.id);
+        return { configured: true, authenticated: true, admin: snapshot, offline: true };
+      }
+    }
     currentAdmin = null;
     clearActiveSession();
     if (error && error.code !== "ADMIN_REQUIRED") clearSession();
+    if (error && (error.code === "ADMIN_REQUIRED" || error.code === "INVALID_SESSION")) await clearAdminOffline({ dropQueue: false }).catch(function () {});
     return { configured: true, authenticated: false, admin: null, error: asAdminError(error) };
   }
+}
+
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+  // On reconnect, re-verify the admin server-side before any queued change is sent.
+  window.addEventListener("online", function () {
+    if (!currentAdmin || !currentAdmin.offline) { syncOfflineQueue().catch(function () {}); return; }
+    initializeAdminAuth().then(function (result) {
+      if (result && !result.authenticated && typeof window.location !== "undefined" && window.location.reload) window.location.reload();
+    }).catch(function () {});
+  });
 }
