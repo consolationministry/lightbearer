@@ -17,11 +17,11 @@ import {
 // Audio file the admin picked in the details form. It uploads when the form is saved.
 let pendingAudioFile = null;
 import { createLiveAudioId, subscribeLiveAudioBursts } from "../../js/live-audio-realtime.js";
-import { startLiveAudioRecording } from "../../js/live-audio-recording.js?v=3";
+import { startLiveAudioRecording } from "../../js/live-audio-recording.js?v=4";
 import { AUDIO_CONTROL_SPECS, AUDIO_PRESETS, createLiveAudioMicEngine, DEFAULT_AUDIO_SETTINGS, startLiveAudioPublisher } from "../../js/live-audio-webrtc.js?v=7";
 import { buildWaveformBars, getWaveformDisplayGain, scaleWaveformBars } from "./live-audio-waveform.js";
 import { deleteLocalRecording, getLocalRecording, listLocalRecordings, saveLocalRecording } from "./offline-recording-store.js";
-import { exportLiveAudioProgram, exportLiveRecordingSnapshot, isExportableChurchRecording } from "./live-audio-export.js?v=2";
+import { exportLiveAudioProgram, exportLiveRecordingSnapshot, isExportableChurchRecording } from "./live-audio-export.js?v=3";
 
 let activeTab = "programs";
 let editingId = null;

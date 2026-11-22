@@ -463,3 +463,16 @@ test("live studio export button is wired and does not touch the publisher", asyn
   assert.match(block, /activeRecording\.snapshot\(\)/);
   assert.doesNotMatch(block, /activeBroadcaster|publisher|getUserMedia|stop\(/);
 });
+
+test("export code ships under bumped cache-busting urls so cached admin tabs and the service worker load it", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const read = p => readFile(new URL(p, import.meta.url), "utf8");
+  const html = await read("../admin/index.html");
+  const app = await read("../admin/js/admin-app.js");
+  const admin = await read("../admin/js/live-audio-admin.js");
+  assert.doesNotMatch(html, /admin-app\.js\?v=60\b/);
+  assert.match(html, /admin-app\.js\?v=61\b/);
+  assert.match(app, /live-audio-admin\.js\?v=15\b/);
+  assert.match(admin, /live-audio-recording\.js\?v=4\b/);
+  assert.match(admin, /live-audio-export\.js\?v=3\b/);
+});
