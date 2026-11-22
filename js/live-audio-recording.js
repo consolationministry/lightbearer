@@ -55,10 +55,16 @@ export function startLiveAudioRecording(stream, Recorder = globalThis.MediaRecor
   let recorderStoppedAt = null;
   const stopped = new Promise(resolve => { resolveStopped = resolve; });
 
+  let snapshotWaiters = [];
   recorder.addEventListener("dataavailable", event => {
     if (event.data && event.data.size > 0) chunks.push(event.data);
+    const waiters = snapshotWaiters;
+    snapshotWaiters = [];
+    waiters.forEach(done => done());
   });
   recorder.addEventListener("stop", () => {
+    snapshotWaiters.forEach(done => done());
+    snapshotWaiters = [];
     recorderStoppedAt = Date.now();
     resolveStopped();
   }, { once: true });
@@ -145,6 +151,21 @@ export function startLiveAudioRecording(stream, Recorder = globalThis.MediaRecor
 
   let stopPromise = null;
   return {
+    // Read-only copy of the audio recorded so far, for exporting while live.
+    // Only flushes this archive recorder; never touches the stream or publisher.
+    async snapshot() {
+      if (recorder.state === "recording" && typeof recorder.requestData === "function") {
+        await new Promise(resolve => {
+          snapshotWaiters.push(resolve);
+          globalThis.setTimeout(resolve, 3000);
+          try { recorder.requestData(); } catch (error) { resolve(); }
+        });
+      }
+      const format = normalizeMimeType(recorder.mimeType || mimeType);
+      const blob = new Blob(chunks.slice(), { type: format.contentType });
+      if (!blob.size) throw new Error("No live audio has been recorded yet. Try again in a few seconds.");
+      return { blob, contentType: format.contentType, extension: format.extension };
+    },
     async stop() {
       if (!stopPromise) {
         stopPromise = (async () => {

@@ -454,3 +454,12 @@ test("offline recording is stored on device first and uploads only on explicit o
   assert.match(source, /audio-admin-publish/);
   assert.match(source, /OFFLINE_FALLBACK_DATA/);
 });
+
+test("live studio export button is wired and does not touch the publisher", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const src = await readFile(new URL("../admin/js/live-audio-admin.js", import.meta.url), "utf8");
+  assert.match(src, /audio-admin-export-live-recording/);
+  const block = src.slice(src.indexOf('action === "audio-admin-export-live-recording"'), src.indexOf('action === "audio-admin-export-programme"'));
+  assert.match(block, /activeRecording\.snapshot\(\)/);
+  assert.doesNotMatch(block, /activeBroadcaster|publisher|getUserMedia|stop\(/);
+});

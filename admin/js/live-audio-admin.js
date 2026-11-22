@@ -21,7 +21,7 @@ import { startLiveAudioRecording } from "../../js/live-audio-recording.js?v=3";
 import { AUDIO_CONTROL_SPECS, AUDIO_PRESETS, createLiveAudioMicEngine, DEFAULT_AUDIO_SETTINGS, startLiveAudioPublisher } from "../../js/live-audio-webrtc.js?v=7";
 import { buildWaveformBars, getWaveformDisplayGain, scaleWaveformBars } from "./live-audio-waveform.js";
 import { deleteLocalRecording, getLocalRecording, listLocalRecordings, saveLocalRecording } from "./offline-recording-store.js";
-import { exportLiveAudioProgram, isExportableChurchRecording } from "./live-audio-export.js?v=1";
+import { exportLiveAudioProgram, exportLiveRecordingSnapshot, isExportableChurchRecording } from "./live-audio-export.js?v=2";
 
 let activeTab = "programs";
 let editingId = null;
@@ -984,7 +984,8 @@ export function renderLiveAudioStudio(program) {
     '<div class="audio-studio-monitor-row"><section class="audio-studio-panel audio-studio-mic-panel"><header><div><p class="audio-studio-kicker">INPUT MONITOR</p><h2>Microphone level</h2></div></header>' +
     '<p class="audio-mic-status" data-audio-mic-status role="status" aria-live="polite">' + keepOpenMessage + '</p>' +
     '<button class="button audio-studio-mute" type="button" data-action="audio-admin-toggle-mic" data-mic-mute-button aria-pressed="' + String(activeMicMuted) + '">' +
-    (activeMicMuted ? "Unmute microphone" : "Mute microphone") + '</button></section>' +
+    (activeMicMuted ? "Unmute microphone" : "Mute microphone") + '</button>' +
+    (activeBroadcastRecordingEnabled ? '<button class="button button-secondary" type="button" data-action="audio-admin-export-live-recording">Export recording so far</button>' : "") + '</section>' +
     '<section class="audio-studio-reactions" aria-label="Listener reactions"><div class="audio-studio-reaction-heading"><div><p class="audio-studio-kicker">LIVE ENGAGEMENT</p><h2>Listener reactions</h2></div><span>All-time counts</span></div>' +
     '<div class="audio-studio-reaction-feed" data-studio-burst-feed aria-live="polite" aria-label="Live reactions feed"></div>' +
     '<div class="audio-studio-reaction-list">' +
@@ -1921,6 +1922,25 @@ export async function handleLiveAudioAdminAction(button) {
     const drafts = cachedData.programs.filter(program => program.status === "draft");
     if (!drafts.length) toast("There are no drafts to export.");
     else if (window.confirm("Download " + drafts.length + " draft broadcast(s) as JSON?")) downloadDrafts();
+    return true;
+  }
+  if (action === "audio-admin-export-live-recording") {
+    if (button.disabled) return true;
+    if (!activeRecording || typeof activeRecording.snapshot !== "function") { toast("This broadcast is not being recorded."); return true; }
+    button.disabled = true;
+    const originalText = button.textContent;
+    button.textContent = "Exporting…";
+    try {
+      const snap = await activeRecording.snapshot();
+      const live = cachedData && cachedData.programs.find(item => item.id === activeBroadcastId);
+      const result = exportLiveRecordingSnapshot(snap, live && live.title);
+      toast("Exported " + result.filename + ". The broadcast is not affected.");
+    } catch (error) {
+      toast(error.message || "The live audio could not be exported.");
+    } finally {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
     return true;
   }
   if (action === "audio-admin-export-programme") {

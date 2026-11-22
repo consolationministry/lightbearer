@@ -185,3 +185,16 @@ test("export helper exposes no metadata sidecar builder", async () => {
   assert.match(source, /export async function exportLiveAudioProgram/);
   assert.match(source, /createDownloadLink\(documentLike, objectUrl, filename\)/);
 });
+
+test("live recording snapshot downloads a local blob with a live filename", async () => {
+  const { exportLiveRecordingSnapshot, getLiveSnapshotFilename } = await import("../admin/js/live-audio-export.js");
+  const document = createFakeDocument();
+  const blob = new Blob(["abc"], { type: "audio/webm" });
+  const now = new Date("2026-11-22T08:30:00Z");
+  assert.equal(getLiveSnapshotFilename("Sunday Service", "webm", now), "sunday-service-live-2026-11-22-0830.webm");
+  const result = exportLiveRecordingSnapshot({ blob, extension: "webm" }, "Sunday Service", { document, createObjectURL: () => "blob:x", revokeObjectURL: () => {}, now });
+  assert.equal(result.size, 3);
+  assert.equal(document.links[0].href, "blob:x");
+  assert.equal(document.links[0].clicked, true);
+  assert.throws(() => exportLiveRecordingSnapshot({ blob: new Blob([]) }, "t", { document, createObjectURL: () => "x" }), /No live audio/);
+});

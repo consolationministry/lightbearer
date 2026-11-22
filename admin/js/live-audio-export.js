@@ -142,3 +142,29 @@ export async function exportLiveAudioProgram(program, options) {
   }
   return { filename, fallback: false, size: blob.size, format };
 }
+
+export function getLiveSnapshotFilename(title, extension, now) {
+  const slug = slugifyTitle(title);
+  const date = (now instanceof Date ? now : new Date()).toISOString().slice(0, 16).replace("T", "-").replace(":", "");
+  const ext = SUPPORTED_EXPORT_FORMATS.has(extension) ? extension : "webm";
+  return slug + "-live-" + date + "." + ext;
+}
+
+// Downloads audio recorded so far during a live broadcast. Local blob only.
+export function exportLiveRecordingSnapshot(snapshot, title, options) {
+  const opts = options || {};
+  const documentLike = opts.document || (typeof document !== "undefined" ? document : null);
+  const urlObj = opts.urlObject || globalThis.URL;
+  const createObjectURL = opts.createObjectURL || (urlObj && typeof urlObj.createObjectURL === "function" ? urlObj.createObjectURL.bind(urlObj) : null);
+  const revokeObjectURL = opts.revokeObjectURL || (urlObj && typeof urlObj.revokeObjectURL === "function" ? urlObj.revokeObjectURL.bind(urlObj) : null);
+  if (!snapshot || !snapshot.blob || !snapshot.blob.size) throw new Error("No live audio has been recorded yet. Try again in a few seconds.");
+  if (!documentLike || !createObjectURL) throw new Error("Export is not supported in this browser. Try a newer browser or device.");
+  const filename = getLiveSnapshotFilename(title, snapshot.extension, opts.now);
+  const objectUrl = createObjectURL(snapshot.blob);
+  try {
+    createDownloadLink(documentLike, objectUrl, filename);
+  } finally {
+    if (revokeObjectURL) setTimeout(() => { try { revokeObjectURL(objectUrl); } catch (error) {} }, 10000);
+  }
+  return { filename, size: snapshot.blob.size, format: snapshot.extension };
+}

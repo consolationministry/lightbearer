@@ -147,3 +147,38 @@ test("archive duration stops at recorder completion instead of waiting for segme
 
   assert.equal(saved.durationSeconds, 1);
 });
+
+test("live snapshot exports audio so far without stopping or touching the recorder stream", async () => {
+  class Rec {
+    static isTypeSupported(type) { return type === "audio/webm;codecs=opus"; }
+    constructor(stream, options) { this.stream = stream; this.mimeType = options.mimeType; this.state = "inactive"; this.l = {}; this.calls = []; Rec.latest = this; }
+    addEventListener(t, f) { this.l[t] = f; }
+    start() { this.state = "recording"; }
+    requestData() { this.calls.push("requestData"); this.l.dataavailable({ data: new Blob(["live-chunk"], { type: this.mimeType }) }); }
+    stop() { this.calls.push("stop"); this.state = "inactive"; this.l.dataavailable({ data: new Blob(["-end"], { type: this.mimeType }) }); this.l.stop(); }
+  }
+  const stops = [];
+  const stream = { getAudioTracks: () => [{ stop: () => stops.push("track") }] };
+  const rec = startLiveAudioRecording(stream, Rec);
+  const snap = await rec.snapshot();
+  assert.equal(snap.blob.size, "live-chunk".length);
+  assert.equal(snap.extension, "webm");
+  assert.deepEqual(Rec.latest.calls, ["requestData"]);
+  assert.equal(Rec.latest.state, "recording");
+  assert.deepEqual(stops, []);
+  const final = await rec.stop();
+  assert.equal(final.blob.size, "live-chunk-end".length);
+});
+
+test("live snapshot with nothing recorded fails clearly", async () => {
+  class Rec {
+    static isTypeSupported() { return true; }
+    constructor(s, o) { this.mimeType = o.mimeType; this.state = "inactive"; this.l = {}; }
+    addEventListener(t, f) { this.l[t] = f; }
+    start() { this.state = "recording"; }
+    requestData() { this.l.dataavailable({ data: new Blob([]) }); }
+    stop() {}
+  }
+  const rec = startLiveAudioRecording({ getAudioTracks: () => [{}] }, Rec);
+  await assert.rejects(rec.snapshot(), /No live audio/);
+});
