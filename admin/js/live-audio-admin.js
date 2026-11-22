@@ -659,7 +659,7 @@ async function startOfflineRecording() {
   captureOfflineDraft();
   const { title, speaker, category, venue, date, description } = offlineDraft;
   const engine = await ensureMicEngine();
-  const recorder = startLiveAudioRecording(engine.stream, undefined, {});
+  const recorder = startLiveAudioRecording(engine.stream, undefined, { audioBitsPerSecond: 128000 });
   try {
     await createLiveAudioId();
   } catch (e) {}
@@ -1373,7 +1373,7 @@ async function ensureMicEngine() {
   // cancellation so speakers in the room do not double up on the recording.
   // The live stream path still uses the default behaviour.
   const offlinePath = offlineStage === "mictest" || offlineStage === "record";
-  activeMicEngine = await createLiveAudioMicEngine({ settings: audioSettings, deviceId: selectedMicrophoneId, forceEchoCancellation: offlinePath });
+  activeMicEngine = await createLiveAudioMicEngine({ settings: audioSettings, deviceId: selectedMicrophoneId, forceEchoCancellation: offlinePath, highQualityCapture: offlinePath });
   const status = document.querySelector("[data-audio-mic-status]");
   if (status) status.textContent = activeMicEngine.pitchAvailable
     ? "Microphone is on. Speak to check your voice and waveform. " + describeNoiseReduction(activeMicEngine.noiseInfo, audioSettings.noiseGate >= 1)

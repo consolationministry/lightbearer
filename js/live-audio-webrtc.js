@@ -269,6 +269,9 @@ export async function createLiveAudioMicEngine(options) {
   // Offline-only opt-in: force browser echo cancellation for the whole
   // capture, even when the device constraint is over-constrained.
   const forceEchoCancellation = opts.forceEchoCancellation === true;
+  // Offline-only: higher-quality capture (steady clock, 48 kHz, final peak
+  // limiter after the auto level). Live callers never set this.
+  const highQualityCapture = opts.highQualityCapture === true;
   if (!globalThis.navigator || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     throw new Error("This browser does not support microphone access.");
   }
@@ -337,7 +340,11 @@ export async function createLiveAudioMicEngine(options) {
     }
   })();
 
-  const context = new AudioContextClass({ latencyHint: "interactive" });
+  let context;
+  if (highQualityCapture) {
+    try { context = new AudioContextClass({ latencyHint: "playback", sampleRate: 48000 }); } catch (error) { context = null; }
+  }
+  if (!context) context = new AudioContextClass({ latencyHint: "interactive" });
   try {
     if (context.state === "suspended") await context.resume();
     const source = context.createMediaStreamSource(rawStream);
@@ -375,6 +382,17 @@ export async function createLiveAudioMicEngine(options) {
     // Automatic trim applied after the limiter so the voice-aware level
     // control can lift quiet speech without defeating the ceiling.
     const autoTrim = context.createGain();
+    // Offline-only final limiter: the auto trim can lift up to +12 dB after
+    // the first limiter, so catch those peaks before the recorder to avoid clipping.
+    let finalLimiter = null;
+    if (highQualityCapture) {
+      finalLimiter = context.createDynamicsCompressor();
+      finalLimiter.threshold.value = -3;
+      finalLimiter.knee.value = 0;
+      finalLimiter.ratio.value = 20;
+      finalLimiter.attack.value = 0.002;
+      finalLimiter.release.value = 0.12;
+    }
     let pitchNode = null;
     let pitchAvailable = false;
 
@@ -415,6 +433,7 @@ export async function createLiveAudioMicEngine(options) {
     for (let index = 0; index < serial.length - 1; index += 1) {
       if (serial[index] && serial[index + 1]) serial[index].connect(serial[index + 1]);
     }
+    if (finalLimiter) { autoTrim.connect(finalLimiter); serial.push(finalLimiter); }
     const last = serial[serial.length - 1];
     if (pitchNode) {
       last.connect(pitchNode);

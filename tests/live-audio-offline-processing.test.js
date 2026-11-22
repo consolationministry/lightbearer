@@ -45,3 +45,26 @@ test("offline path records the shared mic engine stream and UI is compact and ho
   const css = await readFile(new URL("../admin/css/live-audio-admin.css", import.meta.url), "utf8");
   assert.match(css, /\.audio-offline-actions \.button \{ width: auto; min-height: 38px/);
 });
+
+test("offline-only quality: 128 kbps, hq capture and final limiter; live stays unchanged", async () => {
+  const admin = await readFile(new URL("../admin/js/live-audio-admin.js", import.meta.url), "utf8");
+  assert.match(admin, /startLiveAudioRecording\(engine\.stream, undefined, \{ audioBitsPerSecond: 128000 \}\)/);
+  assert.match(admin, /forceEchoCancellation: offlinePath, highQualityCapture: offlinePath/);
+  // live publisher recording call must not pass a bitrate or the hq flag
+  assert.match(admin, /startLiveAudioRecording\(mic\.stream, undefined, \{\n\s+onSegment/);
+  assert.doesNotMatch(admin, /createLiveAudioMicEngine\(\{[^}]*highQualityCapture: true/);
+  const web = await readFile(new URL("../js/live-audio-webrtc.js", import.meta.url), "utf8");
+  assert.match(web, /opts\.highQualityCapture === true/);
+  assert.match(web, /if \(finalLimiter\)/);
+});
+
+test("recorder bitrate defaults to 64 kbps and honours offline 128 kbps", async () => {
+  const { startLiveAudioRecording } = await import("../js/live-audio-recording.js");
+  const seen = [];
+  class R { constructor(s, o) { seen.push(o.audioBitsPerSecond); this.state = "inactive"; } addEventListener() {} start() {} static isTypeSupported() { return true; } }
+  const stream = { getAudioTracks: () => [{}] };
+  startLiveAudioRecording(stream, R, {});
+  startLiveAudioRecording(stream, R, { audioBitsPerSecond: 128000 });
+  startLiveAudioRecording(stream, R, { audioBitsPerSecond: 99999999 });
+  assert.deepEqual(seen, [64000, 128000, 64000]);
+});

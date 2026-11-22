@@ -35,7 +35,9 @@ export function startLiveAudioRecording(stream, Recorder = globalThis.MediaRecor
   }
 
   const mimeType = chooseMimeType(Recorder);
-  const recorderOptions = { audioBitsPerSecond: 64000 };
+  // Live keeps 64 kbps; offline recordings opt in to a higher bitrate.
+  const bitrate = Number(opts.audioBitsPerSecond);
+  const recorderOptions = { audioBitsPerSecond: Number.isFinite(bitrate) && bitrate >= 32000 && bitrate <= 256000 ? bitrate : 64000 };
   if (mimeType) recorderOptions.mimeType = mimeType;
   const recorder = new Recorder(stream, recorderOptions);
   const chunks = [];
