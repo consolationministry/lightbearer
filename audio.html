@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#111111">
+<meta name="description" content="Listen to C&S Bible Church audio: messages, music, chants and spoken word. Audio courtesy of Seraph Media.">
+<link rel="icon" href="./assets/lightbearer-icon-512.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/audio.css">
+<title>Audio Library | Lightbearer C&S Bible Church</title>
+</head>
+<body>
+<header class="audio-header">
+<a class="audio-brand" href="./index.html#top" aria-label="Lightbearer home"><img src="./assets/lightbearer-icon-512.png" alt=""><span><b>LIGHTBEARER</b><small>C&S BIBLE CHURCH</small></span></a>
+<nav class="audio-nav" aria-label="Audio pages"><a href="./audio.html" aria-current="page">Audio Library</a><a href="./videos.html">Watch</a></nav>
+<a class="audio-back" href="./index.html">Back to home</a>
+</header>
+<main>
+<section id="audio-library-root" aria-label="Audio Library">
+<p class="audio-status">Loading audio…</p>
+</section>
+<noscript><p class="audio-status">Enable JavaScript to listen to the church audio library.</p></noscript>
+</main>
+<footer class="audio-footer">&copy; <span id="year"></span> Lightbearer · C&S Bible Church · Audio courtesy of <a href="https://www.seraphmedia.com.ng/" target="_blank" rel="noopener noreferrer">Seraph Media - seraphmedia.com.ng</a> · Built by <a href="https://darapet.name.ng" target="_blank" rel="noopener">Darapet Technology</a></footer>
+<script>document.getElementById('year').textContent=new Date().getFullYear();</script>
+<script type="module" src="./js/audio-library.js"></script>
+</body>
+</html>
