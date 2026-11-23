@@ -18,6 +18,7 @@ export default defineConfig({
         facebookVideos: path.resolve(root, "facebook-videos.html"),
         youtubeVideos: path.resolve(root, "youtube-videos.html"),
         gallery: path.resolve(root, "gallery.html"),
+        audio: path.resolve(root, "audio.html"),
         hymnal: path.resolve(root, "hymnal.html"),
         forms: path.resolve(root, "forms.html"),
         adminForms: path.resolve(root, "admin/forms.html"),
