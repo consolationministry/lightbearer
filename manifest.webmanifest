@@ -1,24 +1,11 @@
 {
   "name": "Lightbearer",
   "short_name": "Lightbearer",
-  "version": "1.16.55",
+  "version": "1.17.0",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f4f7ff",
-  "theme_color": "#f4f7ff",
-  "icons": [
-    {
-      "src": "./assets/lightbearer-icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "./assets/lightbearer-icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
-  ]
+  "background_color": "#ffffff",
+  "theme_color": "#21103c",
+  "description": "C&S Bible Church. Read and share hymns in English, Yoruba and Igbo."
 }
