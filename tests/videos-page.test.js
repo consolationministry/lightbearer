@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
+
+const run = promisify(execFile);
+const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 
 const page = await readFile(new URL('../videos.html', import.meta.url), 'utf8');
 const home = await readFile(new URL('../index.html', import.meta.url), 'utf8');
@@ -28,6 +34,8 @@ test('web build stages the public renderer and its static dependency modules', (
 });
 
 test('build output contains public watch page and renderer at the paths referenced by HTML', async () => {
+  await run(process.execPath, ['node_modules/vite/bin/vite.js', 'build'], { cwd: repositoryRoot });
+  await run(process.execPath, ['scripts/build-web.mjs'], { cwd: repositoryRoot });
   const distPage = await readFile(new URL('../dist/videos.html', import.meta.url), 'utf8');
   const distRenderer = await readFile(new URL('../dist/js/videos-page.js', import.meta.url), 'utf8');
   const distSocial = await readFile(new URL('../dist/js/social-videos.js', import.meta.url), 'utf8');

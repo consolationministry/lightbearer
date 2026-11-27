@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
+
+const run = promisify(execFile);
+const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 import { renderSocialVideoLists, renderSocialVideoPage } from '../js/videos-page.js';
 
 const root = new URL('../', import.meta.url);
@@ -102,6 +108,8 @@ test('programme titles and descriptions are escaped before appearing publicly', 
 });
 
 test('dedicated public pages are emitted to the production build', async () => {
+  await run(process.execPath, ['node_modules/vite/bin/vite.js', 'build'], { cwd: repositoryRoot });
+  await run(process.execPath, ['scripts/build-web.mjs'], { cwd: repositoryRoot });
   for (const file of ['dist/facebook-videos.html', 'dist/youtube-videos.html']) {
     const page = await read(file);
     assert.match(page, /assets\/videos-[^"]+\.js/);
