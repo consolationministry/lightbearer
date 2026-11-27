@@ -10,7 +10,7 @@
   --audio-muted: #d6cfc4;
 }
 
-body {
+body.audio-standalone {
   min-height: 100vh;
   background: linear-gradient(180deg, var(--audio-canvas) 0%, #14100b 55%, var(--audio-canvas) 100%);
   color: var(--audio-ink);
@@ -147,3 +147,33 @@ body {
   .audio-card-art { height: 180px; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* Embedded in the app Listen view: remap Seraph accents onto the blue-white
+   theme and keep the standalone orange/black look off the app shell. */
+.seraph-audio-library {
+  color-scheme: light;
+  --audio-orange: #1d4ed8;
+  --audio-orange-deep: #1e40af;
+  --audio-canvas: #f4f7ff;
+  --audio-surface: #ffffff;
+  --audio-soft: #dbeafe;
+  --audio-line: #d9e5f5;
+  --audio-ink: #0f172a;
+  --audio-muted: #334155;
+  background: transparent;
+  color: var(--audio-ink);
+  text-align: left;
+  padding: 10px 0 20px;
+}
+.seraph-audio-library .audio-hero { padding: 10px 4px 20px; }
+.seraph-audio-library .audio-hero h1 { font-family: var(--font-ui); font-size: clamp(1.4rem, 3vw, 1.9rem); }
+.seraph-audio-library .audio-hero p:last-child { color: var(--audio-muted); }
+.seraph-audio-library .audio-track-card { box-shadow: var(--shadow, 0 10px 30px rgba(30,64,175,.10)); }
+.seraph-audio-library .audio-card-art { height: 170px; }
+.seraph-audio-library .audio-search-form button,
+.seraph-audio-library .audio-play-btn { background: var(--audio-orange); color: #fff; }
+.seraph-audio-library .audio-search-form button:hover,
+.seraph-audio-library .audio-play-btn:hover { background: var(--audio-orange-deep); color: #fff; }
+.seraph-audio-library .audio-cat-tab.is-active { background: var(--audio-orange); color: #fff; }
+.seraph-audio-library .audio-credit-note { background: var(--audio-surface); }
+.seraph-audio-library .audio-player-wrap iframe { background: #fff; }

@@ -46,6 +46,7 @@ import {
   toggleAudioPlayback
 } from "./live-audio-player.js";
 import { renderLiveAudioListener, renderLiveAudioPage, updateLiveAudioListener } from "./live-audio-views.js";
+import { initAudioLibrary, renderAudioLibrarySection } from "./audio-library.js";
 import { fetchLibraryBooks, fetchBookPages, fetchPageSocial, likeBookPage, commentOnBookPage } from "./library-data.js";
 
 const splashStartedAt = Date.now();
@@ -986,31 +987,34 @@ function render() {
   const liveAudioViewData = getLiveAudioViewData();
   if (state.view === "home") main.innerHTML = renderHome();
   else if (["books","blog","history","about","community","set"].includes(state.view)) main.innerHTML=renderInfoPage(state.view);
-  else if (state.view === "listen") main.innerHTML = state.selectedLiveAudioProgramId
-    ? renderLiveAudioListener(
-      Object.assign({}, liveAudioViewData, { error: state.liveAudioError }),
-      state.selectedLiveAudioProgramId,
-      {
-        status: state.liveAudioConnectionStatus,
-        connecting: state.liveAudioConnecting,
-        connected: Boolean(state.liveAudioListener),
-        offlinePlayback: state.liveAudioOfflinePlayback,
-        joinError: state.liveAudioJoinError,
-        loading: state.liveAudioLoading && navigator.onLine !== false && !liveAudioViewData.programs.length,
-        broadcastOffline: state.liveAudioBroadcastOffline,
-        networkError: navigator.onLine === false || Boolean(state.liveAudioError && /network|connection|reach/i.test(state.liveAudioError)),
-        liveEnded: state.liveAudioStatusCode === "ended" && !state.liveAudioEnding,
-        liveEnding: state.liveAudioEnding,
-        opening: Boolean(state.liveAudioOpening),
-        previousProgramId: liveAudioNeighbourId(-1),
-        nextProgramId: liveAudioNeighbourId(1)
-      }
-    )
-    : renderLiveAudioPage(
-      Object.assign({}, liveAudioViewData, { loading: state.liveAudioLoading, error: state.liveAudioError }),
-      state.liveAudioQuery,
-      state.liveAudioCategory
-    );
+  else if (state.view === "listen") {
+    const listenPage = state.selectedLiveAudioProgramId
+      ? renderLiveAudioListener(
+        Object.assign({}, liveAudioViewData, { error: state.liveAudioError }),
+        state.selectedLiveAudioProgramId,
+        {
+          status: state.liveAudioConnectionStatus,
+          connecting: state.liveAudioConnecting,
+          connected: Boolean(state.liveAudioListener),
+          offlinePlayback: state.liveAudioOfflinePlayback,
+          joinError: state.liveAudioJoinError,
+          loading: state.liveAudioLoading && navigator.onLine !== false && !liveAudioViewData.programs.length,
+          broadcastOffline: state.liveAudioBroadcastOffline,
+          networkError: navigator.onLine === false || Boolean(state.liveAudioError && /network|connection|reach/i.test(state.liveAudioError)),
+          liveEnded: state.liveAudioStatusCode === "ended" && !state.liveAudioEnding,
+          liveEnding: state.liveAudioEnding,
+          opening: Boolean(state.liveAudioOpening),
+          previousProgramId: liveAudioNeighbourId(-1),
+          nextProgramId: liveAudioNeighbourId(1)
+        }
+      )
+      : renderLiveAudioPage(
+        Object.assign({}, liveAudioViewData, { loading: state.liveAudioLoading, error: state.liveAudioError }),
+        state.liveAudioQuery,
+        state.liveAudioCategory
+      );
+    main.innerHTML = state.selectedLiveAudioProgramId ? listenPage : listenPage + renderAudioLibrarySection();
+  }
   else if (state.view === "programs") main.innerHTML = renderPublicProgramsPage();
   else if (state.view === "services") main.innerHTML = renderPublicServicePlansPage();
   else if (state.view === "library") main.innerHTML = renderLibraryPage();
@@ -1036,6 +1040,11 @@ function render() {
   main.querySelectorAll("[data-audio-player]").forEach(function (audio) {
     mountAudioPlayer(audio, audio.closest(".audio-listener-player"));
   });
+  const seraphRoot = document.getElementById("audio-library-root");
+  if (seraphRoot && !seraphRoot.dataset.mounted) {
+    seraphRoot.dataset.mounted = "true";
+    void initAudioLibrary(seraphRoot);
+  }
   renderNav();
   document.title = state.view === "reader" ? "Hymn " + String(state.selectedNumber).padStart(2, "0") + " · C&S Bible Church Hymnal" : state.view === "listen" ? "Listen · C&S Bible Church Hymnal" : "C&S Bible Church Hymnal";
 }

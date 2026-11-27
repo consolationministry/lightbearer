@@ -130,8 +130,7 @@ export function renderAudioLibrary({ categories = [], tracks = [], activeCategor
     '<p class="audio-credit-note">Audio courtesy of <a href="https://www.seraphmedia.com.ng/" target="_blank" rel="noopener noreferrer">Seraph Media - seraphmedia.com.ng</a>. Free to listen, no ads, no paid tier.</p>';
 }
 
-async function init() {
-  const root = document.getElementById("audio-library-root");
+export async function initAudioLibrary(root) {
   if (!root) return;
   const view = { categories: [], tracks: [], activeCategory: "", query: "", loading: true, error: "", page: 1 };
   async function load() {
@@ -172,4 +171,8 @@ async function init() {
   });
   await load();
 }
-if (hasDocument) init();
+export function renderAudioLibrarySection() {
+  return '<section id="audio-library-root" class="seraph-audio-library" aria-label="Audio Library"></section>';
+}
+
+if (hasDocument) initAudioLibrary(document.getElementById("audio-library-root"));

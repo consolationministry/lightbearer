@@ -7,6 +7,7 @@ const PRECACHE_URLS = [
   "./css/theme.css",
   "./css/style.css",
   "./css/live-audio.css",
+  "./css/audio.css",
   "./assets/church-logo-placeholder.png",
   "./assets/church-logo-placeholder.png",
   "./assets/splash-chime.wav",
@@ -34,6 +35,7 @@ const PRECACHE_URLS = [
   "./js/settings.js",
   "./js/sharing.js",
   "./js/updates.js",
+  "./js/audio-library.js",
   "./js/version.js"
 ];
 
