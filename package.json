@@ -1,13 +1,22 @@
 {
   "name": "cns-lightbearer",
-  "version": "1.17.0",
+  "version": "1.17.1",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "node scripts/build-web.mjs && vite build",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.js"
   },
   "devDependencies": {
-    "vite": "^6.0.0"
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/cli": "^7.4.3",
+    "vite": "^6.4.4"
+  },
+  "dependencies": {
+    "@capacitor/app": "^7.1.0",
+    "@capacitor/core": "^7.4.3",
+    "@capacitor/file-transfer": "^1.0.12",
+    "@capacitor/filesystem": "^7.1.9",
+    "@capawesome-team/capacitor-file-opener": "^7.0.1"
   }
 }
