@@ -134,6 +134,14 @@ test("public audio loads published Supabase programmes and shared listener inter
   assert.match(livePage, /audio-library-nav-live is-active/);
   assert.match(livePage, /audio-library-nav-listen" type/);
   assert.match(livePage, /data-testid="audio-program-/);
+  const recordedData = { ...data, programs: [{ ...program, onAir: false, status: "published", date: "2026-01-01", embedUrl: "", iframeUrl: "", recordingUrl: "https://example.invalid/recording.mp3" }] };
+  const programmePage = renderLiveAudioPage(recordedData, "", "", "Sunday Service");
+  assert.match(programmePage, /<select class="audio-library-programme" id="live-audio-programme" data-live-audio-programme>/);
+  assert.match(programmePage, /<option value="">All programmes<\/option>/);
+  assert.match(programmePage, /<option value="Sunday Service" selected>Sunday Service<\/option>/);
+  assert.match(programmePage, /data-testid="audio-program-/);
+  assert.doesNotMatch(livePage, /data-live-audio-programme/);
+  assert.doesNotMatch(renderLiveAudioPage(data, "", "__saved__"), /data-live-audio-programme/);
   const listener = renderLiveAudioListener(data, PROGRAM_ID);
   assert.match(listener, /<audio[^>]*autoplay playsinline[^>]*data-live-audio-player/);
   assert.doesNotMatch(listener, /<audio[^>]*\scontrols(?:\s|>|=)/);
