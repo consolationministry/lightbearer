@@ -2,7 +2,7 @@ import { App } from "@capacitor/app";
 import { FileTransfer } from "@capacitor/file-transfer";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { FileOpener } from "@capawesome-team/capacitor-file-opener";
-import { ANDROID_RELEASES_API, ANDROID_APK_ASSET as MEMBER_APK_ASSET, APP_VERSION, getAndroidApkRelease } from "./version.js";
+import { ANDROID_RELEASES_API, ANDROID_APK_ASSET as MEMBER_APK_ASSET, APP_VERSION, getAndroidApkRelease, getAndroidApkReleaseFromList } from "./version.js";
 const ADMIN_APK_ASSET = "cns-lightbearer-admin.apk";
 
 let availableUpdate = null;
@@ -22,10 +22,17 @@ async function checkAndroidRelease() {
       }
       return;
     }
-    const release = await response.json();
+    const payload = await response.json();
     const appInfo = await App.getInfo();
+    const currentVersion = appInfo.version || APP_VERSION;
     const apkAsset = (window.__LIGHTBEARER_ADMIN__ === true || window.location.pathname.indexOf("/admin") >= 0) ? ADMIN_APK_ASSET : MEMBER_APK_ASSET;
-    const update = getAndroidApkRelease(release, appInfo.version || APP_VERSION, apkAsset);
+    // The releases endpoint returns a list (newest first). The old code passed
+    // the whole list into getAndroidApkRelease, so tag_name was undefined and
+    // no update was ever detected. Handle both shapes.
+    const singleRelease = payload && !Array.isArray(payload) && payload.tag_name ? payload : null;
+    const update = singleRelease
+      ? getAndroidApkRelease(singleRelease, currentVersion, apkAsset)
+      : getAndroidApkReleaseFromList(payload, currentVersion, apkAsset);
     if (!update) return;
     availableUpdate = update;
     if (onUpdateAvailable) {
@@ -41,7 +48,7 @@ export async function initializeNativeUpdates(onAvailable) {
   checkAndroidRelease();
   window.addEventListener("online", checkAndroidRelease);
   // Keep checking so the popup can appear on any screen, even minutes after launch.
-  window.setInterval(checkAndroidRelease, 5 * 60 * 1000);
+  window.setInterval(checkAndroidRelease, 2 * 60 * 1000);
   document.addEventListener("visibilitychange", function () {
     if (!document.hidden) checkAndroidRelease();
   });

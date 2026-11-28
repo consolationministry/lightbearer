@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.17.4";
+export const APP_VERSION = "1.17.5";
 export const ANDROID_RELEASES_API = "https://api.github.com/repos/consolationministry/lightbearer/releases";
 export const ANDROID_LATEST_APK_URL = "https://github.com/consolationministry/lightbearer/releases/latest/download/lightbearer.apk";
 // Member Android build asset name as published by the release workflow.
@@ -22,7 +22,34 @@ export function isNewerVersion(candidate, current) {
   return false;
 }
 
+export function getAndroidApkReleaseFromList(releases, currentVersion, assetName = ANDROID_APK_ASSET) {
+  if (!Array.isArray(releases)) return null;
+  let best = null;
+  for (const release of releases) {
+    if (!release || release.draft || release.prerelease) continue;
+    // GitHub list endpoint returns newest first; keep the newest valid match.
+    if (!isNewerVersion(release.tag_name, currentVersion)) continue;
+    const asset = Array.isArray(release.assets) ? release.assets.find((entry) => entry && entry.name === assetName) : null;
+    if (!asset || !asset.browser_download_url) continue;
+    if (!String(asset.browser_download_url).startsWith("https://github.com/consolationministry/lightbearer/")) continue;
+    best = release;
+    break;
+  }
+  if (!best) return null;
+  return {
+    tag_name: best.tag_name,
+    html_url: best.html_url || "",
+    assets: best.assets
+  };
+}
+
 export function getAndroidApkRelease(release, currentVersion, assetName = ANDROID_APK_ASSET) {
+  if (release && !release.tag_name && Array.isArray(release)) {
+    release = getAndroidApkReleaseFromList(release, currentVersion, assetName);
+    if (!release) return null;
+  }
+  if (!release) return null;
+
   if (!release || release.draft || release.prerelease) return null;
   if (!isNewerVersion(release.tag_name, currentVersion)) return null;
   const asset = Array.isArray(release.assets) ? release.assets.find((entry) => entry && entry.name === assetName) : null;
