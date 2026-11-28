@@ -206,7 +206,7 @@ export function renderLiveAudioPage(data, query, category) {
       (data.loading && !isSavedFilter ? "Loading programmes" : programs.length ? "No programmes match" : isSavedFilter ? "No saved programmes yet" : isLiveFilter ? "No live or upcoming programmes" : "No recordings yet") + '</h3><p>' +
       (data.loading && !isSavedFilter ? "Checking for current broadcasts and published programmes…" : isSavedFilter ? "Save a recording to keep it on this device for offline listening." : isLiveFilter ? "Scheduled programmes and live broadcasts will appear here." : rowPrograms.length || livePrograms.length ? "Try another title or category." : "Past recordings will appear here once a programme has ended.") + '</p></div>';
   const libraryLoadingOverlay = data.loading
-    ? '<div class="audio-stream-loading-overlay" aria-hidden="true"><div class="audio-stream-loading-panel"><span class="audio-stream-loading-ring" aria-hidden="true"></span><p>loading audio programmes</p></div></div>'
+    ? '<p class="audio-library-loading" role="status" aria-live="polite">Loading…</p>'
     : "";
   return '<section class="page live-audio-page audio-library-page">' + libraryLoadingOverlay +
     '<header class="audio-library-header"><div class="audio-library-header-inner">' +
@@ -363,7 +363,7 @@ export function renderLiveAudioListener(data, programId, options) {
       commentList + '</section>';
   const badge = isLive ? '<span class="live-audio-badge is-live">On air</span>' : '<span class="live-audio-badge">Published programme</span>';
   const libraryLoading = opts.loading
-    ? '<div class="audio-stream-loading-overlay" role="status" aria-live="polite"><div class="audio-stream-loading-panel"><span class="audio-stream-loading-ring" aria-hidden="true"></span><p>loading audio programmes</p></div></div>'
+    ? '<p class="audio-library-loading" role="status" aria-live="polite">Loading…</p>'
     : "";
   const networkError = opts.networkError
     ? '<div class="audio-stream-network-error" role="alert"><strong>Network error</strong><p>We could not reach the stream. Check your connection, or listen to programmes saved on this device.</p>' +
