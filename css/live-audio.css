@@ -204,6 +204,9 @@ body.audio-library-mode .toast { bottom: calc(94px + env(safe-area-inset-bottom)
 .audio-library-section-heading h2 { margin: 0; color: var(--ink); font-size: 1.12rem; font-weight: 800; letter-spacing: -.02em; }
 .audio-library-overline { margin: 0 0 4px; color: #8f7aff; font-size: .66rem; font-weight: 850; letter-spacing: .14em; }
 .audio-library-program-count { display: grid; min-width: 30px; height: 30px; place-items: center; padding: 0 7px; border: 1px solid #26344b; border-radius: 999px; color: #c5cbe0; background: #0c1625; font-size: .72rem; font-weight: 750; }
+.audio-library-programme-wrap { margin: 0 0 12px; }
+.audio-library-programme { width: 100%; min-height: 44px; padding: 10px 36px 10px 14px; border: 1px solid #202e43; border-radius: 12px; outline: none; color: var(--ink); background: #091320; font: inherit; font-size: .85rem; appearance: none; cursor: pointer; }
+.audio-library-programme:focus { border-color: #6b55f4; box-shadow: 0 0 0 3px rgba(94, 71, 240, .15); }
 .audio-library-search-wrap { position: relative; display: flex; align-items: center; margin: 0 0 12px; }
 .audio-library-search-wrap > svg { position: absolute; left: 14px; width: 19px; height: 19px; color: #8290a9; pointer-events: none; }
 .audio-library-search { width: 100%; min-height: 44px; padding: 10px 14px 10px 42px; border: 1px solid #202e43; border-radius: 12px; outline: none; color: var(--ink); background: #091320; font: inherit; font-size: .85rem; }

@@ -141,7 +141,7 @@ function audioPlayerButton(playerType, action, label, icon) {
     '<span data-audio-control-icon aria-hidden="true">' + icon + '</span></button>';
 }
 
-export function renderLiveAudioPage(data, query, category) {
+export function renderLiveAudioPage(data, query, category, programmeFilter) {
   const isLiveFilter = category === "__live__";
   const isSavedFilter = category === "__saved__";
   const savedPrograms = Array.isArray(data.savedPrograms) ? data.savedPrograms : [];
@@ -159,10 +159,20 @@ export function renderLiveAudioPage(data, query, category) {
   const programs = isLiveFilter ? livePrograms.concat(upcomingPrograms) : isSavedFilter ? savedPrograms : pastPrograms;
   const normalizedQuery = String(query || "").trim().toLocaleLowerCase();
   const selectedCategory = isLiveFilter || isSavedFilter ? "" : String(category || "");
+  // Programme filter applies to the church recordings list only. It is kept
+  // separate from the tab category (Live / Saved) and from the Seraph audio
+  // library, which has its own category tabs and search.
+  const selectedProgramme = isLiveFilter || isSavedFilter ? "" : String(programmeFilter || "");
+  const programmeOptions = !isLiveFilter && !isSavedFilter
+    ? Array.from(new Set(programs.map(function (program) { return String(program.category || ""); })))
+      .filter(function (item) { return item && item.toLocaleLowerCase() !== "live"; })
+      .sort(function (a, b) { return a.localeCompare(b); })
+    : [];
   const formalPrograms = programs.filter(function (program) {
     const matchesQuery = !normalizedQuery || (program.title + " " + program.category + " " + program.speaker + " " + program.description).toLocaleLowerCase().includes(normalizedQuery);
     const matchesCategory = !selectedCategory || program.category === selectedCategory;
-    return matchesQuery && matchesCategory;
+    const matchesProgramme = !selectedProgramme || program.category === selectedProgramme;
+    return matchesQuery && matchesCategory && matchesProgramme;
   });
   const categoryOptions = Array.from(new Set(programs.map(function (program) { return program.category; })))
     .filter(function (item) { return item.toLocaleLowerCase() !== "live"; })
@@ -217,6 +227,10 @@ export function renderLiveAudioPage(data, query, category) {
     '<div class="audio-library-content">' + (data.error && !isSavedFilter ? '<p class="audio-service-error" role="alert">' + escapeHtml(data.error) + '</p>' : "") +
     featureMarkup +
     '<section class="audio-library-section" aria-labelledby="audio-library-heading"><div class="audio-library-section-heading"><div><p class="audio-library-overline">CHURCH AUDIO</p><h2 id="audio-library-heading">' + (isSavedFilter ? "Saved" : isLiveFilter ? "Live and upcoming" : "Past recordings") + '</h2></div><span class="audio-library-program-count">' + formalPrograms.length + '</span></div>' +
+    (isLiveFilter || isSavedFilter ? "" :
+    '<div class="audio-library-programme-wrap"><label class="sr-only" for="live-audio-programme">Programme</label><select class="audio-library-programme" id="live-audio-programme" data-live-audio-programme><option value="">All programmes</option>' +
+    programmeOptions.map(function (option) { return '<option value="' + escapeHtml(option) + '"' + (option === selectedProgramme ? " selected" : "") + ">" + escapeHtml(option) + "</option>"; }).join("") +
+    '</select></div>') +
     '<div class="audio-library-search-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.2 4.2"/></svg><label class="sr-only" for="live-audio-search">Search programmes</label><input class="audio-library-search" id="live-audio-search" type="search" value="' + escapeHtml(query) + '" placeholder="Search audio, ministers…" data-live-audio-search></div>' +
     listContent +
     '</section></div>' +

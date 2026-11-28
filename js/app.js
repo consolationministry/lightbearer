@@ -65,7 +65,7 @@ const updateMessage = document.getElementById("update-message");
 const updateVersion = document.getElementById("update-version");
 const updateStatus = document.getElementById("update-status");
 const updateInstallButton = document.getElementById("update-install");
-const state = { hymns: [], publicContent: null, programmeInteractions: {}, programmeInteractionsAvailable: null, programmeVotesAvailable: null, programmeVotePending: {}, programmeDescriptionsExpanded: {}, programmeSelectedId: null, programmeCategoryFilter: "", serviceSelectedId: null, serviceAimId: null, liveAudioData: emptyLiveAudioData(), savedLiveAudioPrograms: getSavedLiveAudioPrograms(), savingLiveAudioIds: new Set(), liveAudioPlaybackUrl: "", liveAudioOfflinePlayback: false, liveAudioOpenToken: 0, liveAudioLoading: false, liveAudioError: "", liveAudioJoinError: null, liveAudioQuery: "", liveAudioCategory: "", selectedLiveAudioProgramId: null, liveAudioStartedAt: null, liveAudioTimer: null, liveAudioPollTimer: null, liveAudioSegmentPollTimer: null, liveAudioSegmentRequest: false, liveAudioSegmentRequestToken: 0, liveAudioRequestToken: 0, liveAudioConnectToken: 0, liveAudioListener: null, liveAudioConnecting: false, liveAudioConnectionStatus: "", liveAudioStatusCode: "", liveAudioBroadcastOffline: false, liveAudioHasConnected: false, liveAudioCountRecorded: false, liveAudioEnding: false, liveAudioEndingTimer: null, liveAudioBurstSub: null, liveAudioBurstProgramId: "", liveAudioListenEventId: "", view: "home", readerReturnView: "home",    libraryBooks: [], libraryLoaded: false, bookDisclaimerVisible: false, bookDisclaimerTimer: null, bookId: null,bookPages: [], bookPagesLoaded: false, bookPageIndex: 0, bookPageSocial: null, bookPageLikedMap: {}, selectedNumber: null, query: "", category: "", searchOpen: false, settings: getSettings(), toastTimer: null };
+const state = { hymns: [], publicContent: null, programmeInteractions: {}, programmeInteractionsAvailable: null, programmeVotesAvailable: null, programmeVotePending: {}, programmeDescriptionsExpanded: {}, programmeSelectedId: null, programmeCategoryFilter: "", serviceSelectedId: null, serviceAimId: null, liveAudioData: emptyLiveAudioData(), savedLiveAudioPrograms: getSavedLiveAudioPrograms(), savingLiveAudioIds: new Set(), liveAudioPlaybackUrl: "", liveAudioOfflinePlayback: false, liveAudioOpenToken: 0, liveAudioLoading: false, liveAudioError: "", liveAudioJoinError: null, liveAudioQuery: "", liveAudioCategory: "", liveAudioProgramme: "", selectedLiveAudioProgramId: null, liveAudioStartedAt: null, liveAudioTimer: null, liveAudioPollTimer: null, liveAudioSegmentPollTimer: null, liveAudioSegmentRequest: false, liveAudioSegmentRequestToken: 0, liveAudioRequestToken: 0, liveAudioConnectToken: 0, liveAudioListener: null, liveAudioConnecting: false, liveAudioConnectionStatus: "", liveAudioStatusCode: "", liveAudioBroadcastOffline: false, liveAudioHasConnected: false, liveAudioCountRecorded: false, liveAudioEnding: false, liveAudioEndingTimer: null, liveAudioBurstSub: null, liveAudioBurstProgramId: "", liveAudioListenEventId: "", view: "home", readerReturnView: "home",    libraryBooks: [], libraryLoaded: false, bookDisclaimerVisible: false, bookDisclaimerTimer: null, bookId: null,bookPages: [], bookPagesLoaded: false, bookPageIndex: 0, bookPageSocial: null, bookPageLikedMap: {}, selectedNumber: null, query: "", category: "", searchOpen: false, settings: getSettings(), toastTimer: null };
 
 try { state.query = localStorage.getItem("lightbearer-search") || ""; state.searchOpen = Boolean(state.query); } catch (error) {}
 
@@ -1011,7 +1011,8 @@ function render() {
       : renderLiveAudioPage(
         Object.assign({}, liveAudioViewData, { loading: state.liveAudioLoading, error: state.liveAudioError }),
         state.liveAudioQuery,
-        state.liveAudioCategory
+        state.liveAudioCategory,
+        state.liveAudioProgramme
       );
     main.innerHTML = state.selectedLiveAudioProgramId ? listenPage : listenPage + renderAudioLibrarySection();
   }
@@ -1939,9 +1940,16 @@ document.addEventListener("input", function (event) {
 });
 
 document.addEventListener("change", function (event) {
-  if (!event.target.matches("[data-live-audio-category]")) return;
-  state.liveAudioCategory = event.target.value;
+  if (event.target.matches("[data-live-audio-category]")) {
+    state.liveAudioCategory = event.target.value;
+    render();
+    return;
+  }
+  if (!event.target.matches("[data-live-audio-programme]")) return;
+  state.liveAudioProgramme = event.target.value;
   render();
+  const programmeSelect = document.getElementById("live-audio-programme");
+  if (programmeSelect) programmeSelect.focus({ preventScroll: true });
 });
 
 document.addEventListener("submit", function (event) {
