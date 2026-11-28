@@ -162,6 +162,14 @@ export function renderCategoryTabs(categories, activeSlug) {
     '<button class="audio-cat-tab' + (!activeSlug ? " is-active" : "") + '" type="button" role="tab" aria-selected="' + (!activeSlug) + '" data-audio-category="">All</button>' + rows + '</div>';
 }
 
+export function trackMatchesQuery(track, query) {
+  const q = String(query || "").trim().toLocaleLowerCase();
+  if (!q) return true;
+  const haystack = [track.title, track.artist, track.type, track.duration, track.category, track.category_name, track.genre, track.description]
+    .filter(Boolean).join(" ").toLocaleLowerCase();
+  return haystack.includes(q);
+}
+
 export function renderTrackCard(track) {
   const artwork = track.image_url
     ? '<img src="' + escapeHtml(track.image_url) + '" alt="" loading="lazy" referrerpolicy="no-referrer">'
@@ -174,9 +182,47 @@ export function renderTrackCard(track) {
     (meta ? '<p class="audio-card-meta">' + meta + '</p>' : "") +
     '<p class="audio-card-source">' + trackCredit(track) + '</p>' +
     '<button class="audio-play-btn" type="button" data-audio-play="' + escapeHtml(track.slug) + '" aria-expanded="false">Play</button>' +
-    '<div class="audio-player-wrap" hidden><iframe title="' + escapeHtml(track.title) + '" src="' + escapeHtml(track.embed_url) + '" allow="autoplay; encrypted-media" allowfullscreen loading="lazy"></iframe>' +
+    '<div class="audio-player-wrap" hidden><iframe title="' + escapeHtml(track.title) + '" data-src="' + escapeHtml(track.embed_url) + '" allow="autoplay; encrypted-media" allowfullscreen loading="lazy"></iframe>' +
     '<p class="audio-card-source">' + trackCredit(track) + '</p></div>' +
     '</div></article>';
+}
+
+// Same row treatment as the church programme rows (live-audio-views), so the
+// Listen page reads as one list: church recordings first, Seraph tracks
+// continuing after them in the same rows. Playback stays embed-only.
+export function renderTrackRow(track) {
+  const art = track.image_url
+    ? '<div class="audio-library-row-art"><img src="' + escapeHtml(track.image_url) + '" alt="" loading="lazy" referrerpolicy="no-referrer"></div>'
+    : '<div class="audio-library-row-art audio-library-art-placeholder"><span class="audio-library-art-glow"></span><img src="./assets/church-logo-placeholder.png" alt="" loading="lazy"></div>';
+  const meta = [track.artist, track.type, track.duration].filter(Boolean);
+  const source = '<p class="audio-library-row-meta"><a href="' + escapeHtml(track.url ? String(track.url) : "https://www.seraphmedia.com.ng/") + '" target="_blank" rel="noopener noreferrer">Seraph Media</a>' +
+    (meta.length ? ' <span aria-hidden="true">·</span> ' + meta.map(escapeHtml).join(' <span aria-hidden="true">·</span> ') : "") + '</p>';
+  return '<article class="audio-library-row audio-library-row-seraph" data-testid="audio-seraph-' + escapeHtml(track.slug) + '">' +
+    art +
+    '<div class="audio-library-row-copy"><div class="audio-library-row-kicker"><span>Seraph Media</span><span class="audio-library-recorded-label">Audio</span></div>' +
+    '<h3>' + escapeHtml(track.title) + '</h3>' + source + '</div>' +
+    '<button class="audio-library-row-play" type="button" data-audio-play="' + escapeHtml(track.slug) + '" aria-expanded="false" aria-label="Play ' + escapeHtml(track.title) + ' on Seraph Media">' +
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 9 6-9 6z"/></svg></button>' +
+    '<div class="audio-player-wrap audio-library-row-player" hidden><iframe title="' + escapeHtml(track.title) + '" data-src="' + escapeHtml(track.embed_url) + '" allow="autoplay; encrypted-media" allowfullscreen loading="lazy"></iframe>' +
+    '<p class="audio-card-source">' + trackCredit(track) + '</p></div></article>';
+}
+
+export function renderEmbeddedTracks({ tracks = [], query = "", loading = false, error = "", loaded = 0, total = 0 } = {}) {
+  const list = cleanTracks(tracks).filter((track) => trackMatchesQuery(track, query));
+  const streamingNote = !loading && total > loaded && loaded > 0
+    ? '<p class="audio-library-streaming" role="status">Showing ' + loaded + ' of ' + total + ' Seraph tracks, the rest are still loading.</p>'
+    : "";
+  const body = loading
+    ? '<p class="audio-library-streaming" role="status">Loading Seraph audio…</p>'
+    : error
+      ? '<p class="audio-library-streaming" role="alert">' + escapeHtml(error) + '</p>'
+      : list.length
+        ? '<div class="audio-library-list" aria-live="polite">' + list.map(renderTrackRow).join("") + '</div>'
+        : String(query || "").trim()
+          ? '<p class="audio-library-streaming">No Seraph audio matches that search.</p>'
+          : '<p class="audio-library-streaming">No Seraph audio shows here yet. New audio will appear here once it is published.</p>';
+  return '<section class="audio-library-seraph" aria-label="Seraph Media audio">' + body + streamingNote +
+    '<p class="audio-card-source audio-library-credit">Audio courtesy of <a href="https://www.seraphmedia.com.ng/" target="_blank" rel="noopener noreferrer">Seraph Media - seraphmedia.com.ng</a>. Free to listen, no ads, no paid tier.</p></section>';
 }
 
 export function renderAudioLibrary({ categories = [], tracks = [], activeCategory = "", query = "", loading = false, error = "", page = 1, loaded = 0, total = 0, catalogReady = false } = {}) {
@@ -318,8 +364,136 @@ export async function initAudioLibrary(root) {
   await load();
   scheduleRefresh();
 }
-export function renderAudioLibrarySection() {
-  return '<section id="audio-library-root" class="seraph-audio-library" aria-label="Audio Library"></section>';
+export function renderAudioLibrarySection(query) {
+  return '<section id="audio-library-root" data-seraph-query="' + escapeHtml(query || "") + '" aria-label="Seraph Media audio"></section>';
+}
+
+// The listen page is a single list: church recordings first, Seraph tracks
+// continuing after them. There is no second search, hero or category tabs
+// here; the church search box is the only search and it filters both sides
+// client-side against the cached catalog, with no extra fetch.
+export async function initEmbeddedSeraphTracks(root, initialQuery = "") {
+  if (!root) return null;
+  const CATALOG_KEY = "lightbearer-seraph-catalog-v1";
+  const view = { tracks: [], loading: false, error: "", loaded: 0, total: 0, query: String(initialQuery || "") };
+
+  function loadCatalogSnapshot() {
+    try {
+      const raw = localStorage.getItem(CATALOG_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed && Array.isArray(parsed.tracks) && parsed.tracks.length ? parsed : null;
+    } catch (_) { return null; }
+  }
+  function saveCatalogSnapshot() {
+    try { localStorage.setItem(CATALOG_KEY, JSON.stringify({ at: Date.now(), tracks: view.tracks })); } catch (_) {}
+  }
+  function render() { root.innerHTML = renderEmbeddedTracks(view); }
+  function loadSnapshotIfAny() {
+    const snapshot = loadCatalogSnapshot();
+    if (snapshot) {
+      view.tracks = snapshot.tracks;
+      view.total = snapshot.tracks.length;
+      view.loaded = snapshot.tracks.length;
+      view.loading = false;
+      render();
+      return true;
+    }
+    return false;
+  }
+
+  root.addEventListener("click", (event) => {
+    const play = event.target.closest("[data-audio-play]");
+    if (!play) return;
+    const row = play.closest("[data-testid^='audio-seraph-']") || play.parentElement;
+    const wrap = row && row.querySelector(".audio-player-wrap");
+    const iframe = wrap && wrap.querySelector("iframe");
+    if (!wrap) return;
+    const open = wrap.hidden;
+    wrap.hidden = !open;
+    play.setAttribute("aria-expanded", String(open));
+    play.setAttribute("aria-label", (open ? "Pause " : "Play ") + (play.getAttribute("aria-label") || "").replace(/^(Play|Pause)\s/, ""));
+    if (open && iframe && !iframe.src) { iframe.src = iframe.dataset.src || ""; }
+    if (!open) { try { iframe && iframe.contentWindow && iframe.contentWindow.postMessage({ event: "pause" }, "*"); } catch (_) {} }
+  });
+
+  const api = {
+    setQuery(query) {
+      view.query = String(query || "");
+      root.dataset.seraphQuery = view.query;
+      render();
+    },
+    get query() { return view.query; }
+  };
+
+  if (!loadSnapshotIfAny()) {
+    view.loading = true;
+    render();
+    try {
+      const first = await fetchTracks({ page: 1, limit: PAGE_LIMIT }).catch(() => null);
+      if (!first) { throw new Error("Audio library could not be loaded right now."); }
+      const envelope = parseTracksEnvelope(first);
+      view.tracks = envelope.tracks;
+      view.total = envelope.total;
+      view.loaded = envelope.tracks.length;
+      view.loading = false;
+      render();
+      const totalPages = Math.max(1, Math.ceil(envelope.total / PAGE_LIMIT));
+      if (totalPages > 1) {
+        const pages = [];
+        for (let page = 2; page <= totalPages; page += 1) pages.push(page);
+        let index = 0;
+        async function worker() {
+          while (index < pages.length) {
+            const page = pages[index];
+            index += 1;
+            try {
+              const body = parseTracksEnvelope(await fetchTracks({ page, limit: PAGE_LIMIT }));
+              view.tracks = view.tracks.concat(body.tracks);
+              view.loaded = view.tracks.length;
+              render();
+            } catch (error) {
+              if (error && error.status === 429) { await sleep(error.retryAfterMs || 30000); continue; }
+              break;
+            }
+            if (index < pages.length) await sleep(BACKGROUND_TICK_MS);
+          }
+        }
+        await Promise.all(Array.from({ length: Math.min(BACKGROUND_PAGES_PER_TICK, pages.length) }, () => worker()));
+      }
+      saveCatalogSnapshot();
+      render();
+    } catch (error) {
+      if (!loadSnapshotIfAny()) {
+        view.error = error && error.message ? error.message : "Audio library could not be loaded right now.";
+        view.loading = false;
+        render();
+      }
+    }
+  }
+
+  let refreshTimer = null;
+  function scheduleRefresh() {
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = setInterval(() => {
+      if (document.hidden || navigator.onLine === false || !document.contains(root)) return;
+      void api.refresh();
+    }, LOCAL_FRESH_MS);
+  }
+  api.refresh = async function () {
+    try {
+      const first = await fetchTracks({ page: 1, limit: PAGE_LIMIT }).catch(() => null);
+      if (!first) return;
+      const envelope = parseTracksEnvelope(first);
+      const bySlug = new Map(view.tracks.map((t) => [t.slug, t]));
+      for (const t of envelope.tracks) if (!bySlug.has(t.slug)) view.tracks.push(t);
+      view.total = envelope.total;
+      view.loaded = view.tracks.length;
+      saveCatalogSnapshot();
+      render();
+    } catch (_) { /* keep showing what we already have */ }
+  };
+  scheduleRefresh();
+  return api;
 }
 
 if (hasDocument) initAudioLibrary(document.getElementById("audio-library-root"));

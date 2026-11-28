@@ -159,9 +159,8 @@ export function renderLiveAudioPage(data, query, category, programmeFilter) {
   const programs = isLiveFilter ? livePrograms.concat(upcomingPrograms) : isSavedFilter ? savedPrograms : pastPrograms;
   const normalizedQuery = String(query || "").trim().toLocaleLowerCase();
   const selectedCategory = isLiveFilter || isSavedFilter ? "" : String(category || "");
-  // Programme filter applies to the church recordings list only. It is kept
-  // separate from the tab category (Live / Saved) and from the Seraph audio
-  // library, which has its own category tabs and search.
+  // Programme dropdown only narrows church recordings. Seraph tracks always
+  // stay in the same list below them, filtered by the shared search.
   const selectedProgramme = isLiveFilter || isSavedFilter ? "" : String(programmeFilter || "");
   const programmeOptions = !isLiveFilter && !isSavedFilter
     ? Array.from(new Set(programs.map(function (program) { return String(program.category || ""); })))
@@ -203,18 +202,25 @@ export function renderLiveAudioPage(data, query, category, programmeFilter) {
       '<div class="audio-library-feature-copy"><span class="audio-library-feature-pill">CHURCH AUDIO</span><h1>Listen together, wherever you are.</h1>' +
       '<p class="audio-library-feature-subtitle">Published services and programmes from C&S Bible Church will appear here.</p>' +
       '<div class="audio-library-feature-controls"><div class="audio-library-waveform" aria-hidden="true">' + waveform + '</div></div></div></section>';
+  // One list, church recordings first. In the default view the Seraph tracks
+  // continue directly after the church rows in the same list, below the same
+  // single search. Programme dropdown only narrows church recordings.
+  const showSeraphInList = !isLiveFilter && !isSavedFilter;
   const rowPrograms = formalPrograms;
   const liveRows = isLiveFilter ? formalPrograms.filter(function (program) { return program.onAir && program.liveSessionId; }) : [];
   const upcomingRows = isLiveFilter ? formalPrograms.filter(isUpcoming) : [];
+  const seraphSlot = showSeraphInList
+    ? '<div id="audio-library-root" data-seraph-query="' + escapeHtml(query) + '" aria-label="Seraph Media audio"></div>'
+    : "";
   const listContent = isLiveFilter
     ? ((liveRows.length ? '<div class="audio-library-list">' + liveRows.map(function (program) { return audioLibraryProgramRow(program, data, savedProgramIds.has(program.id), false); }).join("") + '</div>' : "") + (upcomingRows.length ? '<h3 class="audio-library-upcoming-heading">Upcoming</h3><div class="audio-library-list" aria-live="polite">' + upcomingRows.map(function (program) { return audioLibraryProgramRow(program, data, savedProgramIds.has(program.id), false); }).join("") + '</div>' : "") || '<div class="audio-library-empty"><h3>No live or upcoming programmes</h3><p>Scheduled programmes and live broadcasts will appear here.</p></div>')
     : rowPrograms.length
     ? '<div class="audio-library-list" aria-live="polite">' + rowPrograms.map(function (program) {
       return audioLibraryProgramRow(program, data, savedProgramIds.has(program.id), isSavedFilter);
-    }).join("") + '</div>'
+    }).join("") + seraphSlot + '</div>'
     : '<div class="audio-library-empty" aria-live="polite"><span class="audio-library-empty-icon">' + radioIcon() + '</span><h3>' +
       (data.loading && !isSavedFilter ? "Loading programmes" : programs.length ? "No programmes match" : isSavedFilter ? "No saved programmes yet" : isLiveFilter ? "No live or upcoming programmes" : "No recordings yet") + '</h3><p>' +
-      (data.loading && !isSavedFilter ? "Checking for current broadcasts and published programmes…" : isSavedFilter ? "Save a recording to keep it on this device for offline listening." : isLiveFilter ? "Scheduled programmes and live broadcasts will appear here." : rowPrograms.length || livePrograms.length ? "Try another title or category." : "Past recordings will appear here once a programme has ended.") + '</p></div>';
+      (data.loading && !isSavedFilter ? "Checking for current broadcasts and published programmes…" : isSavedFilter ? "Save a recording to keep it on this device for offline listening." : isLiveFilter ? "Scheduled programmes and live broadcasts will appear here." : rowPrograms.length || livePrograms.length ? "Try another title or category." : "Past recordings will appear here once a programme has ended.") + '</p></div>' + (showSeraphInList ? '<div class="audio-library-list" aria-live="polite">' + seraphSlot + '</div>' : "");
   const libraryLoadingOverlay = data.loading
     ? '<p class="audio-library-loading" role="status" aria-live="polite">Loading…</p>'
     : "";

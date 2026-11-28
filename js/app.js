@@ -46,7 +46,7 @@ import {
   toggleAudioPlayback
 } from "./live-audio-player.js";
 import { renderLiveAudioListener, renderLiveAudioPage, updateLiveAudioListener } from "./live-audio-views.js";
-import { initAudioLibrary, renderAudioLibrarySection } from "./audio-library.js";
+import { initAudioLibrary, initEmbeddedSeraphTracks, renderAudioLibrarySection } from "./audio-library.js";
 import { fetchLibraryBooks, fetchBookPages, fetchPageSocial, likeBookPage, commentOnBookPage } from "./library-data.js";
 
 const splashStartedAt = Date.now();
@@ -65,6 +65,8 @@ const updateMessage = document.getElementById("update-message");
 const updateVersion = document.getElementById("update-version");
 const updateStatus = document.getElementById("update-status");
 const updateInstallButton = document.getElementById("update-install");
+let seraphEmbeddedController = null;
+let seraphEmbeddedRoot = null;
 const state = { hymns: [], publicContent: null, programmeInteractions: {}, programmeInteractionsAvailable: null, programmeVotesAvailable: null, programmeVotePending: {}, programmeDescriptionsExpanded: {}, programmeSelectedId: null, programmeCategoryFilter: "", serviceSelectedId: null, serviceAimId: null, liveAudioData: emptyLiveAudioData(), savedLiveAudioPrograms: getSavedLiveAudioPrograms(), savingLiveAudioIds: new Set(), liveAudioPlaybackUrl: "", liveAudioOfflinePlayback: false, liveAudioOpenToken: 0, liveAudioLoading: false, liveAudioError: "", liveAudioJoinError: null, liveAudioQuery: "", liveAudioCategory: "", liveAudioProgramme: "", selectedLiveAudioProgramId: null, liveAudioStartedAt: null, liveAudioTimer: null, liveAudioPollTimer: null, liveAudioSegmentPollTimer: null, liveAudioSegmentRequest: false, liveAudioSegmentRequestToken: 0, liveAudioRequestToken: 0, liveAudioConnectToken: 0, liveAudioListener: null, liveAudioConnecting: false, liveAudioConnectionStatus: "", liveAudioStatusCode: "", liveAudioBroadcastOffline: false, liveAudioHasConnected: false, liveAudioCountRecorded: false, liveAudioEnding: false, liveAudioEndingTimer: null, liveAudioBurstSub: null, liveAudioBurstProgramId: "", liveAudioListenEventId: "", view: "home", readerReturnView: "home",    libraryBooks: [], libraryLoaded: false, bookDisclaimerVisible: false, bookDisclaimerTimer: null, bookId: null,bookPages: [], bookPagesLoaded: false, bookPageIndex: 0, bookPageSocial: null, bookPageLikedMap: {}, selectedNumber: null, query: "", category: "", searchOpen: false, settings: getSettings(), toastTimer: null };
 
 try { state.query = localStorage.getItem("lightbearer-search") || ""; state.searchOpen = Boolean(state.query); } catch (error) {}
@@ -1014,7 +1016,7 @@ function render() {
         state.liveAudioCategory,
         state.liveAudioProgramme
       );
-    main.innerHTML = state.selectedLiveAudioProgramId ? listenPage : listenPage + renderAudioLibrarySection();
+    main.innerHTML = listenPage;
   }
   else if (state.view === "programs") main.innerHTML = renderPublicProgramsPage();
   else if (state.view === "services") main.innerHTML = renderPublicServicePlansPage();
@@ -1041,10 +1043,22 @@ function render() {
   main.querySelectorAll("[data-audio-player]").forEach(function (audio) {
     mountAudioPlayer(audio, audio.closest(".audio-listener-player"));
   });
-  const seraphRoot = document.getElementById("audio-library-root");
-  if (seraphRoot && !seraphRoot.dataset.mounted) {
-    seraphRoot.dataset.mounted = "true";
-    void initAudioLibrary(seraphRoot);
+  // Seraph tracks live inside the listen page's own list, right after the
+  // church recordings, and share its search box. One line per render: keep
+  // the controller on the current root so the shared search filters them.
+  if (state.view === "listen" && !state.selectedLiveAudioProgramId) {
+    const seraphRoot = document.getElementById("audio-library-root");
+    if (seraphRoot) {
+      const query = String(state.liveAudioQuery || "");
+      if (seraphRoot.dataset.mounted === "true" && seraphEmbeddedController && seraphEmbeddedRoot === seraphRoot) {
+        if (seraphRoot.dataset.seraphQuery !== query) seraphEmbeddedController.setQuery(query);
+      } else {
+        seraphRoot.dataset.mounted = "true";
+        seraphEmbeddedRoot = seraphRoot;
+        const controllerPromise = initEmbeddedSeraphTracks(seraphRoot, query);
+        seraphEmbeddedController = { setQuery: function (q) { controllerPromise.then(function (api) { if (api && seraphEmbeddedRoot === seraphRoot) api.setQuery(q); }); }, refresh: function () { controllerPromise.then(function (api) { if (api && api.refresh) api.refresh(); }); } };
+      }
+    }
   }
   renderNav();
   document.title = state.view === "reader" ? "Hymn " + String(state.selectedNumber).padStart(2, "0") + " · C&S Bible Church Hymnal" : state.view === "listen" ? "Listen · C&S Bible Church Hymnal" : "C&S Bible Church Hymnal";
@@ -1918,6 +1932,9 @@ document.addEventListener("input", function (event) {
     setAudioPlayerVolume(main.querySelector('[data-audio-player="' + event.target.dataset.audioVolume + '"]'), event.target.value);
   } else if (event.target.matches("[data-live-audio-search]")) {
     state.liveAudioQuery = event.target.value;
+    // one search for the whole list: also narrow the Seraph tracks below the
+    // church recordings, without refetching anything
+    try { if (seraphEmbeddedController) seraphEmbeddedController.setQuery(event.target.value); } catch (_) {}
     render();
     const input = document.getElementById("live-audio-search");
     if (input) {
